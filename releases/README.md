@@ -1,6 +1,6 @@
 # Current rolling release
 
-`waz.dashboard.plg` is WAZ Control v0.8.0, release build `2026.09.01.04`.
+`waz.dashboard.plg` is WAZ Control v0.8.1, release build `2026.09.07.01`.
 
 It contains the integrated Health banner, Server Status, Workloads, and Storage panels. Its compact fan display and controls use the separate MD12xx Fan Control plugin API when that plugin is installed; WAZ no longer owns any fan hardware or policy logic. This is a hardware-specific rolling test build, not a Community Applications release.
 
@@ -18,4 +18,4 @@ bash /tmp/install-waz-dashboard.sh
 
 The installer downloads and verifies the new package before removing the installed plugin. It backs up `waz.dashboard.cfg` outside the directory removed by Unraid, restores it before installation, and retains the backup if installation fails.
 
-The `history/` directory preserves the standalone Health builds that still exist from development. They are provided to show the progression of the project and should not be installed alongside v0.8.0.
+The `history/` directory preserves the standalone Health builds that still exist from development. They are provided to show the progression of the project and should not be installed alongside v0.8.1.

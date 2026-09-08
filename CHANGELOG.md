@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.1 — 2026-09-07
+
+- Fixed false disk-temperature warnings caused by reading nonexistent `warning` and `critical` runtime fields.
+- Honor per-device `hotTemp` and `maxTemp` overrides from Unraid's `smart-one.cfg`.
+- Honor Unraid's separate global HDD and SSD temperature defaults from Dynamix configuration.
+- Treat a configured zero threshold as disabled, matching Unraid.
+
 ## v0.8.0 — 2026-08-31
 
 - Added the blue dashboard wrench for Unraid's native Tile Management window.

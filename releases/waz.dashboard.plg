@@ -2,14 +2,16 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "WAZ">
-  <!ENTITY version "2026.09.01.04">
+  <!ENTITY version "2026.09.07.01">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
-### &version; - WAZ System v0.8.0
+### &version; - WAZ System v0.8.1
 
+- Fixes disk-temperature severity to honor Unraid's per-device and global HDD/SSD thresholds.
+- Treats zero-valued Unraid temperature thresholds as disabled.
 - Integrates the sticky WAZ Health banner, live collectors, thresholds, local time, and uptime into the dashboard plugin.
 - Adds a blue wrench to the WAZ Health header that opens Unraid's native Tile Management window.
 - Registers the stable release manifest with Unraid Plugin Manager for normal update checks and one-click updates.
@@ -2643,7 +2645,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
   }
 
   window.WAZHealth = {
-    version: "0.8.0",
+    version: "0.8.1",
     refresh: refresh,
     setState: function (next) {
       mergeSnapshot(next);
@@ -5080,7 +5082,7 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'pluginVersion' => '0.8.0',
+        'pluginVersion' => '0.8.1',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5105,7 +5107,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_DASHBOARD_VERSION = '0.8.0';
+const WAZ_DASHBOARD_VERSION = '0.8.1';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5595,12 +5597,12 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_STORAGE_VERSION = '0.8.0';
+const WAZ_STORAGE_VERSION = '0.8.1';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
 const WAZ_VAR_INI = '/var/local/emhttp/var.ini';
-const WAZ_DISK_CFG = '/boot/config/disk.cfg';
+const WAZ_SMART_ONE_CFG = '/boot/config/smart-one.cfg';
 const WAZ_POOL_CONFIG_DIR = '/boot/config/pools';
 const WAZ_LOCATION_DIR = '/boot/config/plugins/disklocation';
 const WAZ_DYNAMIX_CFG = '/boot/config/plugins/dynamix/dynamix.cfg';
@@ -5689,9 +5691,51 @@ function waz_storage_media(array $disk): string
     return (string) ($disk['rotational'] ?? '1') === '1' ? 'HDD' : 'SSD';
 }
 
+function waz_storage_temperature_setting($value): ?float
+{
+    $number = waz_storage_number($value);
+    return $number !== null && $number >= 0 ? $number : null;
+}
+
+function waz_storage_temperature_thresholds(array $disk, array $smartSettings, array $displaySettings): array
+{
+    $id = trim((string) ($disk['id'] ?? ''));
+    $specific = $id !== '' && is_array($smartSettings[$id] ?? null) ? $smartSettings[$id] : [];
+    $settings = array_merge($disk, $specific);
+    $media = waz_storage_media($disk);
+
+    $warning = waz_storage_temperature_setting($settings['hotTemp'] ?? null);
+    $critical = waz_storage_temperature_setting($settings['maxTemp'] ?? null);
+
+    $globalWarningKey = $media === 'HDD' ? 'hot' : 'hotssd';
+    $globalCriticalKey = $media === 'HDD' ? 'max' : 'maxssd';
+    if ($warning === null) {
+        $warning = waz_storage_temperature_setting($displaySettings[$globalWarningKey] ?? null);
+        if ($warning === null && $media !== 'HDD') {
+            $warning = waz_storage_temperature_setting($displaySettings['hot'] ?? null);
+        }
+        if ($warning === null) {
+            $warning = $media === 'HDD' ? 45.0 : 65.0;
+        }
+    }
+    if ($critical === null) {
+        $critical = waz_storage_temperature_setting($displaySettings[$globalCriticalKey] ?? null);
+        if ($critical === null && $media !== 'HDD') {
+            $critical = waz_storage_temperature_setting($displaySettings['max'] ?? null);
+        }
+        if ($critical === null) {
+            $critical = $media === 'HDD' ? 50.0 : 75.0;
+        }
+    }
+
+    return ['warning' => $warning, 'critical' => $critical];
+}
+
 function waz_storage_disk_records(): array
 {
-    $diskConfig = waz_storage_ini(WAZ_DISK_CFG);
+    $smartSettings = waz_storage_ini(WAZ_SMART_ONE_CFG, true);
+    $dynamixConfig = waz_storage_ini(WAZ_DYNAMIX_CFG, true);
+    $displaySettings = is_array($dynamixConfig['display'] ?? null) ? $dynamixConfig['display'] : [];
     $records = [];
     foreach (waz_storage_ini(WAZ_DISKS_INI, true) as $section => $raw) {
         if (!is_array($raw)) {
@@ -5708,14 +5752,9 @@ function waz_storage_disk_records(): array
         $usage = waz_storage_usage($size, $used, $free);
         $temperature = waz_storage_number($raw['temp'] ?? null);
         $media = waz_storage_media($raw);
-        $warning = waz_storage_number($raw['warning'] ?? null);
-        $critical = waz_storage_number($raw['critical'] ?? null);
-        if ($warning === null) {
-            $warning = waz_storage_number($diskConfig['hotTemp'] ?? null) ?? ($media === 'HDD' ? 45.0 : 65.0);
-        }
-        if ($critical === null) {
-            $critical = waz_storage_number($diskConfig['maxTemp'] ?? null) ?? ($media === 'HDD' ? 50.0 : 75.0);
-        }
+        $thresholds = waz_storage_temperature_thresholds($raw, $smartSettings, $displaySettings);
+        $warning = $thresholds['warning'];
+        $critical = $thresholds['critical'];
         $status = strtoupper(trim((string) ($raw['status'] ?? '')));
         $errors = (int) (waz_storage_number($raw['numErrors'] ?? null) ?? 0);
         $spunDown = $temperature === null || stripos((string) ($raw['color'] ?? ''), 'blink') !== false;
@@ -5726,9 +5765,9 @@ function waz_storage_disk_records(): array
         if ($errors > 0) {
             $states[] = 'fault';
         }
-        if ($temperature !== null && $critical !== null && $temperature >= $critical) {
+        if ($temperature !== null && $critical !== null && $critical > 0 && $temperature >= $critical) {
             $states[] = 'fault';
-        } elseif ($temperature !== null && $warning !== null && $temperature >= $warning) {
+        } elseif ($temperature !== null && $warning !== null && $warning > 0 && $temperature >= $warning) {
             $states[] = 'attention';
         }
         if ($usage !== null && $usage >= WAZ_STORAGE_FAULT_PERCENT) {
@@ -6172,10 +6211,10 @@ function waz_storage_disk_attention(array $disk): ?string
     $temperature = waz_storage_number($disk['temperatureC'] ?? null);
     $critical = waz_storage_number($disk['criticalC'] ?? null);
     $warning = waz_storage_number($disk['warningC'] ?? null);
-    if ($temperature !== null && $critical !== null && $temperature >= $critical) {
+    if ($temperature !== null && $critical !== null && $critical > 0 && $temperature >= $critical) {
         return $name . ' · ' . round($temperature) . '°C critical';
     }
-    if ($temperature !== null && $warning !== null && $temperature >= $warning) {
+    if ($temperature !== null && $warning !== null && $warning > 0 && $temperature >= $warning) {
         return $name . ' · ' . round($temperature) . '°C warm';
     }
     $usage = waz_storage_number($disk['usagePercent'] ?? null);
@@ -6292,15 +6331,17 @@ function waz_storage_snapshot(): array
     ];
 }
 
-try {
-    echo json_encode(waz_storage_snapshot(), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
-} catch (Throwable $error) {
-    http_response_code(500);
-    echo json_encode([
-        'schemaVersion' => 1,
-        'pluginVersion' => WAZ_STORAGE_VERSION,
-        'error' => 'Unable to read WAZ Storage telemetry',
-    ], JSON_UNESCAPED_SLASHES);
+if (!defined('WAZ_STORAGE_NO_MAIN')) {
+    try {
+        echo json_encode(waz_storage_snapshot(), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+    } catch (Throwable $error) {
+        http_response_code(500);
+        echo json_encode([
+            'schemaVersion' => 1,
+            'pluginVersion' => WAZ_STORAGE_VERSION,
+            'error' => 'Unable to read WAZ Storage telemetry',
+        ], JSON_UNESCAPED_SLASHES);
+    }
 }
 
 ]]>
@@ -6317,7 +6358,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_WORKLOADS_VERSION = '0.8.0';
+const WAZ_WORKLOADS_VERSION = '0.8.1';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7135,7 +7176,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.0">
+  <section class="waz-system" data-version="0.8.1">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7199,15 +7240,15 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
-    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.0</span></footer>
+    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.0">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.0"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.1">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.1"></script>
 
 ]]>
 </INLINE>
@@ -7254,7 +7295,7 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="0.8.0">
+  <section class="waz-storage" data-version="0.8.1">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
       <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7300,15 +7341,15 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
-    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.0</span></footer>
+    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.0">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.0"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.1">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.1"></script>
 
 ]]>
 </INLINE>
@@ -7327,7 +7368,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="0.8.0">
+  <section class="waz-workloads" data-version="0.8.1">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7386,7 +7427,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
-    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.0</span></footer>
+    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
@@ -7394,9 +7435,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.0">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.0"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.0"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.1">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.1"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.1"></script>
 
 ]]>
 </INLINE>
@@ -7503,7 +7544,7 @@ rm -rf "/usr/local/emhttp/plugins/waz.health"
 
 "$RUNTIME_DIR/scripts/start.sh"
 
-echo "WAZ Dashboard v0.8.0 installed with integrated Health banner. Reload the Unraid WebUI to display it."
+echo "WAZ Dashboard v0.8.1 installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
 </INLINE>
 </FILE>

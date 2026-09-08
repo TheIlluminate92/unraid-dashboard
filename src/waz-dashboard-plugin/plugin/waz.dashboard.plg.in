@@ -10,6 +10,8 @@
 <CHANGES>
 ### &version; - WAZ System v@@APP_VERSION@@
 
+- Fixes disk-temperature severity to honor Unraid's per-device and global HDD/SSD thresholds.
+- Treats zero-valued Unraid temperature thresholds as disabled.
 - Integrates the sticky WAZ Health banner, live collectors, thresholds, local time, and uptime into the dashboard plugin.
 - Adds a blue wrench to the WAZ Health header that opens Unraid's native Tile Management window.
 - Registers the stable release manifest with Unraid Plugin Manager for normal update checks and one-click updates.

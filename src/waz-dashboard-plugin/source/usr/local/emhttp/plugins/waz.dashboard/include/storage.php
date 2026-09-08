@@ -11,7 +11,7 @@ const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
 const WAZ_VAR_INI = '/var/local/emhttp/var.ini';
-const WAZ_DISK_CFG = '/boot/config/disk.cfg';
+const WAZ_SMART_ONE_CFG = '/boot/config/smart-one.cfg';
 const WAZ_POOL_CONFIG_DIR = '/boot/config/pools';
 const WAZ_LOCATION_DIR = '/boot/config/plugins/disklocation';
 const WAZ_DYNAMIX_CFG = '/boot/config/plugins/dynamix/dynamix.cfg';
@@ -100,9 +100,51 @@ function waz_storage_media(array $disk): string
     return (string) ($disk['rotational'] ?? '1') === '1' ? 'HDD' : 'SSD';
 }
 
+function waz_storage_temperature_setting($value): ?float
+{
+    $number = waz_storage_number($value);
+    return $number !== null && $number >= 0 ? $number : null;
+}
+
+function waz_storage_temperature_thresholds(array $disk, array $smartSettings, array $displaySettings): array
+{
+    $id = trim((string) ($disk['id'] ?? ''));
+    $specific = $id !== '' && is_array($smartSettings[$id] ?? null) ? $smartSettings[$id] : [];
+    $settings = array_merge($disk, $specific);
+    $media = waz_storage_media($disk);
+
+    $warning = waz_storage_temperature_setting($settings['hotTemp'] ?? null);
+    $critical = waz_storage_temperature_setting($settings['maxTemp'] ?? null);
+
+    $globalWarningKey = $media === 'HDD' ? 'hot' : 'hotssd';
+    $globalCriticalKey = $media === 'HDD' ? 'max' : 'maxssd';
+    if ($warning === null) {
+        $warning = waz_storage_temperature_setting($displaySettings[$globalWarningKey] ?? null);
+        if ($warning === null && $media !== 'HDD') {
+            $warning = waz_storage_temperature_setting($displaySettings['hot'] ?? null);
+        }
+        if ($warning === null) {
+            $warning = $media === 'HDD' ? 45.0 : 65.0;
+        }
+    }
+    if ($critical === null) {
+        $critical = waz_storage_temperature_setting($displaySettings[$globalCriticalKey] ?? null);
+        if ($critical === null && $media !== 'HDD') {
+            $critical = waz_storage_temperature_setting($displaySettings['max'] ?? null);
+        }
+        if ($critical === null) {
+            $critical = $media === 'HDD' ? 50.0 : 75.0;
+        }
+    }
+
+    return ['warning' => $warning, 'critical' => $critical];
+}
+
 function waz_storage_disk_records(): array
 {
-    $diskConfig = waz_storage_ini(WAZ_DISK_CFG);
+    $smartSettings = waz_storage_ini(WAZ_SMART_ONE_CFG, true);
+    $dynamixConfig = waz_storage_ini(WAZ_DYNAMIX_CFG, true);
+    $displaySettings = is_array($dynamixConfig['display'] ?? null) ? $dynamixConfig['display'] : [];
     $records = [];
     foreach (waz_storage_ini(WAZ_DISKS_INI, true) as $section => $raw) {
         if (!is_array($raw)) {
@@ -119,14 +161,9 @@ function waz_storage_disk_records(): array
         $usage = waz_storage_usage($size, $used, $free);
         $temperature = waz_storage_number($raw['temp'] ?? null);
         $media = waz_storage_media($raw);
-        $warning = waz_storage_number($raw['warning'] ?? null);
-        $critical = waz_storage_number($raw['critical'] ?? null);
-        if ($warning === null) {
-            $warning = waz_storage_number($diskConfig['hotTemp'] ?? null) ?? ($media === 'HDD' ? 45.0 : 65.0);
-        }
-        if ($critical === null) {
-            $critical = waz_storage_number($diskConfig['maxTemp'] ?? null) ?? ($media === 'HDD' ? 50.0 : 75.0);
-        }
+        $thresholds = waz_storage_temperature_thresholds($raw, $smartSettings, $displaySettings);
+        $warning = $thresholds['warning'];
+        $critical = $thresholds['critical'];
         $status = strtoupper(trim((string) ($raw['status'] ?? '')));
         $errors = (int) (waz_storage_number($raw['numErrors'] ?? null) ?? 0);
         $spunDown = $temperature === null || stripos((string) ($raw['color'] ?? ''), 'blink') !== false;
@@ -137,9 +174,9 @@ function waz_storage_disk_records(): array
         if ($errors > 0) {
             $states[] = 'fault';
         }
-        if ($temperature !== null && $critical !== null && $temperature >= $critical) {
+        if ($temperature !== null && $critical !== null && $critical > 0 && $temperature >= $critical) {
             $states[] = 'fault';
-        } elseif ($temperature !== null && $warning !== null && $temperature >= $warning) {
+        } elseif ($temperature !== null && $warning !== null && $warning > 0 && $temperature >= $warning) {
             $states[] = 'attention';
         }
         if ($usage !== null && $usage >= WAZ_STORAGE_FAULT_PERCENT) {
@@ -583,10 +620,10 @@ function waz_storage_disk_attention(array $disk): ?string
     $temperature = waz_storage_number($disk['temperatureC'] ?? null);
     $critical = waz_storage_number($disk['criticalC'] ?? null);
     $warning = waz_storage_number($disk['warningC'] ?? null);
-    if ($temperature !== null && $critical !== null && $temperature >= $critical) {
+    if ($temperature !== null && $critical !== null && $critical > 0 && $temperature >= $critical) {
         return $name . ' · ' . round($temperature) . '°C critical';
     }
-    if ($temperature !== null && $warning !== null && $temperature >= $warning) {
+    if ($temperature !== null && $warning !== null && $warning > 0 && $temperature >= $warning) {
         return $name . ' · ' . round($temperature) . '°C warm';
     }
     $usage = waz_storage_number($disk['usagePercent'] ?? null);
@@ -703,13 +740,15 @@ function waz_storage_snapshot(): array
     ];
 }
 
-try {
-    echo json_encode(waz_storage_snapshot(), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
-} catch (Throwable $error) {
-    http_response_code(500);
-    echo json_encode([
-        'schemaVersion' => 1,
-        'pluginVersion' => WAZ_STORAGE_VERSION,
-        'error' => 'Unable to read WAZ Storage telemetry',
-    ], JSON_UNESCAPED_SLASHES);
+if (!defined('WAZ_STORAGE_NO_MAIN')) {
+    try {
+        echo json_encode(waz_storage_snapshot(), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+    } catch (Throwable $error) {
+        http_response_code(500);
+        echo json_encode([
+            'schemaVersion' => 1,
+            'pluginVersion' => WAZ_STORAGE_VERSION,
+            'error' => 'Unable to read WAZ Storage telemetry',
+        ], JSON_UNESCAPED_SLASHES);
+    }
 }

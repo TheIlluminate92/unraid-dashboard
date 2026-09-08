@@ -1,15 +1,15 @@
 # WAZ Control
 
-WAZ Control is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.0**.
+WAZ Control is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.1**.
 
 > [!WARNING]
 > **This is a reference build, not a universal or supported Community Applications plugin.** It depends on specific Unraid plugins, runtime files, sensors, hardware, and WebUI behavior. Expect to adapt configuration or code for another server. Read the [disclaimer](DISCLAIMER.md), [dependencies](docs/DEPENDENCIES.md), and [recovery steps](docs/RECOVERY.md) before installing it.
 
 ![WAZ Control status](https://img.shields.io/badge/status-rolling%20test-f2a900)
-![Version](https://img.shields.io/badge/version-0.8.0-22b8f0)
+![Version](https://img.shields.io/badge/version-0.8.1-22b8f0)
 ![Tested on Unraid](https://img.shields.io/badge/tested-Unraid%207.3.2-e95420)
 
-## What v0.8.0 includes
+## What v0.8.1 includes
 
 - Sticky full-width Health banner across Unraid WebUI pages
 - Live Array, Storage, Cooling, and UPS state with an expandable fault-detail row

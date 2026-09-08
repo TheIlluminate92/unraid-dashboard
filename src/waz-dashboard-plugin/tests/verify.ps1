@@ -102,6 +102,10 @@ foreach ($marker in @(
     'locations.json',
     'devices.json',
     'WAZ_STORAGE_WARN_PERCENT',
+    'WAZ_SMART_ONE_CFG',
+    'waz_storage_temperature_thresholds',
+    "'hotssd'",
+    "'maxssd'",
     'waz_storage_group_layout',
     'waz_storage_next_parity',
     'nextScheduledAt',
@@ -205,6 +209,8 @@ if ($php) {
         & $php.Source -l $file | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "PHP syntax check failed: $relative" }
     }
+    & $php.Source (Join-Path $projectRoot 'tests/storage-thresholds.php') | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Storage temperature threshold regression tests failed.' }
     foreach ($relative in @('include/health.php', 'include/status.php')) {
         $file = Join-Path (Split-Path -Parent $projectRoot) ('waz-health-plugin/source/usr/local/emhttp/plugins/waz.health/' + $relative)
         & $php.Source -l $file | Out-Null

@@ -46,6 +46,8 @@ When HBA Viewer is installed, WAZ System reads its authenticated `export.php` en
 
 When Disk Location is installed, WAZ Storage reads its saved `groups.json`, `locations.json`, and `devices.json` files. Disk state, capacity, temperature, parity, and pool membership come from Unraid's cached runtime and pool configuration. WAZ Storage does not run `smartctl`, mount scans, or commands that wake sleeping array disks.
 
+Disk-temperature severity follows Unraid's configuration precedence: per-device `hotTemp` and `maxTemp` overrides from `/boot/config/smart-one.cfg`, then the HDD or SSD defaults in the `[display]` section of `/boot/config/plugins/dynamix/dynamix.cfg`. A configured value of zero disables that threshold. Media-specific built-in values are used only when Unraid has no configured value.
+
 The Intel GPU watcher selects the first Intel `i915` DRM card, which avoids the Matrox BMC display adapter on WAZ-SERVER. GPU clients remain visible for five seconds after they exit so short jobs can still be identified.
 
 ## Build
