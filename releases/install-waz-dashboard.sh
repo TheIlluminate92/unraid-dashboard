@@ -3,7 +3,7 @@ set -eu
 
 PLUGIN_NAME="waz.dashboard.plg"
 PLUGIN_URL="https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg"
-EXPECTED_SHA256="7e9131c89c589ef06b010acec37daffcb9a3071d37caca3365c70e46831aed79"
+EXPECTED_SHA256="df62399a9243f3fa141f126ab200596e1213633831c42e87502e2726c3111f41"
 SOURCE="${1:-$PLUGIN_URL}"
 PACKAGE="/tmp/waz.dashboard-install.$$.plg"
 CONFIG_DIR="/boot/config/plugins/waz.dashboard"
