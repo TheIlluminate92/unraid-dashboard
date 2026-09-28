@@ -22,9 +22,9 @@ WAZ Control is a custom Unraid dashboard and WebUI project built around one heav
 - Compact parity state, last/next check timing, dynamic pools, physical disk locations, and a permanent array table
 - Decimal storage units and collection paths designed not to wake sleeping array disks
 - One installable rolling plugin without permanent edits to Unraid core files
-- Host-native MD1200 Top/Bottom fan control with automatic disk-temperature curves
-- Average fan RPM in Auto mode and confirmed 20/30/40/50 percent Manual control in the header
-- Disabled-by-default migration, Docker-conflict blocking, serial locks, and Back-Up share snapshots
+- Optional compact MD12xx fan status and controls in the header through the separate [MD12xx Fan Control](https://github.com/TheIlluminate92/unraid-md12xx-fan-control) plugin's local API
+- API-provided shelf names, average RPM, controller health, Auto/Manual mode, targets, and supported manual speeds
+- No WAZ-owned serial access, SES discovery, temperature policy, commissioning, watchdog, or fan-controller process
 
 The Docker and Storage panels deliberately use dynamic detail windows. Selecting a Docker folder filters the visible containers; selecting a container loads its live details below. Selecting a pool loads only that pool's member disks while the full Array and physical Disk Location views remain visible.
 
