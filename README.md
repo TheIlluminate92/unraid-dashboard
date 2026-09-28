@@ -1,11 +1,11 @@
-# WAZ Control
+# Unraid Dashboard
 
-WAZ Control is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.1**.
+Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.1**.
 
 > [!WARNING]
 > **This is a reference build, not a universal or supported Community Applications plugin.** It depends on specific Unraid plugins, runtime files, sensors, hardware, and WebUI behavior. Expect to adapt configuration or code for another server. Read the [disclaimer](DISCLAIMER.md), [dependencies](docs/DEPENDENCIES.md), and [recovery steps](docs/RECOVERY.md) before installing it.
 
-![WAZ Control status](https://img.shields.io/badge/status-rolling%20test-f2a900)
+![Unraid Dashboard status](https://img.shields.io/badge/status-rolling%20test-f2a900)
 ![Version](https://img.shields.io/badge/version-0.8.1-22b8f0)
 ![Tested on Unraid](https://img.shields.io/badge/tested-Unraid%207.3.2-e95420)
 
@@ -46,7 +46,7 @@ The dashboard build intentionally keeps the banner component beside it and embed
 
 ## Credit
 
-WAZ Control brings together data and behavior provided by Unraid/Dynamix, Docker Manager and Organizer, FolderView Plus, Disk Location, HBA Viewer, apcupsd/NUT, lm-sensors, and `intel_gpu_top`. See [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
+Unraid Dashboard brings together data and behavior provided by Unraid/Dynamix, Docker Manager and Organizer, FolderView Plus, Disk Location, HBA Viewer, apcupsd/NUT, lm-sensors, and `intel_gpu_top`. See [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md).
 
 The layout, requirements, server-specific decisions, and testing were directed by TheIlluminate92. The PHP, JavaScript, CSS, collectors, packaging, and documentation were developed collaboratively with Codex by OpenAI.
 

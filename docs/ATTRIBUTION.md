@@ -1,6 +1,6 @@
 # Attribution
 
-WAZ Control is an integration and presentation layer built on top of the Unraid ecosystem and standard Linux telemetry.
+Unraid Dashboard is an integration and presentation layer built on top of the Unraid ecosystem and standard Linux telemetry.
 
 Credit goes to:
 
@@ -13,6 +13,6 @@ Credit goes to:
 - lm-sensors and Linux hwmon for temperature and cooling interfaces
 - Intel's `intel_gpu_top` tooling for GPU engine and client telemetry
 
-WAZ Control does not claim ownership of those projects. It reads their available runtime data or configuration when installed. Consult each upstream project for its own license and support terms.
+Unraid Dashboard does not claim ownership of those projects. It reads their available runtime data or configuration when installed. Consult each upstream project for its own license and support terms.
 
 The dashboard layout, requirements, reference-server decisions, and hands-on testing were directed by TheIlluminate92. Implementation and documentation were developed collaboratively with Codex by OpenAI.

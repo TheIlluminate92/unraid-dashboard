@@ -66,13 +66,13 @@ The installable manifest is written to `dist/waz.dashboard.plg`.
 In **Plugins → Install Plugin**, paste:
 
 ```text
-https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg
+https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg
 ```
 
 After this one-time installation, Unraid's normal **Check for Updates** and **Update** controls use the manifest's stable GitHub `pluginURL`. For a terminal replacement or recovery install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/install-waz-dashboard.sh | bash
+curl -fsSL https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/install-waz-dashboard.sh | bash
 ```
 
 Reload the Unraid Dashboard after installation. Updates replace only the runtime plugin files and preserve `/boot/config/plugins/waz.dashboard/waz.dashboard.cfg`.

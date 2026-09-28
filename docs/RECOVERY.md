@@ -1,6 +1,6 @@
 # Recovery
 
-WAZ Control adds plugin-owned files and does not permanently replace Unraid core files.
+Unraid Dashboard adds plugin-owned files and does not permanently replace Unraid core files.
 
 ## Normal removal
 

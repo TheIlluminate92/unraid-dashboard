@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a dashboard improvement or portable integration
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested behavior
+    validations:
+      required: true
+  - type: textarea
+    id: portability
+    attributes:
+      label: Portability and dependencies
+      description: Note required Unraid plugins, hardware, runtime files, or server-specific assumptions.

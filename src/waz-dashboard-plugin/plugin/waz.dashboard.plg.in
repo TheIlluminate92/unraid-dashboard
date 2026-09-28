@@ -3,7 +3,7 @@
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "WAZ">
   <!ENTITY version "@@RELEASE_VERSION@@">
-  <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg">
+  <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">

@@ -52,7 +52,7 @@ if ($manifestText -notmatch 'Method="remove"') {
 if ($manifestText -match 'rm -rf\s+"/boot/config/plugins/waz\.dashboard"') {
     throw 'The uninstall handler removes persistent settings, which breaks forced rolling updates.'
 }
-if (-not $manifestText.Contains('<!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg">') -or -not $manifestText.Contains('pluginURL="&pluginURL;"')) {
+if (-not $manifestText.Contains('<!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">') -or -not $manifestText.Contains('pluginURL="&pluginURL;"')) {
     throw 'Manifest is missing its stable Plugin Manager update URL.'
 }
 if ($manifestText -match 'pluginURL\s+"file://' -or $manifestText -match 'pluginURL="file://') {

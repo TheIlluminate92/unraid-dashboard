@@ -1,6 +1,6 @@
 # Disclaimer
 
-WAZ Control is a personal Unraid WebUI/dashboard customization project developed and tested against one specific server.
+Unraid Dashboard is a personal Unraid WebUI/dashboard customization project developed and tested against one specific server.
 
 **It is not designed to work correctly on every stock Unraid installation. It is not a supported Community Applications plugin.**
 

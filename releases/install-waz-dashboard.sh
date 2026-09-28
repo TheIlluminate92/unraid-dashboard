@@ -2,7 +2,7 @@
 set -eu
 
 PLUGIN_NAME="waz.dashboard.plg"
-PLUGIN_URL="https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg"
+PLUGIN_URL="https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg"
 EXPECTED_SHA256="7e9131c89c589ef06b010acec37daffcb9a3071d37caca3365c70e46831aed79"
 SOURCE="${1:-$PLUGIN_URL}"
 PACKAGE="/tmp/waz.dashboard-install.$$.plg"
@@ -16,7 +16,7 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-echo "Downloading the new WAZ Control package before removing the installed copy..."
+echo "Downloading the new Unraid Dashboard package before removing the installed copy..."
 case "$SOURCE" in
   http://*|https://*)
     wget -qO "$PACKAGE" "$SOURCE"
@@ -49,13 +49,13 @@ elif [ -f "$CONFIG_BACKUP" ]; then
 fi
 
 if [ -e "/var/log/plugins/$PLUGIN_NAME" ]; then
-  echo "Removing the installed WAZ Control plugin..."
+  echo "Removing the installed Unraid Dashboard plugin..."
   plugin remove "$PLUGIN_NAME"
 elif [ -f "/boot/config/plugins/$PLUGIN_NAME" ]; then
-  echo "Removing an unregistered WAZ Control manifest..."
+  echo "Removing an unregistered Unraid Dashboard manifest..."
   rm -f "/boot/config/plugins/$PLUGIN_NAME"
 else
-  echo "No registered WAZ Control plugin was found; continuing with a clean install."
+  echo "No registered Unraid Dashboard plugin was found; continuing with a clean install."
 fi
 
 if [ "$CONFIG_SAVED" -eq 1 ]; then
@@ -64,7 +64,7 @@ if [ "$CONFIG_SAVED" -eq 1 ]; then
   echo "Restored the saved WAZ configuration."
 fi
 
-echo "Installing the new WAZ Control package..."
+echo "Installing the new Unraid Dashboard package..."
 plugin install "$PACKAGE" forced
 
 if [ ! -d "$RUNTIME_DIR" ]; then
@@ -74,5 +74,5 @@ if [ ! -d "$RUNTIME_DIR" ]; then
 fi
 
 rm -f "$CONFIG_BACKUP"
-echo "WAZ Control replacement completed successfully. Reload the Unraid WebUI."
+echo "Unraid Dashboard replacement completed successfully. Reload the Unraid WebUI."
 echo "Future releases can be installed from Plugins > Check for Updates."

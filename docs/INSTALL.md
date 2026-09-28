@@ -1,6 +1,6 @@
 # Installation
 
-WAZ Control v0.8.0 is a rolling test build for Unraid 7.2+ and is currently tested on Unraid 7.3.2.
+Unraid Dashboard v0.8.1 is a rolling test build for Unraid 7.2+ and is currently tested on Unraid 7.3.2.
 
 ## Before installing
 
@@ -15,7 +15,7 @@ WAZ Control v0.8.0 is a rolling test build for Unraid 7.2+ and is currently test
 Open **Plugins**, select **Install Plugin**, and paste this URL:
 
 ```text
-https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/waz.dashboard.plg
+https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg
 ```
 
 Select **Install** and reload the entire Unraid WebUI when installation finishes.
@@ -23,7 +23,7 @@ Select **Install** and reload the entire Unraid WebUI when installation finishes
 For a terminal installation or recovery replacement, run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TheIlluminate92/waz-control/main/releases/install-waz-dashboard.sh | bash
+curl -fsSL https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/install-waz-dashboard.sh | bash
 ```
 
 ## Verify
@@ -42,7 +42,7 @@ jq '{pluginVersion,overall,subsystems}'
 
 Install and configure **MD12xx Fan Control v0.4.3 or newer** independently. Once its controller is enabled and commissioned, WAZ automatically discovers its local API and displays the compact fan control in the Health header. WAZ does not open serial adapters, calculate fan targets, read SES hardware, or maintain a second controller process. If the dedicated plugin is absent or unavailable, the fan control remains hidden.
 
-When upgrading from a WAZ build that still owns fan control, the installer refuses to stop an enabled legacy WAZ controller unless the dedicated plugin API reports its replacement controller enabled. This is a one-time safety guard against losing temperature-driven changes during migration.
+When upgrading from an older WAZ Dashboard build that still owns fan control, the installer refuses to stop an enabled legacy WAZ controller unless the dedicated plugin API reports its replacement controller enabled. This is a one-time safety guard against losing temperature-driven changes during migration.
 
 ## Updating
 

@@ -2,7 +2,7 @@
 
 ## Supported version
 
-WAZ Control is a rolling test project. Security fixes apply to the current version on `main`; historical artifacts under `original/` and `releases/history/` are retained for reference and are not supported.
+Unraid Dashboard is a rolling test project. Security fixes apply to the current version on `main`; historical artifacts under `original/` and `releases/history/` are retained for reference and are not supported.
 
 ## Reporting a vulnerability
 

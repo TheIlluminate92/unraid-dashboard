@@ -1,6 +1,6 @@
 # Current rolling release
 
-`waz.dashboard.plg` is WAZ Control v0.8.1, release build `2026.09.07.01`.
+`waz.dashboard.plg` is Unraid Dashboard v0.8.1, release build `2026.09.07.01`.
 
 It contains the integrated Health banner, Server Status, Workloads, and Storage panels. Its compact fan display and controls use the separate MD12xx Fan Control plugin API when that plugin is installed; WAZ no longer owns any fan hardware or policy logic. This is a hardware-specific rolling test build, not a Community Applications release.
 
