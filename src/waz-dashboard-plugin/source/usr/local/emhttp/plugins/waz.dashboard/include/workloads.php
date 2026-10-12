@@ -7,6 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '@@APP_VERSION@@';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '@@PLUGIN_VERSION@@';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -708,7 +709,8 @@ try {
     }
     $response = [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_WORKLOADS_VERSION,
+        'version' => WAZ_WORKLOADS_VERSION,
+        'pluginVersion' => WAZ_WORKLOADS_PLUGIN_VERSION,
         'dockerAvailable' => true,
         'state' => $issues > 0 ? 'attention' : 'normal',
         'attention' => [
@@ -737,7 +739,8 @@ try {
     http_response_code(503);
     $response = [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_WORKLOADS_VERSION,
+        'version' => WAZ_WORKLOADS_VERSION,
+        'pluginVersion' => WAZ_WORKLOADS_PLUGIN_VERSION,
         'dockerAvailable' => false,
         'state' => 'fault',
         'error' => $error->getMessage(),

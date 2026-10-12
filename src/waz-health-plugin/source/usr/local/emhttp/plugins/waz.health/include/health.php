@@ -572,7 +572,8 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'pluginVersion' => '@@APP_VERSION@@',
+        'version' => '@@APP_VERSION@@',
+        'pluginVersion' => '@@PLUGIN_VERSION@@',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),

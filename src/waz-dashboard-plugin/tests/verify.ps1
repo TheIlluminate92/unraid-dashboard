@@ -43,6 +43,27 @@ foreach ($path in $required) {
     }
 }
 
+[xml]$packageXml = $manifestText
+$appVersion = [System.IO.File]::ReadAllText((Join-Path $projectRoot 'VERSION')).Trim()
+$buildVersion = [System.IO.File]::ReadAllText((Join-Path $projectRoot 'RELEASE')).Trim()
+if ($packageXml.PLUGIN.author -ne 'TheIlluminate92' -or $packageXml.PLUGIN.name -ne 'waz.dashboard') {
+    throw 'Unexpected plugin author or internal name.'
+}
+if ($packageXml.PLUGIN.version -ne $buildVersion -or $buildVersion -notmatch '^\d{4}\.\d{2}\.\d{2}\.\d{2}$') {
+    throw 'Unexpected Unraid build version.'
+}
+if ([string]::CompareOrdinal($buildVersion, '2026.09.07.01') -le 0) {
+    throw 'Build version does not sort after the previous package.'
+}
+if (-not $manifestText.Contains("'pluginVersion' => '$buildVersion'")) {
+    throw 'Integrated Health lacks separate package build metadata.'
+}
+$helperPath = Join-Path (Split-Path -Parent (Split-Path -Parent $projectRoot)) 'releases/install-waz-dashboard.sh'
+$helperText = [System.IO.File]::ReadAllText($helperPath)
+if ($helperText -match 'plugin remove' -or -not $helperText.Contains('PACKAGE="$WORK_DIR/$PLUGIN_NAME"')) {
+    throw 'Terminal helper must install a canonical filename without uninstalling.'
+}
+
 if ($manifestText.Contains('@@')) {
     throw 'An unexpanded build placeholder remains in the manifest.'
 }
@@ -201,6 +222,8 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/registration.php') $manifest
+    if ($LASTEXITCODE -ne 0) { throw 'Canonical registration regression failed.' }
     $phpFiles = @(
         'include/metrics.php', 'include/workloads.php', 'include/storage.php', 'include/gpu-sampler.php'
     )

@@ -21,3 +21,17 @@ jobs:
       - name: Build and verify manifest
         shell: pwsh
         run: .\src\waz-dashboard-plugin\tests\verify.ps1
+
+  verify-linux-installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Build and verify canonical installer safeguards
+        run: |
+          bash src/waz-dashboard-plugin/scripts/build.sh
+          php src/waz-dashboard-plugin/tests/registration.php src/waz-dashboard-plugin/dist/waz.dashboard.plg
+          bash src/waz-dashboard-plugin/tests/installer-helper.sh
+          cd releases && sha256sum -c SHA256SUMS

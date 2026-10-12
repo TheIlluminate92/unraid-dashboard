@@ -7,6 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '@@APP_VERSION@@';
+const WAZ_STORAGE_PLUGIN_VERSION = '@@PLUGIN_VERSION@@';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -729,7 +730,8 @@ function waz_storage_snapshot(): array
     $state = waz_storage_worst_state(array_merge([$array['state'], $parity['state']], array_column($pools, 'state')));
     return [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_STORAGE_VERSION,
+        'version' => WAZ_STORAGE_VERSION,
+        'pluginVersion' => WAZ_STORAGE_PLUGIN_VERSION,
         'sampledAtMs' => (int) round(microtime(true) * 1000),
         'state' => $state,
         'attention' => waz_storage_attention($array, $parity, $pools),
@@ -747,7 +749,8 @@ if (!defined('WAZ_STORAGE_NO_MAIN')) {
         http_response_code(500);
         echo json_encode([
             'schemaVersion' => 1,
-            'pluginVersion' => WAZ_STORAGE_VERSION,
+            'version' => WAZ_STORAGE_VERSION,
+            'pluginVersion' => WAZ_STORAGE_PLUGIN_VERSION,
             'error' => 'Unable to read WAZ Storage telemetry',
         ], JSON_UNESCAPED_SLASHES);
     }
