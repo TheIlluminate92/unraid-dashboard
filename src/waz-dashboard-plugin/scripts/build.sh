@@ -20,14 +20,14 @@ emit_file() {
   printf '<FILE Name="%s">\n<INLINE>\n<![CDATA[\n' "$RELATIVE" >> "$FILES_PATH"
   if [ "$INTEGRATED_HEALTH" = true ]; then
     sed \
-      -e "s/@@APP_VERSION@@/$APP_VERSION/g" \
+      -e "s/@@APP_VERSION@@/$APP_VERSION/g;s/@@PLUGIN_VERSION@@/$RELEASE_VERSION/g" \
       -e 's|/boot/config/plugins/waz.health/waz.health.cfg|/boot/config/plugins/waz.dashboard/waz.dashboard.cfg|g' \
       -e 's|/usr/local/emhttp/plugins/waz.health|/usr/local/emhttp/plugins/waz.dashboard|g' \
       -e 's|/plugins/waz.health|/plugins/waz.dashboard|g' \
       -e 's|/var/tmp/waz-health-throttle-state.json|/var/run/waz.dashboard/health-throttle-state.json|g' \
       "$SOURCE_FILE" >> "$FILES_PATH"
   else
-    sed "s/@@APP_VERSION@@/$APP_VERSION/g" "$SOURCE_FILE" >> "$FILES_PATH"
+    sed "s/@@APP_VERSION@@/$APP_VERSION/g;s/@@PLUGIN_VERSION@@/$RELEASE_VERSION/g" "$SOURCE_FILE" >> "$FILES_PATH"
   fi
   printf '\n]]>\n</INLINE>\n</FILE>\n' >> "$FILES_PATH"
 }

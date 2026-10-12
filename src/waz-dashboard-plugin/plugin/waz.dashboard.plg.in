@@ -1,14 +1,21 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
-  <!ENTITY author "WAZ">
+  <!ENTITY author "TheIlluminate92">
   <!ENTITY version "@@RELEASE_VERSION@@">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
-### &version; - WAZ System v@@APP_VERSION@@
+### 2026.10.12.01 - Waz Dashboard v0.8.2
+
+- Standardizes visible author attribution to TheIlluminate92; project credits are retained.
+- Separates application and Unraid build metadata in telemetry.
+- Rejects noncanonical installer filenames and duplicate internal-name registrations before runtime changes.
+- Keeps the canonical update URL and persistent settings.
+
+### 2026.09.07.01 - WAZ System v0.8.1
 
 - Fixes disk-temperature severity to honor Unraid's per-device and global HDD/SSD thresholds.
 - Treats zero-valued Unraid temperature thresholds as disabled.
@@ -71,6 +78,39 @@
 </CHANGES>
 
 <!-- Stop the prior watcher before replacing the RAM-backed runtime tree. -->
+<!-- Unraid names inline scripts after the installer basename. Reject aliases before touching runtime/config. -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+set -e
+case "${0##*/}" in
+  inline1-waz.dashboard.sh) ;;
+  *)
+    echo "Refusing a noncanonical installer filename. Save/install this package as waz.dashboard.plg."
+    echo "Do not uninstall an alias registration: it may share configuration with the canonical plugin."
+    exit 1
+    ;;
+esac
+php <<'PLUGIN_REGISTRATION_CHECK'
+<?php
+$canonical = 'waz.dashboard.plg';
+foreach (['/boot/config/plugins', '/var/log/plugins'] as $directory) {
+    foreach (glob($directory . '/*.plg') ?: [] as $path) {
+        if (basename($path) === $canonical) continue;
+        libxml_use_internal_errors(true);
+        $manifest = @simplexml_load_file($path, 'SimpleXMLElement', LIBXML_NONET);
+        if ($manifest !== false && (string)$manifest['name'] === 'waz.dashboard') {
+            file_put_contents('php://stderr', "Duplicate plugin registration: " . basename($path) . "\n");
+            file_put_contents('php://stderr', "Back up shared data and migrate the registration before updating. Do not use Uninstall.\n");
+            exit(1);
+        }
+    }
+}
+PLUGIN_REGISTRATION_CHECK
+]]>
+</INLINE>
+</FILE>
+
 <FILE Run="/bin/bash">
 <INLINE>
 <![CDATA[

@@ -40,7 +40,7 @@ foreach ($mapping in $healthMappings.GetEnumerator()) {
 $blocks = foreach ($file in ($files | Sort-Object Target)) {
     $relative = $file.Target
     $content = [System.IO.File]::ReadAllText($file.Source).Replace("`r`n", "`n")
-    $content = $content.Replace('@@APP_VERSION@@', $appVersion)
+    $content = $content.Replace('@@APP_VERSION@@', $appVersion).Replace('@@PLUGIN_VERSION@@', $releaseVersion)
     if ($file.IsHealth) {
         $content = $content.Replace('/boot/config/plugins/waz.health/waz.health.cfg', '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg')
         $content = $content.Replace('/usr/local/emhttp/plugins/waz.health', '/usr/local/emhttp/plugins/waz.dashboard')
@@ -63,7 +63,7 @@ $content
 
 $template = [System.IO.File]::ReadAllText($templatePath).Replace("`r`n", "`n")
 $manifest = $template.Replace('@@FILES@@', ($blocks -join "`n"))
-$manifest = $manifest.Replace('@@APP_VERSION@@', $appVersion)
+$manifest = $manifest.Replace('@@APP_VERSION@@', $appVersion).Replace('@@PLUGIN_VERSION@@', $releaseVersion)
 $manifest = $manifest.Replace('@@RELEASE_VERSION@@', $releaseVersion)
 $outputDirectory = Split-Path -Parent $OutputPath
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null

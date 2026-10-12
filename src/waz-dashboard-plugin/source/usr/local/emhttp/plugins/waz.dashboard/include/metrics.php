@@ -7,6 +7,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '@@APP_VERSION@@';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '@@PLUGIN_VERSION@@';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -412,7 +413,8 @@ function waz_snapshot(array $config): array
 
     return [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_DASHBOARD_VERSION,
+        'version' => WAZ_DASHBOARD_VERSION,
+        'pluginVersion' => WAZ_DASHBOARD_PLUGIN_VERSION,
         'sampledAtMs' => (int) round(microtime(true) * 1000),
         'cpu' => [
             'model' => waz_cpu_model(),

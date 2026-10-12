@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.2 — 2026-10-12 (build 2026.10.12.01)
+
+- Reject noncanonical installer names and duplicate internal-name registrations before runtime/configuration changes.
+- Document backed-up registration migration, filename-keyed update caching, and sequential duplicate checks; no automatic server cleanup.
+- Use TheIlluminate92 attribution while retaining project credits and separate application/build metadata.
+
+
 ## v0.8.1 — 2026-09-07
 
 - Fixed false disk-temperature warnings caused by reading nonexistent `warning` and `critical` runtime fields.

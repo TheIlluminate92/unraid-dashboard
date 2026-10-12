@@ -1,14 +1,21 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
-  <!ENTITY author "WAZ">
-  <!ENTITY version "2026.09.07.01">
+  <!ENTITY author "TheIlluminate92">
+  <!ENTITY version "2026.10.12.01">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
-### &version; - WAZ System v0.8.1
+### 2026.10.12.01 - Waz Dashboard v0.8.2
+
+- Standardizes visible author attribution to TheIlluminate92; project credits are retained.
+- Separates application and Unraid build metadata in telemetry.
+- Rejects noncanonical installer filenames and duplicate internal-name registrations before runtime changes.
+- Keeps the canonical update URL and persistent settings.
+
+### 2026.09.07.01 - WAZ System v0.8.1
 
 - Fixes disk-temperature severity to honor Unraid's per-device and global HDD/SSD thresholds.
 - Treats zero-valued Unraid temperature thresholds as disabled.
@@ -71,6 +78,39 @@
 </CHANGES>
 
 <!-- Stop the prior watcher before replacing the RAM-backed runtime tree. -->
+<!-- Unraid names inline scripts after the installer basename. Reject aliases before touching runtime/config. -->
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+set -e
+case "${0##*/}" in
+  inline1-waz.dashboard.sh) ;;
+  *)
+    echo "Refusing a noncanonical installer filename. Save/install this package as waz.dashboard.plg."
+    echo "Do not uninstall an alias registration: it may share configuration with the canonical plugin."
+    exit 1
+    ;;
+esac
+php <<'PLUGIN_REGISTRATION_CHECK'
+<?php
+$canonical = 'waz.dashboard.plg';
+foreach (['/boot/config/plugins', '/var/log/plugins'] as $directory) {
+    foreach (glob($directory . '/*.plg') ?: [] as $path) {
+        if (basename($path) === $canonical) continue;
+        libxml_use_internal_errors(true);
+        $manifest = @simplexml_load_file($path, 'SimpleXMLElement', LIBXML_NONET);
+        if ($manifest !== false && (string)$manifest['name'] === 'waz.dashboard') {
+            file_put_contents('php://stderr', "Duplicate plugin registration: " . basename($path) . "\n");
+            file_put_contents('php://stderr', "Back up shared data and migrate the registration before updating. Do not use Uninstall.\n");
+            exit(1);
+        }
+    }
+}
+PLUGIN_REGISTRATION_CHECK
+]]>
+</INLINE>
+</FILE>
+
 <FILE Run="/bin/bash">
 <INLINE>
 <![CDATA[
@@ -2645,7 +2685,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
   }
 
   window.WAZHealth = {
-    version: "0.8.1",
+    version: "0.8.2",
     refresh: refresh,
     setState: function (next) {
       mergeSnapshot(next);
@@ -5082,7 +5122,8 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'pluginVersion' => '0.8.1',
+        'version' => '0.8.2',
+        'pluginVersion' => '2026.10.12.01',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5107,7 +5148,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_DASHBOARD_VERSION = '0.8.1';
+const WAZ_DASHBOARD_VERSION = '0.8.2';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.12.01';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5513,7 +5555,8 @@ function waz_snapshot(array $config): array
 
     return [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_DASHBOARD_VERSION,
+        'version' => WAZ_DASHBOARD_VERSION,
+        'pluginVersion' => WAZ_DASHBOARD_PLUGIN_VERSION,
         'sampledAtMs' => (int) round(microtime(true) * 1000),
         'cpu' => [
             'model' => waz_cpu_model(),
@@ -5597,7 +5640,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_STORAGE_VERSION = '0.8.1';
+const WAZ_STORAGE_VERSION = '0.8.2';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.12.01';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6320,7 +6364,8 @@ function waz_storage_snapshot(): array
     $state = waz_storage_worst_state(array_merge([$array['state'], $parity['state']], array_column($pools, 'state')));
     return [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_STORAGE_VERSION,
+        'version' => WAZ_STORAGE_VERSION,
+        'pluginVersion' => WAZ_STORAGE_PLUGIN_VERSION,
         'sampledAtMs' => (int) round(microtime(true) * 1000),
         'state' => $state,
         'attention' => waz_storage_attention($array, $parity, $pools),
@@ -6338,7 +6383,8 @@ if (!defined('WAZ_STORAGE_NO_MAIN')) {
         http_response_code(500);
         echo json_encode([
             'schemaVersion' => 1,
-            'pluginVersion' => WAZ_STORAGE_VERSION,
+            'version' => WAZ_STORAGE_VERSION,
+            'pluginVersion' => WAZ_STORAGE_PLUGIN_VERSION,
             'error' => 'Unable to read WAZ Storage telemetry',
         ], JSON_UNESCAPED_SLASHES);
     }
@@ -6358,7 +6404,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_WORKLOADS_VERSION = '0.8.1';
+const WAZ_WORKLOADS_VERSION = '0.8.2';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.12.01';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7060,7 +7107,8 @@ try {
     }
     $response = [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_WORKLOADS_VERSION,
+        'version' => WAZ_WORKLOADS_VERSION,
+        'pluginVersion' => WAZ_WORKLOADS_PLUGIN_VERSION,
         'dockerAvailable' => true,
         'state' => $issues > 0 ? 'attention' : 'normal',
         'attention' => [
@@ -7089,7 +7137,8 @@ try {
     http_response_code(503);
     $response = [
         'schemaVersion' => 1,
-        'pluginVersion' => WAZ_WORKLOADS_VERSION,
+        'version' => WAZ_WORKLOADS_VERSION,
+        'pluginVersion' => WAZ_WORKLOADS_PLUGIN_VERSION,
         'dockerAvailable' => false,
         'state' => 'fault',
         'error' => $error->getMessage(),
@@ -7176,7 +7225,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.1">
+  <section class="waz-system" data-version="0.8.2">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7240,15 +7289,15 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
-    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
+    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.1">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.1"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.2">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.2"></script>
 
 ]]>
 </INLINE>
@@ -7295,7 +7344,7 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="0.8.1">
+  <section class="waz-storage" data-version="0.8.2">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
       <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7341,15 +7390,15 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
-    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
+    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.1">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.1"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.2">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.2"></script>
 
 ]]>
 </INLINE>
@@ -7368,7 +7417,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="0.8.1">
+  <section class="waz-workloads" data-version="0.8.2">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7427,7 +7476,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
-    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.1</span></footer>
+    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
@@ -7435,9 +7484,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.1">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.1"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.1"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.2">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.2"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.2"></script>
 
 ]]>
 </INLINE>
@@ -7544,7 +7593,7 @@ rm -rf "/usr/local/emhttp/plugins/waz.health"
 
 "$RUNTIME_DIR/scripts/start.sh"
 
-echo "WAZ Dashboard v0.8.1 installed with integrated Health banner. Reload the Unraid WebUI to display it."
+echo "WAZ Dashboard v0.8.2 installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
 </INLINE>
 </FILE>
