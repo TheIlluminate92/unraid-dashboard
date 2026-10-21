@@ -52,3 +52,7 @@ The coolant collector currently expects a `highflownext` hwmon device with `Cool
 WAZ no longer owns fan-controller settings or hardware logic. When **MD12xx Fan Control v0.4.3 or newer** is installed, the Health header reads its authenticated local API for controller health, mode, supported manual speeds, shelf names, temperatures, targets, and RPM telemetry. Auto/Manual changes from the WAZ header are submitted to that same plugin API.
 
 Configure discovery, shelf mapping, commissioning, temperature curves, fail-safe behavior, and controller enablement in **Settings → Utilities → MD12xx Fan Control**. If the plugin is absent, WAZ hides the fan control without affecting the rest of the dashboard. Legacy `MD1200_*` values left in `waz.dashboard.cfg` by older WAZ builds are inert and may be removed manually.
+
+## Required cooling sensors
+
+CPU temperature is required for normal cooling health. Optional `COOLANT_REQUIRED="yes"` and `FLOW_REQUIRED="yes"` mark missing coolant/flow readings unknown. Their defaults are off for air-cooled hosts; set them explicitly on hosts that require water-cooling telemetry. Existing thresholds are unchanged. See [migration guidance](MAINTENANCE_AND_MIGRATION.md).

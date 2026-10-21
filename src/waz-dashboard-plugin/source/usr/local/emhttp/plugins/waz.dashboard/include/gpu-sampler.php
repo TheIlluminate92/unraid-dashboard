@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 set_time_limit(0);
 
 const WAZ_GPU_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_GPU_STATE_DIR = '/var/run/waz.dashboard';
 const WAZ_GPU_STATE_FILE = '/var/run/waz.dashboard/gpu.json';
+
+@mkdir(WAZ_GPU_STATE_DIR, 0755, true);
+$instanceLock = @fopen(WAZ_GPU_STATE_DIR . '/gpu-sampler.lock', 'c+');
+if ($instanceLock === false || !flock($instanceLock, LOCK_EX | LOCK_NB)) exit(1);
 
 function waz_gpu_write(array $data): void
 {
@@ -327,9 +333,9 @@ $recent = [];
 $fdinfo = [];
 
 while (!$stop) {
-    $command = escapeshellarg($executable)
-        . ' -d ' . escapeshellarg('drm:/dev/dri/' . $card)
-        . ' -J -s 1000 2>/dev/null';
+    // An argv array starts the child directly, so termination targets the
+    // sampler rather than an intermediate shell that could orphan it.
+    $command = [$executable, '-d', 'drm:/dev/dri/' . $card, '-J', '-s', '1000'];
     $pipes = [];
     $process = @proc_open($command, [
         0 => ['file', '/dev/null', 'r'],
@@ -376,6 +382,9 @@ while (!$stop) {
     }
     @fclose($pipes[1]);
     @proc_terminate($process);
+    $deadline = microtime(true) + 2;
+    do { $childStatus = proc_get_status($process); if (!$childStatus['running']) break; usleep(50000); } while (microtime(true) < $deadline);
+    if ($childStatus['running']) @proc_terminate($process, 9);
     @proc_close($process);
     if (!$stop) {
         sleep(2);

@@ -8,6 +8,9 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
+### 0.8.3 - Build 2026.10.20.01
+- Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
+
 ### 2026.10.12.01 - Waz Dashboard v0.8.2
 
 - Standardizes visible author attribution to TheIlluminate92; project credits are retained.
@@ -133,11 +136,10 @@ if [ -f "$CONFIG_FILE" ] && grep -Eqi '^MD1200_ENABLED="?(yes|true|1|on)"?$' "$C
   fi
 fi
 
-if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then
-  "$RUNTIME_DIR/scripts/stop.sh" || true
-fi
-rm -rf "$RUNTIME_DIR"
-mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
+# Populate a separate tree while the installed runtime keeps running.
+[ ! -L "/usr/local/emhttp/plugins/.waz.dashboard.staged" ] || { echo "Staging path is a symlink" >&2; exit 1; }
+rm -rf -- "/usr/local/emhttp/plugins/.waz.dashboard.staged"
+mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
@@ -149,7 +151,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 <![CDATA[
 set -e
 
-RUNTIME_DIR="/usr/local/emhttp/plugins/waz.dashboard"
+RUNTIME_DIR="/usr/local/emhttp/plugins/.waz.dashboard.staged"
 CONFIG_DIR="/boot/config/plugins/waz.dashboard"
 CONFIG_FILE="$CONFIG_DIR/waz.dashboard.cfg"
 LEGACY_HEALTH_CONFIG="/boot/config/plugins/waz.health/waz.health.cfg"
@@ -167,6 +169,42 @@ php -l "$RUNTIME_DIR/include/storage.php" >/dev/null
 php -l "$RUNTIME_DIR/include/gpu-sampler.php" >/dev/null
 php -l "$RUNTIME_DIR/include/health.php" >/dev/null
 php -l "$RUNTIME_DIR/include/status.php" >/dev/null
+
+for SHELL_FILE in "$RUNTIME_DIR"/scripts/*.sh; do bash -n "$SHELL_FILE"; done
+
+# Staged validation must complete before stopping the installed processes.
+STAGED_DIR="$RUNTIME_DIR"
+RUNTIME_DIR="/usr/local/emhttp/plugins/waz.dashboard"
+PREVIOUS_DIR="/usr/local/emhttp/plugins/.waz.dashboard.previous"
+[ ! -L "$RUNTIME_DIR" ] && [ ! -L "$PREVIOUS_DIR" ] || exit 1
+HAD_PREVIOUS=false
+ACTIVATING=false
+rollback_runtime() {
+  local result=$?
+  if [ "$result" -ne 0 ] && [ "$ACTIVATING" = true ]; then
+    # A failed new start must be stopped before a previous writer is restored.
+    if [ -x "$RUNTIME_DIR/scripts/stop.sh" ] && ! "$RUNTIME_DIR/scripts/stop.sh"; then
+      echo "New runtime could not stop; previous runtime retained for supervised recovery." >&2
+      return
+    fi
+    rm -rf -- "$RUNTIME_DIR"
+    if $HAD_PREVIOUS; then
+      mv -- "$PREVIOUS_DIR" "$RUNTIME_DIR"
+      "$RUNTIME_DIR/scripts/start.sh" || true
+    fi
+    echo "Plugin activation failed; prior runtime restored when available." >&2
+  fi
+}
+trap rollback_runtime EXIT
+if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then "$RUNTIME_DIR/scripts/stop.sh"; fi
+# Keep a previous successful runtime until the next activation. Never touch config.
+if [ -d "$RUNTIME_DIR" ]; then
+  rm -rf -- "$PREVIOUS_DIR"
+  mv -- "$RUNTIME_DIR" "$PREVIOUS_DIR"
+  HAD_PREVIOUS=true
+fi
+ACTIVATING=true
+mv -- "$STAGED_DIR" "$RUNTIME_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   cat > "$CONFIG_FILE" <<'WAZ_CONFIG'
@@ -244,6 +282,7 @@ fi
 rm -rf "/usr/local/emhttp/plugins/waz.health"
 
 "$RUNTIME_DIR/scripts/start.sh"
+trap - EXIT
 
 echo "WAZ Dashboard v@@APP_VERSION@@ installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
@@ -260,6 +299,7 @@ if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then
 fi
 rm -rf "$RUNTIME_DIR"
 rm -rf "/var/run/waz.dashboard"
+rm -rf "/usr/local/emhttp/plugins/.waz.dashboard.staged" "/usr/local/emhttp/plugins/.waz.dashboard.previous"
 rm -f "/boot/config/plugins/waz.dashboard.plg"
 echo "WAZ System removed. Persistent settings were retained in /boot/config/plugins/waz.dashboard. Reload the Dashboard to clear the panel."
 ]]>

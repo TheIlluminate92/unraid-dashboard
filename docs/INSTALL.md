@@ -1,6 +1,6 @@
 # Installation
 
-Unraid Dashboard v0.8.2 is a rolling test build for Unraid 7.2+ and is currently tested on Unraid 7.3.2.
+Unraid Dashboard v0.8.3 is a rolling test build for Unraid 7.2+ and was originally hardware-tested on Unraid 7.3.2; current maintenance checks cover the observed 7.3.3/PHP 8.4.26 baseline, with new hardware failure-path validation pending.
 
 ## Before installing
 
@@ -52,4 +52,4 @@ Open **Plugins** and select **Check for Updates**. When a newer WAZ release buil
 
 The unified installer migrates missing Health settings from `/boot/config/plugins/waz.health/waz.health.cfg`, renames `waz.health.plg` to `waz.health.plg.disabled`, and removes the old RAM-backed runtime so two banner loaders cannot coexist. The legacy configuration is retained as a backup.
 
-Installed Plugins shows build 2026.10.12.01; telemetry reports application `version` 0.8.2 and separate `pluginVersion` 2026.10.12.01. Visible author is TheIlluminate92. See [registration migration](PLUGIN_UPDATES.md).
+Installed Plugins shows build 2026.10.20.01; telemetry reports application `version` 0.8.3 and separate `pluginVersion` 2026.10.20.01. Visible author is TheIlluminate92. See [registration migration](PLUGIN_UPDATES.md).

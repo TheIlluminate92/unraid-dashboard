@@ -2,7 +2,7 @@
 
 ## Baseline
 
-- Unraid 7.2+ on x86-64; tested on Unraid 7.3.2
+- Unraid 7.2+ on x86-64; originally hardware-tested on Unraid 7.3.2; observed maintenance baseline 7.3.3/PHP 8.4.26, with new hardware failure-path validation pending
 - Unraid WebUI/emhttp plugin system
 - Docker enabled for the Workloads panel
 - A modern browser with JavaScript enabled
@@ -38,3 +38,5 @@ These paths and formats can change between Unraid releases.
 The current layout and collectors were tested with a Dell PowerEdge R360, Intel Xeon E-2488, Intel Arc Pro A40, Dell HBA355i, SAS9300-8e, bonded networking, Aqua Computer high flow NEXT, multiple SSD pools, and an XFS array connected through MD1200 shelves.
 
 Other CPUs, GPUs, HBAs, sensor labels, network interfaces, disk counts, and physical layouts may require changes.
+
+See [maintenance and migration](MAINTENANCE_AND_MIGRATION.md) for PHP CI coverage, per-host sensor requirements and current 7.4/8.0 boundaries.

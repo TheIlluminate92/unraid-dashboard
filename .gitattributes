@@ -1,0 +1,14 @@
+* text=auto
+*.sh text eol=lf
+*.php text eol=lf
+*.js text eol=lf
+*.plg text eol=lf
+*.in text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.yml text eol=lf
+VERSION text eol=lf
+PLUGIN_VERSION text eol=lf
+RELEASE text eol=lf
+SHA256SUMS text eol=lf

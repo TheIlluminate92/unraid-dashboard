@@ -2,12 +2,15 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.12.01">
+  <!ENTITY version "2026.10.20.01">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
+### 0.8.3 - Build 2026.10.20.01
+- Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
+
 ### 2026.10.12.01 - Waz Dashboard v0.8.2
 
 - Standardizes visible author attribution to TheIlluminate92; project credits are retained.
@@ -133,16 +136,15 @@ if [ -f "$CONFIG_FILE" ] && grep -Eqi '^MD1200_ENABLED="?(yes|true|1|on)"?$' "$C
   fi
 fi
 
-if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then
-  "$RUNTIME_DIR/scripts/stop.sh" || true
-fi
-rm -rf "$RUNTIME_DIR"
-mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
+# Populate a separate tree while the installed runtime keeps running.
+[ ! -L "/usr/local/emhttp/plugins/.waz.dashboard.staged" ] || { echo "Staging path is a symlink" >&2; exit 1; }
+rm -rf -- "/usr/local/emhttp/plugins/.waz.dashboard.staged"
+mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/css/banner.css">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/css/banner.css">
 <INLINE>
 <![CDATA[
 :root {
@@ -470,7 +472,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/css/storage.css">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/css/storage.css">
 <INLINE>
 <![CDATA[
 #waz-storage-tile {
@@ -992,7 +994,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/css/system.css">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/css/system.css">
 <INLINE>
 <![CDATA[
 #waz-system-tile {
@@ -1650,7 +1652,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/css/workloads.css">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/css/workloads.css">
 <INLINE>
 <![CDATA[
 #waz-workloads-tile {
@@ -2149,7 +2151,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/js/banner.js">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/js/banner.js">
 <INLINE>
 <![CDATA[
 (function () {
@@ -2685,7 +2687,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
   }
 
   window.WAZHealth = {
-    version: "0.8.2",
+    version: "0.8.3",
     refresh: refresh,
     setState: function (next) {
       mergeSnapshot(next);
@@ -2713,7 +2715,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/js/storage.js">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/js/storage.js">
 <INLINE>
 <![CDATA[
 (function () {
@@ -3158,7 +3160,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/js/system.js">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/js/system.js">
 <INLINE>
 <![CDATA[
 (function () {
@@ -3602,7 +3604,7 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/assets/js/workloads.js">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/js/workloads.js">
 <INLINE>
 <![CDATA[
 (function () {
@@ -4155,18 +4157,24 @@ mkdir -p "$RUNTIME_DIR" "$CONFIG_DIR"
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/gpu-sampler.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/gpu-sampler.php">
 <INLINE>
 <![CDATA[
 <?php
 
 declare(strict_types=1);
 
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 set_time_limit(0);
 
 const WAZ_GPU_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_GPU_STATE_DIR = '/var/run/waz.dashboard';
 const WAZ_GPU_STATE_FILE = '/var/run/waz.dashboard/gpu.json';
+
+@mkdir(WAZ_GPU_STATE_DIR, 0755, true);
+$instanceLock = @fopen(WAZ_GPU_STATE_DIR . '/gpu-sampler.lock', 'c+');
+if ($instanceLock === false || !flock($instanceLock, LOCK_EX | LOCK_NB)) exit(1);
 
 function waz_gpu_write(array $data): void
 {
@@ -4487,9 +4495,9 @@ $recent = [];
 $fdinfo = [];
 
 while (!$stop) {
-    $command = escapeshellarg($executable)
-        . ' -d ' . escapeshellarg('drm:/dev/dri/' . $card)
-        . ' -J -s 1000 2>/dev/null';
+    // An argv array starts the child directly, so termination targets the
+    // sampler rather than an intermediate shell that could orphan it.
+    $command = [$executable, '-d', 'drm:/dev/dri/' . $card, '-J', '-s', '1000'];
     $pipes = [];
     $process = @proc_open($command, [
         0 => ['file', '/dev/null', 'r'],
@@ -4536,6 +4544,9 @@ while (!$stop) {
     }
     @fclose($pipes[1]);
     @proc_terminate($process);
+    $deadline = microtime(true) + 2;
+    do { $childStatus = proc_get_status($process); if (!$childStatus['running']) break; usleep(50000); } while (microtime(true) < $deadline);
+    if ($childStatus['running']) @proc_terminate($process, 9);
     @proc_close($process);
     if (!$stop) {
         sleep(2);
@@ -4545,7 +4556,7 @@ while (!$stop) {
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/health.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/health.php">
 <INLINE>
 <![CDATA[
 <?php
@@ -4684,6 +4695,8 @@ function waz_health_array_status(): array
         ? @parse_ini_file('/var/local/emhttp/var.ini', false, INI_SCANNER_RAW)
         : [];
     if (!is_array($values) || !$values) {
+        $result['state'] = 'unknown';
+        $result['message'] = 'Array status is unavailable';
         return $result;
     }
 
@@ -4891,6 +4904,10 @@ function waz_health_cooling_status(array $config): array
     $flow = waz_health_hwmon_labeled_value('highflownext', 'fan', ['Flow [dL/h]'], 10.0);
     $throttle = waz_health_throttle_status((int) waz_health_config_number($config, 'THROTTLE_LATCH_SECONDS', 300.0));
     $issues = [];
+    $missing = [];
+    foreach ([['CPU', $cpu, true], ['Coolant', $coolant, filter_var($config['COOLANT_REQUIRED'] ?? false, FILTER_VALIDATE_BOOL)], ['Flow', $flow, filter_var($config['FLOW_REQUIRED'] ?? false, FILTER_VALIDATE_BOOL)]] as [$label, $value, $required]) {
+        if ($required && $value === null) $missing[] = $label;
+    }
     if ($throttle['active']) {
         $age = max(0, time() - (int) $throttle['lastEventAt']);
         $issues[] = [
@@ -4938,8 +4955,8 @@ function waz_health_cooling_status(array $config): array
     });
     return [
         'label' => 'COOLING',
-        'state' => $issues ? $issues[0]['state'] : 'normal',
-        'message' => $issues ? implode(' · ', array_column($issues, 'message')) : '',
+        'state' => $issues ? $issues[0]['state'] : ($missing ? 'unknown' : 'normal'),
+        'message' => implode(' · ', array_merge(array_column($issues, 'message'), $missing ? ['Required cooling sensors unavailable: ' . implode(', ', $missing)] : [])),
         'metrics' => [
             'cpuTempC' => $cpu === null ? null : round($cpu, 1),
             'coolantTempC' => $coolant === null ? null : round($coolant, 1),
@@ -5122,8 +5139,8 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'version' => '0.8.2',
-        'pluginVersion' => '2026.10.12.01',
+        'version' => '0.8.3',
+        'pluginVersion' => '2026.10.20.01',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5137,7 +5154,7 @@ function waz_health_snapshot(): array
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/metrics.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/metrics.php">
 <INLINE>
 <![CDATA[
 <?php
@@ -5148,8 +5165,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_DASHBOARD_VERSION = '0.8.2';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.12.01';
+const WAZ_DASHBOARD_VERSION = '0.8.3';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.20.01';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5603,7 +5620,7 @@ try {
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/status.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/status.php">
 <INLINE>
 <![CDATA[
 <?php
@@ -5629,7 +5646,7 @@ try {
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/storage.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/storage.php">
 <INLINE>
 <![CDATA[
 <?php
@@ -5640,8 +5657,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_STORAGE_VERSION = '0.8.2';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.12.01';
+const WAZ_STORAGE_VERSION = '0.8.3';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.20.01';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6393,7 +6410,7 @@ if (!defined('WAZ_STORAGE_NO_MAIN')) {
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/include/workloads.php">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/include/workloads.php">
 <INLINE>
 <![CDATA[
 <?php
@@ -6404,8 +6421,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_WORKLOADS_VERSION = '0.8.2';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.12.01';
+const WAZ_WORKLOADS_VERSION = '0.8.3';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.20.01';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -6779,13 +6796,12 @@ function waz_workloads_process_snapshot(array $containerIds): array
         }
         $status = (string) @file_get_contents('/proc/' . $pid . '/status');
         $rssBytes = preg_match('/^VmRSS:\s+(\d+)\s+kB/im', $status, $rss) ? (float) $rss[1] * 1024.0 : 0.0;
-        $command = (string) @file_get_contents('/proc/' . $pid . '/cmdline');
-        $command = trim(str_replace("\0", ' ', $command));
         $container = waz_workloads_process_container($pid, $containerIds);
         $processes[] = [
             'pid' => $pid,
             'name' => $comm,
-            'command' => $command !== '' ? $command : $comm,
+            // Full argv can contain credentials. Never put it in API responses.
+            'command' => $comm,
             'cpuPercent' => round($cpu, 1),
             'memoryBytes' => $rssBytes,
             'memoryPercent' => $memoryTotal > 0 ? round($rssBytes * 100.0 / $memoryTotal, 2) : null,
@@ -7152,7 +7168,7 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_IN
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/scripts/start.sh">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/scripts/start.sh">
 <INLINE>
 <![CDATA[
 #!/bin/bash
@@ -7162,6 +7178,8 @@ STATE_DIR="/var/run/waz.dashboard"
 GPU_PID_FILE="$STATE_DIR/gpu-sampler.pid"
 
 mkdir -p "$STATE_DIR"
+exec 9>"$STATE_DIR/gpu-start.lock"
+flock -x 9 || exit 1
 
 pid_matches() {
   local PID_FILE="$1"
@@ -7174,14 +7192,14 @@ pid_matches() {
 
 if ! pid_matches "$GPU_PID_FILE" '/waz.dashboard/include/gpu-sampler.php'; then
   rm -f "$GPU_PID_FILE"
-  nohup /usr/bin/php "$RUNTIME_DIR/include/gpu-sampler.php" >/dev/null 2>&1 &
+  nohup /usr/bin/php "$RUNTIME_DIR/include/gpu-sampler.php" 9>&- >/dev/null 2>&1 &
   echo "$!" > "$GPU_PID_FILE"
 fi
 
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/scripts/stop.sh">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/scripts/stop.sh">
 <INLINE>
 <![CDATA[
 #!/bin/bash
@@ -7200,18 +7218,22 @@ stop_process() {
         kill -0 "$PID" 2>/dev/null || break
         sleep 1
       done
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "GPU watcher did not stop; refusing to replace its runtime." >&2
+        return 1
+      fi
     fi
   fi
   rm -f "$PID_FILE"
 }
 
-stop_process "$STATE_DIR/gpu-sampler.pid" '/waz.dashboard/include/gpu-sampler.php'
+stop_process "$STATE_DIR/gpu-sampler.pid" '/waz.dashboard/include/gpu-sampler.php' || exit 1
 rm -f "$STATE_DIR/gpu.json"
 
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/WazDashboard.page">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/WazDashboard.page">
 <INLINE>
 <![CDATA[
 Menu="Dashboard:0"
@@ -7225,7 +7247,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.2">
+  <section class="waz-system" data-version="0.8.3">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7289,20 +7311,20 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
-    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
+    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.2">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.2"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.3">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.3"></script>
 
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/WazHealthBanner.page">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/WazHealthBanner.page">
 <INLINE>
 <![CDATA[
 Menu="Buttons:98"
@@ -7330,7 +7352,7 @@ window.WAZHealthBootstrap = <?=json_encode([
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/WazStorage.page">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/WazStorage.page">
 <INLINE>
 <![CDATA[
 Menu="Dashboard:0"
@@ -7344,7 +7366,7 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="0.8.2">
+  <section class="waz-storage" data-version="0.8.3">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
       <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7390,20 +7412,20 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
-    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
+    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.2">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.2"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.3">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.3"></script>
 
 ]]>
 </INLINE>
 </FILE>
-<FILE Name="/usr/local/emhttp/plugins/waz.dashboard/WazWorkloads.page">
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/WazWorkloads.page">
 <INLINE>
 <![CDATA[
 Menu="Dashboard:0"
@@ -7417,7 +7439,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="0.8.2">
+  <section class="waz-workloads" data-version="0.8.3">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7476,7 +7498,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
-    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.2</span></footer>
+    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
@@ -7484,9 +7506,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.2">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.2"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.2"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.3">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.3"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.3"></script>
 
 ]]>
 </INLINE>
@@ -7497,7 +7519,7 @@ EOT;
 <![CDATA[
 set -e
 
-RUNTIME_DIR="/usr/local/emhttp/plugins/waz.dashboard"
+RUNTIME_DIR="/usr/local/emhttp/plugins/.waz.dashboard.staged"
 CONFIG_DIR="/boot/config/plugins/waz.dashboard"
 CONFIG_FILE="$CONFIG_DIR/waz.dashboard.cfg"
 LEGACY_HEALTH_CONFIG="/boot/config/plugins/waz.health/waz.health.cfg"
@@ -7515,6 +7537,42 @@ php -l "$RUNTIME_DIR/include/storage.php" >/dev/null
 php -l "$RUNTIME_DIR/include/gpu-sampler.php" >/dev/null
 php -l "$RUNTIME_DIR/include/health.php" >/dev/null
 php -l "$RUNTIME_DIR/include/status.php" >/dev/null
+
+for SHELL_FILE in "$RUNTIME_DIR"/scripts/*.sh; do bash -n "$SHELL_FILE"; done
+
+# Staged validation must complete before stopping the installed processes.
+STAGED_DIR="$RUNTIME_DIR"
+RUNTIME_DIR="/usr/local/emhttp/plugins/waz.dashboard"
+PREVIOUS_DIR="/usr/local/emhttp/plugins/.waz.dashboard.previous"
+[ ! -L "$RUNTIME_DIR" ] && [ ! -L "$PREVIOUS_DIR" ] || exit 1
+HAD_PREVIOUS=false
+ACTIVATING=false
+rollback_runtime() {
+  local result=$?
+  if [ "$result" -ne 0 ] && [ "$ACTIVATING" = true ]; then
+    # A failed new start must be stopped before a previous writer is restored.
+    if [ -x "$RUNTIME_DIR/scripts/stop.sh" ] && ! "$RUNTIME_DIR/scripts/stop.sh"; then
+      echo "New runtime could not stop; previous runtime retained for supervised recovery." >&2
+      return
+    fi
+    rm -rf -- "$RUNTIME_DIR"
+    if $HAD_PREVIOUS; then
+      mv -- "$PREVIOUS_DIR" "$RUNTIME_DIR"
+      "$RUNTIME_DIR/scripts/start.sh" || true
+    fi
+    echo "Plugin activation failed; prior runtime restored when available." >&2
+  fi
+}
+trap rollback_runtime EXIT
+if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then "$RUNTIME_DIR/scripts/stop.sh"; fi
+# Keep a previous successful runtime until the next activation. Never touch config.
+if [ -d "$RUNTIME_DIR" ]; then
+  rm -rf -- "$PREVIOUS_DIR"
+  mv -- "$RUNTIME_DIR" "$PREVIOUS_DIR"
+  HAD_PREVIOUS=true
+fi
+ACTIVATING=true
+mv -- "$STAGED_DIR" "$RUNTIME_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   cat > "$CONFIG_FILE" <<'WAZ_CONFIG'
@@ -7592,8 +7650,9 @@ fi
 rm -rf "/usr/local/emhttp/plugins/waz.health"
 
 "$RUNTIME_DIR/scripts/start.sh"
+trap - EXIT
 
-echo "WAZ Dashboard v0.8.2 installed with integrated Health banner. Reload the Unraid WebUI to display it."
+echo "WAZ Dashboard v0.8.3 installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
 </INLINE>
 </FILE>
@@ -7608,6 +7667,7 @@ if [ -x "$RUNTIME_DIR/scripts/stop.sh" ]; then
 fi
 rm -rf "$RUNTIME_DIR"
 rm -rf "/var/run/waz.dashboard"
+rm -rf "/usr/local/emhttp/plugins/.waz.dashboard.staged" "/usr/local/emhttp/plugins/.waz.dashboard.previous"
 rm -f "/boot/config/plugins/waz.dashboard.plg"
 echo "WAZ System removed. Persistent settings were retained in /boot/config/plugins/waz.dashboard. Reload the Dashboard to clear the panel."
 ]]>

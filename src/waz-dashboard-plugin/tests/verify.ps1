@@ -38,7 +38,7 @@ $required = @(
 
 $manifestText = [System.IO.File]::ReadAllText($manifest)
 foreach ($path in $required) {
-    if (-not $manifestText.Contains("Name=`"$path`"")) {
+    if (-not $manifestText.Contains("Name=`"$($path.Replace('/plugins/waz.dashboard/', '/plugins/.waz.dashboard.staged/'))`"")) {
         throw "Missing packaged file: $path"
     }
 }

@@ -134,6 +134,8 @@ function waz_health_array_status(): array
         ? @parse_ini_file('/var/local/emhttp/var.ini', false, INI_SCANNER_RAW)
         : [];
     if (!is_array($values) || !$values) {
+        $result['state'] = 'unknown';
+        $result['message'] = 'Array status is unavailable';
         return $result;
     }
 
@@ -341,6 +343,10 @@ function waz_health_cooling_status(array $config): array
     $flow = waz_health_hwmon_labeled_value('highflownext', 'fan', ['Flow [dL/h]'], 10.0);
     $throttle = waz_health_throttle_status((int) waz_health_config_number($config, 'THROTTLE_LATCH_SECONDS', 300.0));
     $issues = [];
+    $missing = [];
+    foreach ([['CPU', $cpu, true], ['Coolant', $coolant, filter_var($config['COOLANT_REQUIRED'] ?? false, FILTER_VALIDATE_BOOL)], ['Flow', $flow, filter_var($config['FLOW_REQUIRED'] ?? false, FILTER_VALIDATE_BOOL)]] as [$label, $value, $required]) {
+        if ($required && $value === null) $missing[] = $label;
+    }
     if ($throttle['active']) {
         $age = max(0, time() - (int) $throttle['lastEventAt']);
         $issues[] = [
@@ -388,8 +394,8 @@ function waz_health_cooling_status(array $config): array
     });
     return [
         'label' => 'COOLING',
-        'state' => $issues ? $issues[0]['state'] : 'normal',
-        'message' => $issues ? implode(' · ', array_column($issues, 'message')) : '',
+        'state' => $issues ? $issues[0]['state'] : ($missing ? 'unknown' : 'normal'),
+        'message' => implode(' · ', array_merge(array_column($issues, 'message'), $missing ? ['Required cooling sensors unavailable: ' . implode(', ', $missing)] : [])),
         'metrics' => [
             'cpuTempC' => $cpu === null ? null : round($cpu, 1),
             'coolantTempC' => $coolant === null ? null : round($coolant, 1),

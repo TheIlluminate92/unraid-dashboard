@@ -21,3 +21,7 @@ Never commit:
 - Diagnostic output that exposes secrets or personally identifying data
 
 If sensitive data is committed, treat it as exposed even after deletion because it remains in Git history. Rotate the affected secret and then remove it from the repository history.
+
+## Worker and process-data boundaries
+
+The GPU worker is CLI-only with a lifetime lock. Process responses retain names and metrics but omit full argument strings, which can contain credentials. Runtime endpoints depend on Unraid authentication/CSRF enforcement. See [maintenance guidance](docs/MAINTENANCE_AND_MIGRATION.md).
