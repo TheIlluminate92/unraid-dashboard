@@ -14,10 +14,14 @@ stop_process() {
         kill -0 "$PID" 2>/dev/null || break
         sleep 1
       done
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "GPU watcher did not stop; refusing to replace its runtime." >&2
+        return 1
+      fi
     fi
   fi
   rm -f "$PID_FILE"
 }
 
-stop_process "$STATE_DIR/gpu-sampler.pid" '/waz.dashboard/include/gpu-sampler.php'
+stop_process "$STATE_DIR/gpu-sampler.pid" '/waz.dashboard/include/gpu-sampler.php' || exit 1
 rm -f "$STATE_DIR/gpu.json"

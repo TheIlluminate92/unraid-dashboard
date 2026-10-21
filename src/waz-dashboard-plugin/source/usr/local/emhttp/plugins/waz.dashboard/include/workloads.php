@@ -381,13 +381,12 @@ function waz_workloads_process_snapshot(array $containerIds): array
         }
         $status = (string) @file_get_contents('/proc/' . $pid . '/status');
         $rssBytes = preg_match('/^VmRSS:\s+(\d+)\s+kB/im', $status, $rss) ? (float) $rss[1] * 1024.0 : 0.0;
-        $command = (string) @file_get_contents('/proc/' . $pid . '/cmdline');
-        $command = trim(str_replace("\0", ' ', $command));
         $container = waz_workloads_process_container($pid, $containerIds);
         $processes[] = [
             'pid' => $pid,
             'name' => $comm,
-            'command' => $command !== '' ? $command : $comm,
+            // Full argv can contain credentials. Never put it in API responses.
+            'command' => $comm,
             'cpuPercent' => round($cpu, 1),
             'memoryBytes' => $rssBytes,
             'memoryPercent' => $memoryTotal > 0 ? round($rssBytes * 100.0 / $memoryTotal, 2) : null,

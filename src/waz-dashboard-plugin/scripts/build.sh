@@ -10,7 +10,7 @@ trap 'rm -f "$FILES_PATH"' EXIT
 
 emit_file() {
   local SOURCE_FILE="$1"
-  local RELATIVE="$2"
+  local RELATIVE="${2/\/plugins\/waz.dashboard\//\/plugins\/.waz.dashboard.staged\/}"
   local INTEGRATED_HEALTH="${3:-false}"
 
   if grep -q ']]>' "$SOURCE_FILE"; then
@@ -20,6 +20,7 @@ emit_file() {
   printf '<FILE Name="%s">\n<INLINE>\n<![CDATA[\n' "$RELATIVE" >> "$FILES_PATH"
   if [ "$INTEGRATED_HEALTH" = true ]; then
     sed \
+      -e 's/\r$//' \
       -e "s/@@APP_VERSION@@/$APP_VERSION/g;s/@@PLUGIN_VERSION@@/$RELEASE_VERSION/g" \
       -e 's|/boot/config/plugins/waz.health/waz.health.cfg|/boot/config/plugins/waz.dashboard/waz.dashboard.cfg|g' \
       -e 's|/usr/local/emhttp/plugins/waz.health|/usr/local/emhttp/plugins/waz.dashboard|g' \
@@ -27,7 +28,7 @@ emit_file() {
       -e 's|/var/tmp/waz-health-throttle-state.json|/var/run/waz.dashboard/health-throttle-state.json|g' \
       "$SOURCE_FILE" >> "$FILES_PATH"
   else
-    sed "s/@@APP_VERSION@@/$APP_VERSION/g;s/@@PLUGIN_VERSION@@/$RELEASE_VERSION/g" "$SOURCE_FILE" >> "$FILES_PATH"
+    sed "s/@@APP_VERSION@@/$APP_VERSION/g;s/@@PLUGIN_VERSION@@/$RELEASE_VERSION/g;s/\r$//" "$SOURCE_FILE" >> "$FILES_PATH"
   fi
   printf '\n]]>\n</INLINE>\n</FILE>\n' >> "$FILES_PATH"
 }
@@ -47,7 +48,7 @@ emit_file "$HEALTH_SOURCE/include/status.php" '/usr/local/emhttp/plugins/waz.das
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 awk -v files="$FILES_PATH" -v app="$APP_VERSION" -v release="$RELEASE_VERSION" '
   /@@FILES@@/ { while ((getline line < files) > 0) print line; close(files); next }
-  { gsub(/@@APP_VERSION@@/, app); gsub(/@@RELEASE_VERSION@@/, release); print }
+  { sub(/\r$/, ""); gsub(/@@APP_VERSION@@/, app); gsub(/@@RELEASE_VERSION@@/, release); print }
 ' "$PROJECT_DIR/plugin/waz.dashboard.plg.in" > "$OUTPUT_PATH"
 
 echo "Built $OUTPUT_PATH"

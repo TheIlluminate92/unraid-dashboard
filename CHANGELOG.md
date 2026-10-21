@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3 — 2026-10-20
+
+Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
+
+See [maintenance and migration](docs/MAINTENANCE_AND_MIGRATION.md) for behavior, rollback boundaries, validation and server-split guidance.
+
 ## 0.8.2 — 2026-10-12 (build 2026.10.12.01)
 
 - Reject noncanonical installer names and duplicate internal-name registrations before runtime/configuration changes.

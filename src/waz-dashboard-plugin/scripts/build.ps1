@@ -38,7 +38,7 @@ foreach ($mapping in $healthMappings.GetEnumerator()) {
 }
 
 $blocks = foreach ($file in ($files | Sort-Object Target)) {
-    $relative = $file.Target
+    $relative = $file.Target.Replace('/plugins/waz.dashboard/', '/plugins/.waz.dashboard.staged/')
     $content = [System.IO.File]::ReadAllText($file.Source).Replace("`r`n", "`n")
     $content = $content.Replace('@@APP_VERSION@@', $appVersion).Replace('@@PLUGIN_VERSION@@', $releaseVersion)
     if ($file.IsHealth) {
