@@ -165,9 +165,15 @@
     var progress = number(parity.progressPercent);
     var bar = node('waz-parity-progress');
     if (bar) bar.style.width = (parity.active && finite(progress) ? clamp(progress, 0, 100) : (parity.valid ? 100 : 0)) + '%';
-    text('waz-parity-state', parity.active ? 'CHECKING' : (parity.valid ? 'VALID' : 'ATTENTION'));
+    var unconfigured = parity.configured === false && !parity.active;
+    text('waz-parity-state', unconfigured ? 'NOT CONFIGURED' : (parity.active ? 'CHECKING' : (parity.valid ? 'VALID' : 'ATTENTION')));
 
-    if (parity.active) {
+    if (unconfigured) {
+      text('waz-parity-summary', 'No parity disks assigned');
+      text('waz-parity-detail', '');
+      previousParity = null;
+      return;
+    } else if (parity.active) {
       var speed = null;
       var eta = null;
       if (previousParity && finite(sampledAt) && sampledAt > previousParity.sampledAt) {

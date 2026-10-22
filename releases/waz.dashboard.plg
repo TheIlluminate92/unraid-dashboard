@@ -2938,9 +2938,15 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     var progress = number(parity.progressPercent);
     var bar = node('waz-parity-progress');
     if (bar) bar.style.width = (parity.active && finite(progress) ? clamp(progress, 0, 100) : (parity.valid ? 100 : 0)) + '%';
-    text('waz-parity-state', parity.active ? 'CHECKING' : (parity.valid ? 'VALID' : 'ATTENTION'));
+    var unconfigured = parity.configured === false && !parity.active;
+    text('waz-parity-state', unconfigured ? 'NOT CONFIGURED' : (parity.active ? 'CHECKING' : (parity.valid ? 'VALID' : 'ATTENTION')));
 
-    if (parity.active) {
+    if (unconfigured) {
+      text('waz-parity-summary', 'No parity disks assigned');
+      text('waz-parity-detail', '');
+      previousParity = null;
+      return;
+    } else if (parity.active) {
       var speed = null;
       var eta = null;
       if (previousParity && finite(sampledAt) && sampledAt > previousParity.sampledAt) {
@@ -5967,6 +5973,14 @@ function waz_storage_temperature_thresholds(array $disk, array $smartSettings, a
     return ['warning' => $warning, 'critical' => $critical];
 }
 
+function waz_storage_unassigned_slot(array $disk): bool
+{
+    return strtoupper(trim((string) ($disk['status'] ?? ''))) === 'DISK_NP'
+        && trim((string) ($disk['device'] ?? '')) === ''
+        && trim((string) ($disk['id'] ?? '')) === ''
+        && (waz_storage_number($disk['size'] ?? null) ?? 0) <= 0;
+}
+
 function waz_storage_disk_records(): array
 {
     $smartSettings = waz_storage_ini(WAZ_SMART_ONE_CFG, true);
@@ -5979,7 +5993,7 @@ function waz_storage_disk_records(): array
         }
         $name = trim((string) ($raw['name'] ?? trim((string) $section, '"')));
         $type = trim((string) ($raw['type'] ?? ''));
-        if ($name === '' || !in_array($type, ['Data', 'Parity', 'Cache'], true)) {
+        if ($name === '' || !in_array($type, ['Data', 'Parity', 'Cache'], true) || waz_storage_unassigned_slot($raw)) {
             continue;
         }
         $size = waz_storage_kib_bytes($raw['fsSize'] ?? null);
@@ -6028,7 +6042,7 @@ function waz_storage_disk_records(): array
             'criticalC' => $critical,
             'spunDown' => $spunDown,
             'status' => $status,
-            'statusLabel' => $spunDown ? 'STANDBY' : ($status === 'DISK_OK' ? 'ACTIVE' : ($status ?: 'UNKNOWN')),
+            'statusLabel' => $status !== '' && $status !== 'DISK_OK' ? $status : ($spunDown ? 'STANDBY' : ($status === 'DISK_OK' ? 'ACTIVE' : 'UNKNOWN')),
             'errors' => $errors,
             'state' => waz_storage_worst_state($states),
             'location' => null,
@@ -6410,7 +6424,8 @@ function waz_storage_parity_data(array $disks, array $variables, array $parityCo
     $finished = (int) ($variables['sbSynced2'] ?? 0);
     return [
         'state' => waz_storage_worst_state($states),
-        'valid' => $missing === 0 && $errors === 0 && ($exit === '' || $exit === '0'),
+        'configured' => count($parityDisks) > 0,
+        'valid' => count($parityDisks) > 0 && !in_array('fault', $states, true) && $missing === 0 && $errors === 0 && ($exit === '' || $exit === '0'),
         'missingCount' => $missing,
         'exitCode' => $exit,
         'errors' => $errors,

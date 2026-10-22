@@ -141,6 +141,14 @@ function waz_storage_temperature_thresholds(array $disk, array $smartSettings, a
     return ['warning' => $warning, 'critical' => $critical];
 }
 
+function waz_storage_unassigned_slot(array $disk): bool
+{
+    return strtoupper(trim((string) ($disk['status'] ?? ''))) === 'DISK_NP'
+        && trim((string) ($disk['device'] ?? '')) === ''
+        && trim((string) ($disk['id'] ?? '')) === ''
+        && (waz_storage_number($disk['size'] ?? null) ?? 0) <= 0;
+}
+
 function waz_storage_disk_records(): array
 {
     $smartSettings = waz_storage_ini(WAZ_SMART_ONE_CFG, true);
@@ -153,7 +161,7 @@ function waz_storage_disk_records(): array
         }
         $name = trim((string) ($raw['name'] ?? trim((string) $section, '"')));
         $type = trim((string) ($raw['type'] ?? ''));
-        if ($name === '' || !in_array($type, ['Data', 'Parity', 'Cache'], true)) {
+        if ($name === '' || !in_array($type, ['Data', 'Parity', 'Cache'], true) || waz_storage_unassigned_slot($raw)) {
             continue;
         }
         $size = waz_storage_kib_bytes($raw['fsSize'] ?? null);
@@ -202,7 +210,7 @@ function waz_storage_disk_records(): array
             'criticalC' => $critical,
             'spunDown' => $spunDown,
             'status' => $status,
-            'statusLabel' => $spunDown ? 'STANDBY' : ($status === 'DISK_OK' ? 'ACTIVE' : ($status ?: 'UNKNOWN')),
+            'statusLabel' => $status !== '' && $status !== 'DISK_OK' ? $status : ($spunDown ? 'STANDBY' : ($status === 'DISK_OK' ? 'ACTIVE' : 'UNKNOWN')),
             'errors' => $errors,
             'state' => waz_storage_worst_state($states),
             'location' => null,
@@ -584,7 +592,8 @@ function waz_storage_parity_data(array $disks, array $variables, array $parityCo
     $finished = (int) ($variables['sbSynced2'] ?? 0);
     return [
         'state' => waz_storage_worst_state($states),
-        'valid' => $missing === 0 && $errors === 0 && ($exit === '' || $exit === '0'),
+        'configured' => count($parityDisks) > 0,
+        'valid' => count($parityDisks) > 0 && !in_array('fault', $states, true) && $missing === 0 && $errors === 0 && ($exit === '' || $exit === '0'),
         'missingCount' => $missing,
         'exitCode' => $exit,
         'errors' => $errors,
