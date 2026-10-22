@@ -225,6 +225,8 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/pool-only.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Pool-only parity regression failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/registration.php') $manifest
     if ($LASTEXITCODE -ne 0) { throw 'Canonical registration regression failed.' }
     $phpFiles = @(

@@ -4,7 +4,7 @@
 
 The CPU section defaults to one summary per detected socket. Expand a socket to show physical cores, then a core to show logical threads. Choices are stored per browser origin and safely fall back when storage is blocked. A socket temperature is the hottest available core reading; no new sensor collection is added. Combined utilization uses valid busy/total counter deltas, excluding missing or reset samples. Existing configuration, polling cadence, and unrelated panels are retained.
 
-Use the normal canonical installer/update workflow. This release addresses CPU presentation (#9); the separately reported parity and missing-MD12xx defects (#7 and #8) are not changed.
+Use the normal canonical installer/update workflow. Pool-only operation is supported: unassigned native disk placeholders are excluded, parity is not reported as valid without assigned parity disks, and the array section is hidden when no array is configured. Assigned missing disks remain visible as faults. The optional fan-plugin fix is reviewed separately.
 
 ## 0.8.3 / build 2026.10.20.01
 
