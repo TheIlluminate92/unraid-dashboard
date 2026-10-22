@@ -339,6 +339,8 @@
 
   function renderArray(array) {
     array = array || {};
+    var section = node('waz-array-section');
+    if (section) section.hidden = array.configured === false;
     var usage = number(array.usagePercent);
     text('waz-array-summary', array.diskCount + ' DISKS · ' + bytes(number(array.usedBytes)) + ' / ' + bytes(number(array.sizeBytes)) + ' · ' + percent(usage));
     var bar = node('waz-array-bar');
@@ -371,7 +373,7 @@
     renderArray(data.array || {});
     setHealth(data.state || 'normal', data.state === 'fault' ? 'FAULT' : (data.state === 'attention' ? 'ATTENTION' : 'NORMAL'));
     renderAttention(data.attention || {}, data.state || 'normal');
-    text('waz-storage-subtitle', (data.array && data.array.mdState === 'STARTED' ? 'Array started' : 'Array ' + ((data.array && data.array.mdState) || 'unknown')) + ' · ' + (data.pools || []).length + ' pools');
+    text('waz-storage-subtitle', (data.array && data.array.configured === false ? 'Pool-only storage' : (data.array && data.array.mdState === 'STARTED' ? 'Array started' : 'Array ' + ((data.array && data.array.mdState) || 'unknown'))) + ' · ' + (data.pools || []).length + ' pools');
     if (!localOnly) text('waz-storage-updated', 'Updated ' + new Date(sampledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   }
 

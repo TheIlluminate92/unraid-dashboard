@@ -464,6 +464,7 @@ function waz_storage_array_data(array $disks, array $variables): array
     }
     return [
         'mdState' => $mdState ?: 'UNKNOWN',
+        'configured' => count(array_filter($disks, static fn(array $disk): bool => in_array($disk['type'], ['Data', 'Parity'], true))) > 0,
         'missingCount' => (int) ($variables['mdNumMissing'] ?? 0),
         'disabledCount' => (int) ($variables['mdNumDisabled'] ?? 0),
         'invalidCount' => (int) ($variables['mdNumInvalid'] ?? 0),

@@ -593,7 +593,7 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   color: #f08080;
 }
 
-.waz-storage-alert[hidden] { display: none; }
+.waz-storage-alert[hidden], .waz-array-section[hidden] { display: none; }
 
 .waz-storage-section {
   margin-top: 8px;
@@ -3112,6 +3112,8 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
 
   function renderArray(array) {
     array = array || {};
+    var section = node('waz-array-section');
+    if (section) section.hidden = array.configured === false;
     var usage = number(array.usagePercent);
     text('waz-array-summary', array.diskCount + ' DISKS · ' + bytes(number(array.usedBytes)) + ' / ' + bytes(number(array.sizeBytes)) + ' · ' + percent(usage));
     var bar = node('waz-array-bar');
@@ -3144,7 +3146,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     renderArray(data.array || {});
     setHealth(data.state || 'normal', data.state === 'fault' ? 'FAULT' : (data.state === 'attention' ? 'ATTENTION' : 'NORMAL'));
     renderAttention(data.attention || {}, data.state || 'normal');
-    text('waz-storage-subtitle', (data.array && data.array.mdState === 'STARTED' ? 'Array started' : 'Array ' + ((data.array && data.array.mdState) || 'unknown')) + ' · ' + (data.pools || []).length + ' pools');
+    text('waz-storage-subtitle', (data.array && data.array.configured === false ? 'Pool-only storage' : (data.array && data.array.mdState === 'STARTED' ? 'Array started' : 'Array ' + ((data.array && data.array.mdState) || 'unknown'))) + ' · ' + (data.pools || []).length + ' pools');
     if (!localOnly) text('waz-storage-updated', 'Updated ' + new Date(sampledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   }
 
@@ -6296,6 +6298,7 @@ function waz_storage_array_data(array $disks, array $variables): array
     }
     return [
         'mdState' => $mdState ?: 'UNKNOWN',
+        'configured' => count(array_filter($disks, static fn(array $disk): bool => in_array($disk['type'], ['Data', 'Parity'], true))) > 0,
         'missingCount' => (int) ($variables['mdNumMissing'] ?? 0),
         'disabledCount' => (int) ($variables['mdNumDisabled'] ?? 0),
         'invalidCount' => (int) ($variables['mdNumInvalid'] ?? 0),
@@ -7593,7 +7596,7 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-location-groups" class="waz-location-groups"></div>
     </section>
 
-    <section class="waz-storage-section waz-array-section">
+    <section id="waz-array-section" class="waz-storage-section waz-array-section" hidden>
       <div class="waz-storage-section-head">
         <b>ARRAY</b>
         <span id="waz-array-summary">--</span>

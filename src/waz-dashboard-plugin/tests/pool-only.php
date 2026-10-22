@@ -11,6 +11,9 @@ foreach (['id' => 'ASSIGNED-ID', 'size' => '1000', 'device' => 'sda', 'status' =
     check_pool(!waz_storage_unassigned_slot(array_replace($empty, [$key => $value])), 'Assigned/missing evidence preserved: ' . $key);
 }
 $none = waz_storage_parity_data([], [], []);
+check_pool(!waz_storage_array_data([], ['mdState' => 'STARTED'])['configured'], 'Pool-only has no array');
+check_pool(!waz_storage_array_data([['type' => 'Cache']], ['mdState' => 'STARTED'])['configured'], 'Pool disks do not configure an array');
+check_pool(waz_storage_array_data([['type' => 'Parity', 'state' => 'fault']], ['mdState' => 'STARTED'])['configured'], 'Missing assigned parity keeps array section visible');
 check_pool(!$none['configured'] && !$none['valid'] && $none['state'] === 'normal', 'Pool-only parity is unconfigured, not valid or faulted');
 $disk = ['type' => 'Parity', 'name' => 'parity', 'state' => 'normal'];
 $healthy = waz_storage_parity_data([$disk], [], []);

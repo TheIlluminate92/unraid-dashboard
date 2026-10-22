@@ -113,7 +113,7 @@
   color: #f08080;
 }
 
-.waz-storage-alert[hidden] { display: none; }
+.waz-storage-alert[hidden], .waz-array-section[hidden] { display: none; }
 
 .waz-storage-section {
   margin-top: 8px;

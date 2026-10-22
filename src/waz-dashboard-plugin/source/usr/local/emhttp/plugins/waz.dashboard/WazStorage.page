@@ -46,7 +46,7 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-location-groups" class="waz-location-groups"></div>
     </section>
 
-    <section class="waz-storage-section waz-array-section">
+    <section id="waz-array-section" class="waz-storage-section waz-array-section" hidden>
       <div class="waz-storage-section-head">
         <b>ARRAY</b>
         <span id="waz-array-summary">--</span>
