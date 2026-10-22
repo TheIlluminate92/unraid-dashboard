@@ -649,3 +649,53 @@
   .waz-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .waz-core-list { grid-template-columns: 1fr; }
 }
+
+/* Native disclosures provide socket, physical-core, and logical-thread stages. */
+#waz-core-list { grid-template-columns: minmax(0, 1fr); }
+
+.waz-cpu-socket {
+  min-width: 0;
+  border: 1px solid rgb(135 147 159 / 16%);
+  background: var(--waz-raised);
+}
+
+.waz-cpu-summary {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 38px 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  color: var(--waz-text);
+  cursor: pointer;
+  list-style: none;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.waz-cpu-summary::-webkit-details-marker { display: none; }
+.waz-cpu-summary::before { content: '▸'; color: var(--waz-muted); }
+details[open] > .waz-cpu-summary::before { content: '▾'; }
+.waz-cpu-summary:hover { background: rgb(135 147 159 / 8%); }
+.waz-cpu-summary:focus-visible { outline: 2px solid var(--waz-cyan); outline-offset: -2px; }
+.waz-cpu-summary-name { min-width: 0; }
+.waz-cpu-summary-name b,
+.waz-cpu-summary-name small { display: block; overflow-wrap: anywhere; }
+.waz-cpu-summary-name small { color: var(--waz-muted); font-size: 10px; }
+.waz-cpu-summary em { color: var(--waz-cyan); font-style: normal; text-align: right; }
+.waz-cpu-summary-temp { color: var(--waz-muted); text-align: right; }
+
+.waz-socket-cores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 0 5px 5px;
+}
+
+.waz-socket-cores > .waz-core { padding: 0; align-self: start; }
+.waz-core > .waz-cpu-summary { grid-template-columns: 8px minmax(0, 1fr) 30px 42px; gap: 4px; padding: 5px; }
+.waz-core-threads { padding: 0 5px 5px; }
+.waz-core-threads .waz-thread { grid-template-columns: 48px minmax(16px, 1fr) 34px; }
+
+@media (max-width: 520px) {
+  .waz-socket-cores { grid-template-columns: minmax(0, 1fr); }
+}

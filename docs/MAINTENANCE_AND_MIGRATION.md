@@ -1,5 +1,11 @@
 # Maintenance and migration
 
+## 0.8.4 / build 2026.10.22.01
+
+The CPU section defaults to one summary per detected socket. Expand a socket to show physical cores, then a core to show logical threads. Choices are stored per browser origin and safely fall back when storage is blocked. A socket temperature is the hottest available core reading; no new sensor collection is added. Combined utilization uses valid busy/total counter deltas, excluding missing or reset samples. Existing configuration, polling cadence, and unrelated panels are retained.
+
+Use the normal canonical installer/update workflow. This release addresses CPU presentation (#9); the separately reported parity and missing-MD12xx defects (#7 and #8) are not changed.
+
 ## 0.8.3 / build 2026.10.20.01
 
 - The GPU worker rejects HTTP execution before doing work. A lifetime file lock prevents duplicate instances, startup is serialized, and the sampling child starts directly without an intermediate shell. Shutdown terminates/reaps that child; failure to stop the worker blocks runtime replacement. Existing orphan samplers are not automatically killed because their owner cannot safely be inferred.

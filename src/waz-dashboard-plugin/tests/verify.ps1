@@ -1,5 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$node = Get-Command node -ErrorAction Stop
+& $node.Source --test (Join-Path $projectRoot 'tests/cpu-view.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'CPU disclosure and aggregation regression tests failed.' }
 $manifest = Join-Path $projectRoot 'dist/waz.dashboard.plg'
 
 & (Join-Path $projectRoot 'scripts/build.ps1') -OutputPath $manifest

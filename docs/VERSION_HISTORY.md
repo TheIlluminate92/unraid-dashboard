@@ -67,3 +67,7 @@ This is the current rolling release. It fixes disk-temperature severity so WAZ f
 This release added Unraid's native Tile Management window through the blue wrench and retired WAZ's duplicate fan controller in favor of the dedicated MD12xx Fan Control v0.4.3 API.
 
 SHA-256: `c13aaa646f7896ed83d1ad0c22f48cf0596063ecac3691502b4eb36043495b48`
+
+## Unraid Dashboard v0.8.4 — build 2026.10.22.01
+
+Adds three-stage CPU disclosure (socket, physical core, logical thread), browser-persisted expansion choices, and weighted utilization summaries. The previous v0.8.3 canonical artifact is preserved in `releases/history/waz.dashboard-v0.8.3.plg`.
