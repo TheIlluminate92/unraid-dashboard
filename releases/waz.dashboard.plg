@@ -2,12 +2,15 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.20.01">
+  <!ENTITY version "2026.10.22.01">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
+### 0.8.4 - Build 2026.10.22.01
+- Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
+
 ### 0.8.3 - Build 2026.10.20.01
 - Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
 
@@ -1649,6 +1652,56 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   .waz-core-list { grid-template-columns: 1fr; }
 }
 
+/* Native disclosures provide socket, physical-core, and logical-thread stages. */
+#waz-core-list { grid-template-columns: minmax(0, 1fr); }
+
+.waz-cpu-socket {
+  min-width: 0;
+  border: 1px solid rgb(135 147 159 / 16%);
+  background: var(--waz-raised);
+}
+
+.waz-cpu-summary {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 38px 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  color: var(--waz-text);
+  cursor: pointer;
+  list-style: none;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.waz-cpu-summary::-webkit-details-marker { display: none; }
+.waz-cpu-summary::before { content: '▸'; color: var(--waz-muted); }
+details[open] > .waz-cpu-summary::before { content: '▾'; }
+.waz-cpu-summary:hover { background: rgb(135 147 159 / 8%); }
+.waz-cpu-summary:focus-visible { outline: 2px solid var(--waz-cyan); outline-offset: -2px; }
+.waz-cpu-summary-name { min-width: 0; }
+.waz-cpu-summary-name b,
+.waz-cpu-summary-name small { display: block; overflow-wrap: anywhere; }
+.waz-cpu-summary-name small { color: var(--waz-muted); font-size: 10px; }
+.waz-cpu-summary em { color: var(--waz-cyan); font-style: normal; text-align: right; }
+.waz-cpu-summary-temp { color: var(--waz-muted); text-align: right; }
+
+.waz-socket-cores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 0 5px 5px;
+}
+
+.waz-socket-cores > .waz-core { padding: 0; align-self: start; }
+.waz-core > .waz-cpu-summary { grid-template-columns: 8px minmax(0, 1fr) 30px 42px; gap: 4px; padding: 5px; }
+.waz-core-threads { padding: 0 5px 5px; }
+.waz-core-threads .waz-thread { grid-template-columns: 48px minmax(16px, 1fr) 34px; }
+
+@media (max-width: 520px) {
+  .waz-socket-cores { grid-template-columns: minmax(0, 1fr); }
+}
+
 ]]>
 </INLINE>
 </FILE>
@@ -2687,7 +2740,7 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   }
 
   window.WAZHealth = {
-    version: "0.8.3",
+    version: "0.8.4",
     refresh: refresh,
     setState: function (next) {
       mergeSnapshot(next);
@@ -3182,8 +3235,12 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   var previousRapl = null;
   var previousNetwork = null;
   var lastSnapshotAt = 0;
-  var coreSignature = '';
+  var coreSignature = null;
   var coreNodes = {};
+  var coreSummaries = {};
+  var socketSummaries = {};
+  var expansionKey = 'waz.dashboard.cpuExpansion.v1';
+  var expansion = readExpansion();
   var smoothLoads = {};
   var cpuHistory = [];
   var rxHistory = [];
@@ -3239,12 +3296,86 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
     return Math.round(bits) + ' b/s';
   }
 
-  function cpuDelta(current, previous) {
+  function counterDelta(current, previous) {
     if (!current || !previous) return null;
+    if (![current.total, current.idle, previous.total, previous.idle].every(finite)) return null;
     var total = Number(current.total) - Number(previous.total);
     var idle = Number(current.idle) - Number(previous.idle);
-    if (!isFinite(total) || !isFinite(idle) || total <= 0) return null;
-    return clamp(100 * (total - idle) / total, 0, 100);
+    if (total <= 0 || idle < 0 || idle > total) return null;
+    return { busy: total - idle, total: total };
+  }
+
+  function cpuDelta(current, previous) {
+    var delta = counterDelta(current, previous);
+    return delta ? 100 * delta.busy / delta.total : null;
+  }
+
+  function readExpansion() {
+    var saved = Object.create(null);
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(expansionKey) || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        Object.keys(parsed).forEach(function (key) {
+          if (/^(socket|core):/.test(key) && parsed[key] === true) saved[key] = true;
+        });
+      }
+    } catch (error) { /* Storage may be blocked or contain an older value. */ }
+    return saved;
+  }
+
+  function saveExpansion() {
+    try { window.localStorage.setItem(expansionKey, JSON.stringify(expansion)); }
+    catch (error) { /* The view still works without persistent browser storage. */ }
+  }
+
+  function rememberExpansion(details, key) {
+    details.open = expansion[key] === true;
+    details.addEventListener('toggle', function () {
+      if (details.open) expansion[key] = true;
+      else delete expansion[key];
+      saveExpansion();
+    });
+  }
+
+  function coreKey(core) {
+    return String(core.packageId == null ? 'unknown' : core.packageId) + ':' + core.coreId;
+  }
+
+  function cpuSummary(details, label, description) {
+    var summary = document.createElement('summary');
+    summary.className = 'waz-cpu-summary';
+    var name = document.createElement('span');
+    name.className = 'waz-cpu-summary-name';
+    var heading = document.createElement('b');
+    heading.textContent = label;
+    var count = document.createElement('small');
+    count.textContent = description;
+    name.appendChild(heading);
+    name.appendChild(count);
+    var load = document.createElement('em');
+    load.textContent = '--';
+    var temp = document.createElement('span');
+    temp.className = 'waz-cpu-summary-temp';
+    temp.textContent = '--';
+    summary.appendChild(name);
+    summary.appendChild(load);
+    summary.appendChild(temp);
+    details.appendChild(summary);
+    return { value: load, temp: temp };
+  }
+
+  function combinedLoad(threads, counters) {
+    var busy = 0;
+    var total = 0;
+    var seen = Object.create(null);
+    threads.forEach(function (thread) {
+      var key = 'cpu' + thread.cpuId;
+      if (seen[key]) return;
+      seen[key] = true;
+      var delta = counterDelta(counters[key], previousCpu && previousCpu[key]);
+      if (delta) { busy += delta.busy; total += delta.total; }
+    });
+    return total > 0 ? busy * 100 / total : null;
   }
 
   function smooth(key, value) {
@@ -3295,39 +3426,67 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
     if (!target) return;
     target.textContent = '';
     coreNodes = {};
-
+    coreSummaries = {};
+    socketSummaries = {};
+    smoothLoads = {};
+    var sockets = Object.create(null);
+    var retained = Object.create(null);
+    if (!cores.length) target.textContent = 'CPU topology unavailable';
     cores.forEach(function (core) {
-      var card = document.createElement('div');
-      card.className = 'waz-core';
-      var head = document.createElement('div');
-      head.className = 'waz-core-head';
-      var label = document.createElement('b');
-      label.textContent = 'CORE ' + core.coreId;
-      var temp = document.createElement('span');
-      temp.textContent = temperature(core.tempC);
-      head.appendChild(label);
-      head.appendChild(temp);
-      card.appendChild(head);
-
-      (core.threads || []).forEach(function (thread) {
-        var row = document.createElement('div');
-        row.className = 'waz-thread';
-        var threadLabel = document.createElement('b');
-        threadLabel.textContent = 'CPU ' + thread.cpuId;
-        var meter = document.createElement('span');
-        meter.className = 'waz-mini-meter';
-        var fill = document.createElement('i');
-        meter.appendChild(fill);
-        var value = document.createElement('em');
-        value.textContent = '--';
-        row.appendChild(threadLabel);
-        row.appendChild(meter);
-        row.appendChild(value);
-        card.appendChild(row);
-        coreNodes[String(thread.cpuId)] = { fill: fill, value: value, temp: temp };
-      });
-      target.appendChild(card);
+      var key = String(core.packageId == null ? 'unknown' : core.packageId);
+      if (!sockets[key]) sockets[key] = [];
+      sockets[key].push(core);
     });
+    Object.keys(sockets).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).forEach(function (socketId) {
+      var socketCores = sockets[socketId];
+      var threads = [].concat.apply([], socketCores.map(function (core) { return core.threads || []; }));
+      var socket = document.createElement('details');
+      socket.className = 'waz-cpu-socket';
+      var socketKey = 'socket:' + socketId;
+      retained[socketKey] = expansion[socketKey] === true;
+      rememberExpansion(socket, socketKey);
+      var socketNodes = cpuSummary(socket, 'SOCKET ' + socketId, socketCores.length + (socketCores.length === 1 ? ' core · ' : ' cores · ') + threads.length + (threads.length === 1 ? ' thread' : ' threads'));
+      socketNodes.temp.title = 'Hottest available core temperature';
+      socketSummaries[socketId] = socketNodes;
+      var grid = document.createElement('div');
+      grid.className = 'waz-socket-cores';
+      socketCores.forEach(function (core) {
+        var card = document.createElement('details');
+        card.className = 'waz-core';
+        var key = coreKey(core);
+        retained['core:' + key] = expansion['core:' + key] === true;
+        rememberExpansion(card, 'core:' + key);
+        var threadCount = (core.threads || []).length;
+        var summaryNodes = cpuSummary(card, 'CORE ' + core.coreId, threadCount + (threadCount === 1 ? ' thread' : ' threads'));
+        coreSummaries[key] = summaryNodes;
+        var threadList = document.createElement('div');
+        threadList.className = 'waz-core-threads';
+
+        (core.threads || []).forEach(function (thread) {
+          var row = document.createElement('div');
+          row.className = 'waz-thread';
+          var threadLabel = document.createElement('b');
+          threadLabel.textContent = 'CPU ' + thread.cpuId;
+          var meter = document.createElement('span');
+          meter.className = 'waz-mini-meter';
+          var fill = document.createElement('i');
+          meter.appendChild(fill);
+          var value = document.createElement('em');
+          value.textContent = '--';
+          row.appendChild(threadLabel);
+          row.appendChild(meter);
+          row.appendChild(value);
+          threadList.appendChild(row);
+          coreNodes[String(thread.cpuId)] = { fill: fill, value: value };
+        });
+        card.appendChild(threadList);
+        grid.appendChild(card);
+      });
+      socket.appendChild(grid);
+      target.appendChild(socket);
+    });
+    expansion = retained;
+    saveExpansion();
   }
 
   function renderCpu(cpu) {
@@ -3337,14 +3496,24 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
     text('waz-cpu-count', (cpu.cores || []).length + ' cores / ' + (cpu.threadCount || 0) + ' threads');
 
     var signature = (cpu.cores || []).map(function (core) {
-      return core.coreId + ':' + (core.threads || []).map(function (thread) { return thread.cpuId; }).join(',');
+      return coreKey(core) + ':' + (core.threads || []).map(function (thread) { return thread.cpuId; }).join(',');
     }).join('|');
     if (signature !== coreSignature) {
       rebuildCores(cpu.cores || []);
       coreSignature = signature;
     }
 
+    var sockets = Object.create(null);
     (cpu.cores || []).forEach(function (core) {
+      var socketId = String(core.packageId == null ? 'unknown' : core.packageId);
+      if (!sockets[socketId]) sockets[socketId] = { threads: [], temperatures: [] };
+      sockets[socketId].threads = sockets[socketId].threads.concat(core.threads || []);
+      if (finite(core.tempC)) sockets[socketId].temperatures.push(core.tempC);
+      var summary = coreSummaries[coreKey(core)];
+      if (summary) {
+        summary.value.textContent = percent(smooth('core:' + coreKey(core), combinedLoad(core.threads || [], counters)));
+        summary.temp.textContent = temperature(core.tempC);
+      }
       (core.threads || []).forEach(function (thread) {
         var key = String(thread.cpuId);
         var load = smooth('cpu' + key, cpuDelta(counters['cpu' + key], previousCpu && previousCpu['cpu' + key]));
@@ -3352,8 +3521,14 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
         if (!targets) return;
         targets.value.textContent = percent(load);
         targets.fill.style.width = (finite(load) ? clamp(load, 0, 100) : 0) + '%';
-        targets.temp.textContent = temperature(core.tempC);
       });
+    });
+    Object.keys(sockets).forEach(function (socketId) {
+      var targets = socketSummaries[socketId];
+      if (!targets) return;
+      var socket = sockets[socketId];
+      targets.value.textContent = percent(smooth('socket:' + socketId, combinedLoad(socket.threads, counters)));
+      targets.temp.textContent = temperature(socket.temperatures.length ? Math.max.apply(Math, socket.temperatures) : null);
     });
 
     if (finite(overall)) {
@@ -5139,8 +5314,8 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'version' => '0.8.3',
-        'pluginVersion' => '2026.10.20.01',
+        'version' => '0.8.4',
+        'pluginVersion' => '2026.10.22.01',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5165,8 +5340,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_DASHBOARD_VERSION = '0.8.3';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.20.01';
+const WAZ_DASHBOARD_VERSION = '0.8.4';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.01';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5657,8 +5832,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_STORAGE_VERSION = '0.8.3';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.20.01';
+const WAZ_STORAGE_VERSION = '0.8.4';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.01';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6421,8 +6596,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_WORKLOADS_VERSION = '0.8.3';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.20.01';
+const WAZ_WORKLOADS_VERSION = '0.8.4';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.01';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7247,7 +7422,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.3">
+  <section class="waz-system" data-version="0.8.4">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7311,15 +7486,15 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
-    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
+    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.3">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.3"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.4">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.4"></script>
 
 ]]>
 </INLINE>
@@ -7366,7 +7541,7 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="0.8.3">
+  <section class="waz-storage" data-version="0.8.4">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
       <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7412,15 +7587,15 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
-    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
+    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.3">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.3"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.4">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.4"></script>
 
 ]]>
 </INLINE>
@@ -7439,7 +7614,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="0.8.3">
+  <section class="waz-workloads" data-version="0.8.4">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7498,7 +7673,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
-    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.3</span></footer>
+    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
@@ -7506,9 +7681,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.3">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.3"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.3"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.4">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.4"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.4"></script>
 
 ]]>
 </INLINE>
@@ -7652,7 +7827,7 @@ rm -rf "/usr/local/emhttp/plugins/waz.health"
 "$RUNTIME_DIR/scripts/start.sh"
 trap - EXIT
 
-echo "WAZ Dashboard v0.8.3 installed with integrated Health banner. Reload the Unraid WebUI to display it."
+echo "WAZ Dashboard v0.8.4 installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
 </INLINE>
 </FILE>

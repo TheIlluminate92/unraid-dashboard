@@ -8,6 +8,9 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
 <CHANGES>
+### 0.8.4 - Build 2026.10.22.01
+- Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
+
 ### 0.8.3 - Build 2026.10.20.01
 - Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
 

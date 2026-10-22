@@ -12,7 +12,7 @@ Do not post hostnames, IP or MAC addresses, disk serial numbers, share names, cr
 
 Preserve the existing `waz.dashboard` plugin identifier and configuration paths so installed systems continue to update safely. Avoid permanent edits to Unraid core files, avoid waking sleeping disks, and keep data collection local.
 
-Run the repository verification workflow before submitting a change:
+Node.js 18 or newer is required for the CPU rendering tests. Run the repository verification workflow before submitting a change:
 
 ```powershell
 pwsh -File src/waz-dashboard-plugin/tests/verify.ps1

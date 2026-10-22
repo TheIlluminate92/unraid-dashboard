@@ -17,8 +17,12 @@
   var previousRapl = null;
   var previousNetwork = null;
   var lastSnapshotAt = 0;
-  var coreSignature = '';
+  var coreSignature = null;
   var coreNodes = {};
+  var coreSummaries = {};
+  var socketSummaries = {};
+  var expansionKey = 'waz.dashboard.cpuExpansion.v1';
+  var expansion = readExpansion();
   var smoothLoads = {};
   var cpuHistory = [];
   var rxHistory = [];
@@ -74,12 +78,86 @@
     return Math.round(bits) + ' b/s';
   }
 
-  function cpuDelta(current, previous) {
+  function counterDelta(current, previous) {
     if (!current || !previous) return null;
+    if (![current.total, current.idle, previous.total, previous.idle].every(finite)) return null;
     var total = Number(current.total) - Number(previous.total);
     var idle = Number(current.idle) - Number(previous.idle);
-    if (!isFinite(total) || !isFinite(idle) || total <= 0) return null;
-    return clamp(100 * (total - idle) / total, 0, 100);
+    if (total <= 0 || idle < 0 || idle > total) return null;
+    return { busy: total - idle, total: total };
+  }
+
+  function cpuDelta(current, previous) {
+    var delta = counterDelta(current, previous);
+    return delta ? 100 * delta.busy / delta.total : null;
+  }
+
+  function readExpansion() {
+    var saved = Object.create(null);
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(expansionKey) || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        Object.keys(parsed).forEach(function (key) {
+          if (/^(socket|core):/.test(key) && parsed[key] === true) saved[key] = true;
+        });
+      }
+    } catch (error) { /* Storage may be blocked or contain an older value. */ }
+    return saved;
+  }
+
+  function saveExpansion() {
+    try { window.localStorage.setItem(expansionKey, JSON.stringify(expansion)); }
+    catch (error) { /* The view still works without persistent browser storage. */ }
+  }
+
+  function rememberExpansion(details, key) {
+    details.open = expansion[key] === true;
+    details.addEventListener('toggle', function () {
+      if (details.open) expansion[key] = true;
+      else delete expansion[key];
+      saveExpansion();
+    });
+  }
+
+  function coreKey(core) {
+    return String(core.packageId == null ? 'unknown' : core.packageId) + ':' + core.coreId;
+  }
+
+  function cpuSummary(details, label, description) {
+    var summary = document.createElement('summary');
+    summary.className = 'waz-cpu-summary';
+    var name = document.createElement('span');
+    name.className = 'waz-cpu-summary-name';
+    var heading = document.createElement('b');
+    heading.textContent = label;
+    var count = document.createElement('small');
+    count.textContent = description;
+    name.appendChild(heading);
+    name.appendChild(count);
+    var load = document.createElement('em');
+    load.textContent = '--';
+    var temp = document.createElement('span');
+    temp.className = 'waz-cpu-summary-temp';
+    temp.textContent = '--';
+    summary.appendChild(name);
+    summary.appendChild(load);
+    summary.appendChild(temp);
+    details.appendChild(summary);
+    return { value: load, temp: temp };
+  }
+
+  function combinedLoad(threads, counters) {
+    var busy = 0;
+    var total = 0;
+    var seen = Object.create(null);
+    threads.forEach(function (thread) {
+      var key = 'cpu' + thread.cpuId;
+      if (seen[key]) return;
+      seen[key] = true;
+      var delta = counterDelta(counters[key], previousCpu && previousCpu[key]);
+      if (delta) { busy += delta.busy; total += delta.total; }
+    });
+    return total > 0 ? busy * 100 / total : null;
   }
 
   function smooth(key, value) {
@@ -130,39 +208,67 @@
     if (!target) return;
     target.textContent = '';
     coreNodes = {};
-
+    coreSummaries = {};
+    socketSummaries = {};
+    smoothLoads = {};
+    var sockets = Object.create(null);
+    var retained = Object.create(null);
+    if (!cores.length) target.textContent = 'CPU topology unavailable';
     cores.forEach(function (core) {
-      var card = document.createElement('div');
-      card.className = 'waz-core';
-      var head = document.createElement('div');
-      head.className = 'waz-core-head';
-      var label = document.createElement('b');
-      label.textContent = 'CORE ' + core.coreId;
-      var temp = document.createElement('span');
-      temp.textContent = temperature(core.tempC);
-      head.appendChild(label);
-      head.appendChild(temp);
-      card.appendChild(head);
-
-      (core.threads || []).forEach(function (thread) {
-        var row = document.createElement('div');
-        row.className = 'waz-thread';
-        var threadLabel = document.createElement('b');
-        threadLabel.textContent = 'CPU ' + thread.cpuId;
-        var meter = document.createElement('span');
-        meter.className = 'waz-mini-meter';
-        var fill = document.createElement('i');
-        meter.appendChild(fill);
-        var value = document.createElement('em');
-        value.textContent = '--';
-        row.appendChild(threadLabel);
-        row.appendChild(meter);
-        row.appendChild(value);
-        card.appendChild(row);
-        coreNodes[String(thread.cpuId)] = { fill: fill, value: value, temp: temp };
-      });
-      target.appendChild(card);
+      var key = String(core.packageId == null ? 'unknown' : core.packageId);
+      if (!sockets[key]) sockets[key] = [];
+      sockets[key].push(core);
     });
+    Object.keys(sockets).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).forEach(function (socketId) {
+      var socketCores = sockets[socketId];
+      var threads = [].concat.apply([], socketCores.map(function (core) { return core.threads || []; }));
+      var socket = document.createElement('details');
+      socket.className = 'waz-cpu-socket';
+      var socketKey = 'socket:' + socketId;
+      retained[socketKey] = expansion[socketKey] === true;
+      rememberExpansion(socket, socketKey);
+      var socketNodes = cpuSummary(socket, 'SOCKET ' + socketId, socketCores.length + (socketCores.length === 1 ? ' core · ' : ' cores · ') + threads.length + (threads.length === 1 ? ' thread' : ' threads'));
+      socketNodes.temp.title = 'Hottest available core temperature';
+      socketSummaries[socketId] = socketNodes;
+      var grid = document.createElement('div');
+      grid.className = 'waz-socket-cores';
+      socketCores.forEach(function (core) {
+        var card = document.createElement('details');
+        card.className = 'waz-core';
+        var key = coreKey(core);
+        retained['core:' + key] = expansion['core:' + key] === true;
+        rememberExpansion(card, 'core:' + key);
+        var threadCount = (core.threads || []).length;
+        var summaryNodes = cpuSummary(card, 'CORE ' + core.coreId, threadCount + (threadCount === 1 ? ' thread' : ' threads'));
+        coreSummaries[key] = summaryNodes;
+        var threadList = document.createElement('div');
+        threadList.className = 'waz-core-threads';
+
+        (core.threads || []).forEach(function (thread) {
+          var row = document.createElement('div');
+          row.className = 'waz-thread';
+          var threadLabel = document.createElement('b');
+          threadLabel.textContent = 'CPU ' + thread.cpuId;
+          var meter = document.createElement('span');
+          meter.className = 'waz-mini-meter';
+          var fill = document.createElement('i');
+          meter.appendChild(fill);
+          var value = document.createElement('em');
+          value.textContent = '--';
+          row.appendChild(threadLabel);
+          row.appendChild(meter);
+          row.appendChild(value);
+          threadList.appendChild(row);
+          coreNodes[String(thread.cpuId)] = { fill: fill, value: value };
+        });
+        card.appendChild(threadList);
+        grid.appendChild(card);
+      });
+      socket.appendChild(grid);
+      target.appendChild(socket);
+    });
+    expansion = retained;
+    saveExpansion();
   }
 
   function renderCpu(cpu) {
@@ -172,14 +278,24 @@
     text('waz-cpu-count', (cpu.cores || []).length + ' cores / ' + (cpu.threadCount || 0) + ' threads');
 
     var signature = (cpu.cores || []).map(function (core) {
-      return core.coreId + ':' + (core.threads || []).map(function (thread) { return thread.cpuId; }).join(',');
+      return coreKey(core) + ':' + (core.threads || []).map(function (thread) { return thread.cpuId; }).join(',');
     }).join('|');
     if (signature !== coreSignature) {
       rebuildCores(cpu.cores || []);
       coreSignature = signature;
     }
 
+    var sockets = Object.create(null);
     (cpu.cores || []).forEach(function (core) {
+      var socketId = String(core.packageId == null ? 'unknown' : core.packageId);
+      if (!sockets[socketId]) sockets[socketId] = { threads: [], temperatures: [] };
+      sockets[socketId].threads = sockets[socketId].threads.concat(core.threads || []);
+      if (finite(core.tempC)) sockets[socketId].temperatures.push(core.tempC);
+      var summary = coreSummaries[coreKey(core)];
+      if (summary) {
+        summary.value.textContent = percent(smooth('core:' + coreKey(core), combinedLoad(core.threads || [], counters)));
+        summary.temp.textContent = temperature(core.tempC);
+      }
       (core.threads || []).forEach(function (thread) {
         var key = String(thread.cpuId);
         var load = smooth('cpu' + key, cpuDelta(counters['cpu' + key], previousCpu && previousCpu['cpu' + key]));
@@ -187,8 +303,14 @@
         if (!targets) return;
         targets.value.textContent = percent(load);
         targets.fill.style.width = (finite(load) ? clamp(load, 0, 100) : 0) + '%';
-        targets.temp.textContent = temperature(core.tempC);
       });
+    });
+    Object.keys(sockets).forEach(function (socketId) {
+      var targets = socketSummaries[socketId];
+      if (!targets) return;
+      var socket = sockets[socketId];
+      targets.value.textContent = percent(smooth('socket:' + socketId, combinedLoad(socket.threads, counters)));
+      targets.temp.textContent = temperature(socket.temperatures.length ? Math.max.apply(Math, socket.temperatures) : null);
     });
 
     if (finite(overall)) {
