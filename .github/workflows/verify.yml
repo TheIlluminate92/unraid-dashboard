@@ -38,6 +38,7 @@ jobs:
       - name: Build and verify canonical installer safeguards
         run: |
           node --test src/waz-dashboard-plugin/tests/cpu-view.test.mjs
+          node --test src/waz-dashboard-plugin/tests/optional-fans.test.mjs
           bash src/waz-dashboard-plugin/scripts/build.sh
           php src/waz-dashboard-plugin/tests/registration.php src/waz-dashboard-plugin/dist/waz.dashboard.plg
           bash src/waz-dashboard-plugin/tests/installer-helper.sh

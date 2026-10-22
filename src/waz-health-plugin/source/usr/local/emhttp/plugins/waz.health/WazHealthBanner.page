@@ -15,6 +15,7 @@ $jsVersion = is_file($jsFile) ? filemtime($jsFile) : 0;
 window.WAZHealthBootstrap = <?=json_encode([
     'endpoint' => $webRoot . '/include/status.php',
     'fanEndpoint' => '/plugins/md12xx.fancontrol/include/api.php',
+    'fanAvailable' => is_file('/usr/local/emhttp/plugins/md12xx.fancontrol/include/api.php'),
     'refreshMs' => 5000,
 ], JSON_UNESCAPED_SLASHES)?>;
 </script>

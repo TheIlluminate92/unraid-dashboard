@@ -213,6 +213,10 @@
   letter-spacing: 0.045em;
 }
 
+#waz-health-banner [hidden] {
+  display: none !important;
+}
+
 #waz-health-banner .waz-health__fans-label,
 #waz-health-banner .waz-health__fan-readings {
   display: inline-flex;
