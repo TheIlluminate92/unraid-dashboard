@@ -2,13 +2,13 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.22.02">
+  <!ENTITY version "2026.10.22.03">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
-### 0.8.4 - Build 2026.10.22.02
+### 0.8.4 - Build 2026.10.22.03
 - Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
 - Supports pool-only systems: hides the array section when no array is assigned, excludes empty disk slots, and reports unconfigured parity without false failures. Assigned missing disks still raise faults.
 - Hides unavailable MD12xx fan controls and skips polling absent fan and HBA Viewer plugins. Stops on confirmed missing endpoints while retrying transient failures.
@@ -5367,7 +5367,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.4',
-        'pluginVersion' => '2026.10.22.02',
+        'pluginVersion' => '2026.10.22.03',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5393,7 +5393,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.4';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.02';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.03';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5885,7 +5885,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.4';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.02';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.03';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6659,7 +6659,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.4';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.02';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.03';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7568,8 +7568,8 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.02">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.02"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.03">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.03"></script>
 
 ]]>
 </INLINE>
@@ -7670,8 +7670,8 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.02">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.02"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.03">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.03"></script>
 
 ]]>
 </INLINE>
@@ -7757,9 +7757,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.02">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.02"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.02"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.03">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.03"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.03"></script>
 
 ]]>
 </INLINE>
