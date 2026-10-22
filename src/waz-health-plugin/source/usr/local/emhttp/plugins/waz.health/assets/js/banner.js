@@ -6,6 +6,7 @@
   var config = window.WAZHealthBootstrap || {};
   var endpoint = config.endpoint || "/plugins/waz.health/include/status.php";
   var fanEndpoint = config.fanEndpoint || "/plugins/md12xx.fancontrol/include/api.php";
+  var fanAvailable = config.fanAvailable !== false;
   // Unraid publishes the current session token as a page-global variable.
   var csrfToken = String(window.csrf_token || config.csrfToken || "");
   var refreshMs = Math.max(3000, Number(config.refreshMs) || 5000);
@@ -133,7 +134,7 @@
   }
 
   function setFanMode(value) {
-    if (fanBusy || !state.fans.enabled) return;
+    if (fanBusy || !fanAvailable || !state.fans.enabled) return;
     var manual = value !== "auto";
     var speed = manual ? Number(value) : Number(state.fans.manualSpeed || 20);
     var prompt = manual
@@ -463,12 +464,13 @@
         return response.json();
       })
       .then(function (snapshot) { return snapshot; });
-    var fanRequest = fetch(fanEndpoint + "?_=" + Date.now(), {
+    var fanRequest = !fanAvailable ? Promise.resolve({ available: false, enabled: false }) : fetch(fanEndpoint + "?_=" + Date.now(), {
       credentials: "same-origin",
       cache: "no-store",
       headers: { Accept: "application/json" }
     })
       .then(function (response) {
+        if (response.status === 404 || response.status === 410) fanAvailable = false;
         if (!response.ok) throw new Error("MD12xx Fan Control endpoint returned " + response.status);
         return response.json();
       })

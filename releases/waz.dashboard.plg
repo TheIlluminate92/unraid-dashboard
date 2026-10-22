@@ -365,6 +365,10 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   letter-spacing: 0.045em;
 }
 
+#waz-health-banner [hidden] {
+  display: none !important;
+}
+
 #waz-health-banner .waz-health__fans-label,
 #waz-health-banner .waz-health__fan-readings {
   display: inline-flex;
@@ -2215,6 +2219,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   var config = window.WAZHealthBootstrap || {};
   var endpoint = config.endpoint || "/plugins/waz.dashboard/include/status.php";
   var fanEndpoint = config.fanEndpoint || "/plugins/md12xx.fancontrol/include/api.php";
+  var fanAvailable = config.fanAvailable !== false;
   // Unraid publishes the current session token as a page-global variable.
   var csrfToken = String(window.csrf_token || config.csrfToken || "");
   var refreshMs = Math.max(3000, Number(config.refreshMs) || 5000);
@@ -2342,7 +2347,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   }
 
   function setFanMode(value) {
-    if (fanBusy || !state.fans.enabled) return;
+    if (fanBusy || !fanAvailable || !state.fans.enabled) return;
     var manual = value !== "auto";
     var speed = manual ? Number(value) : Number(state.fans.manualSpeed || 20);
     var prompt = manual
@@ -2672,12 +2677,13 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
         return response.json();
       })
       .then(function (snapshot) { return snapshot; });
-    var fanRequest = fetch(fanEndpoint + "?_=" + Date.now(), {
+    var fanRequest = !fanAvailable ? Promise.resolve({ available: false, enabled: false }) : fetch(fanEndpoint + "?_=" + Date.now(), {
       credentials: "same-origin",
       cache: "no-store",
       headers: { Accept: "application/json" }
     })
       .then(function (response) {
+        if (response.status === 404 || response.status === 410) fanAvailable = false;
         if (!response.ok) throw new Error("MD12xx Fan Control endpoint returned " + response.status);
         return response.json();
       })
@@ -7537,6 +7543,7 @@ $jsVersion = is_file($jsFile) ? filemtime($jsFile) : 0;
 window.WAZHealthBootstrap = <?=json_encode([
     'endpoint' => $webRoot . '/include/status.php',
     'fanEndpoint' => '/plugins/md12xx.fancontrol/include/api.php',
+    'fanAvailable' => is_file('/usr/local/emhttp/plugins/md12xx.fancontrol/include/api.php'),
     'refreshMs' => 5000,
 ], JSON_UNESCAPED_SLASHES)?>;
 </script>
