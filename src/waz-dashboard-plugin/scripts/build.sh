@@ -13,6 +13,13 @@ emit_file() {
   local RELATIVE="${2/\/plugins\/waz.dashboard\//\/plugins\/.waz.dashboard.staged\/}"
   local INTEGRATED_HEALTH="${3:-false}"
 
+  if [[ "$SOURCE_FILE" == *.png ]]; then
+    printf '<FILE Name="%s" Type="base64"><INLINE>' "$RELATIVE" >> "$FILES_PATH"
+    base64 < "$SOURCE_FILE" | tr -d '\r\n' >> "$FILES_PATH"
+    printf '</INLINE></FILE>\n' >> "$FILES_PATH"
+    return
+  fi
+
   if grep -q ']]>' "$SOURCE_FILE"; then
     echo "Source file cannot be embedded in CDATA: $SOURCE_FILE" >&2
     exit 1

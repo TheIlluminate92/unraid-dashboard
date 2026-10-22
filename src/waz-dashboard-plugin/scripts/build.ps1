@@ -39,6 +39,11 @@ foreach ($mapping in $healthMappings.GetEnumerator()) {
 
 $blocks = foreach ($file in ($files | Sort-Object Target)) {
     $relative = $file.Target.Replace('/plugins/waz.dashboard/', '/plugins/.waz.dashboard.staged/')
+    if ([System.IO.Path]::GetExtension($file.Source) -eq '.png') {
+        $encoded = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($file.Source))
+        "<FILE Name=`"$relative`" Type=`"base64`"><INLINE>$encoded</INLINE></FILE>"
+        continue
+    }
     $content = [System.IO.File]::ReadAllText($file.Source).Replace("`r`n", "`n")
     $content = $content.Replace('@@APP_VERSION@@', $appVersion).Replace('@@PLUGIN_VERSION@@', $releaseVersion)
     if ($file.IsHealth) {

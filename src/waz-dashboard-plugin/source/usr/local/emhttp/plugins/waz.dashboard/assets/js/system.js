@@ -13,6 +13,7 @@
   var snapshotTimer = null;
   var hbaTimer = null;
   var hbaHasData = false;
+  var hbaAvailable = root.getAttribute('data-hba-available') !== 'no';
   var previousCpu = null;
   var previousRapl = null;
   var previousNetwork = null;
@@ -507,24 +508,35 @@
 
   function hbaLoop() {
     if (stopped) return;
+    if (!hbaAvailable) {
+      text('waz-hba-0-detail', 'HBA Viewer not installed');
+      text('waz-hba-1-detail', 'HBA Viewer not installed');
+      return;
+    }
     fetch('/plugins/hbaviewer/export.php?format=json&_=' + Date.now(), {
       cache: 'no-store',
       credentials: 'same-origin'
     })
       .then(function (response) {
+        if (response.status === 404 || response.status === 410) {
+          hbaAvailable = false;
+          hbaHasData = false;
+          renderHbaCell(0, null);
+          renderHbaCell(1, null);
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status);
         return response.json();
       })
       .then(renderHba)
       .catch(function (error) {
         if (!hbaHasData) {
-          var message = /HTTP 404/.test(String(error && error.message)) ? 'HBA Viewer not installed' : 'HBA Viewer warming…';
+          var message = !hbaAvailable ? 'HBA Viewer not installed' : 'HBA Viewer warming…';
           text('waz-hba-0-detail', message);
           text('waz-hba-1-detail', message);
         }
       })
       .then(function () {
-        if (!stopped) hbaTimer = window.setTimeout(hbaLoop, hbaHasData ? 60000 : 5000);
+        if (!stopped && hbaAvailable) hbaTimer = window.setTimeout(hbaLoop, hbaHasData ? 60000 : 5000);
       });
   }
 

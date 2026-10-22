@@ -7,7 +7,7 @@ $activation = '';
 foreach ($manifest->FILE as $file) if ((string)$file['Run'] === '/bin/bash' && (string)$file['Method'] !== 'remove') $activation = (string)$file->INLINE;
 function check(bool $ok, string $why): void { if (!$ok) throw new RuntimeException($why); }
 function clean(string $dir): void { foreach (new FilesystemIterator($dir) as $p) { if ($p->isDir() && !$p->isLink()) clean($p->getPathname()); else unlink($p->getPathname()); } rmdir($dir); }
-foreach (['success','invalid-php','failed-start','failed-stop'] as $scenario) {
+foreach (['success','invalid-php','invalid-icon','failed-start','failed-stop'] as $scenario) {
     $root = sys_get_temp_dir() . '/plugin-activation-' . bin2hex(random_bytes(8));
     mkdir($root);
         $map = ['/usr/local/emhttp/plugins'=>$root.'/plugins','/boot/config/plugins'=>$root.'/config','/var/run'=>$root.'/run','/var/tmp'=>$root.'/tmp'];
@@ -21,7 +21,8 @@ foreach (['success','invalid-php','failed-start','failed-stop'] as $scenario) {
             $target = strtr($target,$map);
             check(str_starts_with($target,$staged.'/'), 'All payload files must be staged');
             if (!is_dir(dirname($target))) mkdir(dirname($target),0755,true);
-            file_put_contents($target,ltrim(strtr((string)$file->INLINE,$map), "\r\n"));
+            $contents = (string)$file->INLINE;
+            file_put_contents($target, (string)$file['Type'] === 'base64' ? base64_decode(trim($contents), true) : ltrim(strtr($contents,$map), "\r\n"));
         }
         mkdir($live . '/scripts',0755,true);
         mkdir($root . '/config/' . $name,0755,true);
@@ -35,6 +36,7 @@ foreach (['success','invalid-php','failed-start','failed-stop'] as $scenario) {
         file_put_contents($staged.'/scripts/start.sh',"#!/bin/bash\nexit " . ($scenario==='failed-start'?'1':'0') . "\n");
         file_put_contents($staged.'/scripts/stop.sh',"#!/bin/bash\nexit 0\n");
         if ($scenario === 'invalid-php') file_put_contents($staged.'/include/' . ($name === 'md12xx.fancontrol' ? 'common.php' : 'metrics.php'), '<?php syntax error!');
+        if ($scenario === 'invalid-icon') file_put_contents($staged.'/images/waz.dashboard.png', 'invalid PNG');
         file_put_contents($root.'/activate.sh',strtr($activation,$map));
         $out = [];
         exec('bash '.escapeshellarg($root.'/activate.sh').' 2>&1',$out,$status);
