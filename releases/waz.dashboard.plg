@@ -6484,7 +6484,7 @@ function waz_storage_attention(array $array, array $parity, array $pools): array
     if (($parity['active'] ?? false) === true) {
         $progress = waz_storage_number($parity['progressPercent'] ?? null);
         $messages[] = 'Parity check in progress' . ($progress === null ? '' : ' · ' . round($progress) . '%');
-    } elseif (($parity['valid'] ?? true) !== true) {
+    } elseif (($parity['configured'] ?? true) && ($parity['valid'] ?? true) !== true) {
         $messages[] = ((int) ($parity['errors'] ?? 0)) > 0
             ? 'Parity · ' . (int) $parity['errors'] . ' error' . ((int) $parity['errors'] === 1 ? '' : 's')
             : 'Parity · last check did not complete cleanly';

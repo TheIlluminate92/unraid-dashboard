@@ -15,6 +15,7 @@ check_pool(!waz_storage_array_data([], ['mdState' => 'STARTED'])['configured'], 
 check_pool(!waz_storage_array_data([['type' => 'Cache']], ['mdState' => 'STARTED'])['configured'], 'Pool disks do not configure an array');
 check_pool(waz_storage_array_data([['type' => 'Parity', 'state' => 'fault']], ['mdState' => 'STARTED'])['configured'], 'Missing assigned parity keeps array section visible');
 check_pool(!$none['configured'] && !$none['valid'] && $none['state'] === 'normal', 'Pool-only parity is unconfigured, not valid or faulted');
+check_pool(waz_storage_attention(waz_storage_array_data([], ['mdState' => 'STARTED']), $none, [])['count'] === 0, 'Unconfigured parity produces no phantom attention message');
 $disk = ['type' => 'Parity', 'name' => 'parity', 'state' => 'normal'];
 $healthy = waz_storage_parity_data([$disk], [], []);
 check_pool($healthy['configured'] && $healthy['valid'], 'Configured healthy parity retained');
