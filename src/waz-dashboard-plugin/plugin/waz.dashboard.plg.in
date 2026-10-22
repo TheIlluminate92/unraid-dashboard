@@ -6,10 +6,13 @@
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
-<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
-### 0.8.4 - Build 2026.10.22.01
+### 0.8.4 - Build 2026.10.22.02
 - Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
+- Supports pool-only systems: hides the array section when no array is assigned, excludes empty disk slots, and reports unconfigured parity without false failures. Assigned missing disks still raise faults.
+- Hides unavailable MD12xx fan controls and skips polling absent fan and HBA Viewer plugins. Stops on confirmed missing endpoints while retrying transient failures.
+- Adds a bundled dashboard icon and direct Dashboard launch link. Asset cache versions now follow the package build.
 
 ### 0.8.3 - Build 2026.10.20.01
 - Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
@@ -165,6 +168,8 @@ chmod 0644 "$RUNTIME_DIR/assets/css/system.css" "$RUNTIME_DIR/assets/css/workloa
 chmod 0644 "$RUNTIME_DIR/assets/js/system.js" "$RUNTIME_DIR/assets/js/workloads.js" "$RUNTIME_DIR/assets/js/storage.js" "$RUNTIME_DIR/assets/js/banner.js"
 chmod 0644 "$RUNTIME_DIR/include/metrics.php" "$RUNTIME_DIR/include/workloads.php" "$RUNTIME_DIR/include/storage.php" "$RUNTIME_DIR/include/gpu-sampler.php" "$RUNTIME_DIR/include/health.php" "$RUNTIME_DIR/include/status.php"
 chmod 0755 "$RUNTIME_DIR/scripts/start.sh" "$RUNTIME_DIR/scripts/stop.sh"
+chmod 0644 "$RUNTIME_DIR/images/waz.dashboard.png" "$RUNTIME_DIR/images/waz.dashboard.svg"
+php -r '$image = getimagesize($argv[1]); if (!$image || $image[0] !== 256 || $image[1] !== 256 || $image[2] !== IMAGETYPE_PNG) exit(1);' "$RUNTIME_DIR/images/waz.dashboard.png"
 
 php -l "$RUNTIME_DIR/include/metrics.php" >/dev/null
 php -l "$RUNTIME_DIR/include/workloads.php" >/dev/null

@@ -5,6 +5,8 @@ $node = Get-Command node -ErrorAction Stop
 if ($LASTEXITCODE -ne 0) { throw 'CPU disclosure and aggregation regression tests failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/optional-fans.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Optional fan plugin regression tests failed.' }
+& $node.Source --test (Join-Path $projectRoot 'tests/optional-hba.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Optional HBA plugin regression tests failed.' }
 $manifest = Join-Path $projectRoot 'dist/waz.dashboard.plg'
 
 & (Join-Path $projectRoot 'scripts/build.ps1') -OutputPath $manifest
@@ -23,6 +25,8 @@ $required = @(
     '/usr/local/emhttp/plugins/waz.dashboard/WazWorkloads.page',
     '/usr/local/emhttp/plugins/waz.dashboard/WazStorage.page',
     '/usr/local/emhttp/plugins/waz.dashboard/WazHealthBanner.page',
+    '/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png',
+    '/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.svg',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/system.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/workloads.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/storage.css',
@@ -49,6 +53,14 @@ foreach ($path in $required) {
 }
 
 [xml]$packageXml = $manifestText
+$iconFile = $packageXml.PLUGIN.FILE | Where-Object { $_.Name -like '*/images/waz.dashboard.png' }
+if ($packageXml.PLUGIN.icon -ne 'waz.dashboard.png' -or $packageXml.PLUGIN.launch -ne 'Dashboard' -or $iconFile.Type -ne 'base64') {
+    throw 'Plugin icon or launch metadata is invalid.'
+}
+$iconBytes = [Convert]::FromBase64String([string]$iconFile.INLINE)
+if ([Convert]::ToHexString($iconBytes[0..7]) -ne '89504E470D0A1A0A') { throw 'Packaged icon is not a PNG.' }
+$sourceIcon = [System.IO.File]::ReadAllBytes((Join-Path $projectRoot 'source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png'))
+if ([Convert]::ToBase64String($iconBytes) -ne [Convert]::ToBase64String($sourceIcon)) { throw 'Packaged PNG differs from source.' }
 $appVersion = [System.IO.File]::ReadAllText((Join-Path $projectRoot 'VERSION')).Trim()
 $buildVersion = [System.IO.File]::ReadAllText((Join-Path $projectRoot 'RELEASE')).Trim()
 if ($packageXml.PLUGIN.author -ne 'TheIlluminate92' -or $packageXml.PLUGIN.name -ne 'waz.dashboard') {

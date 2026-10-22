@@ -60,7 +60,7 @@ This was the first unified release. It combined the Health banner, Server Status
 
 File: [`releases/waz.dashboard.plg`](../releases/waz.dashboard.plg)
 
-This is the current rolling release. It fixes disk-temperature severity so WAZ follows Unraid's per-device overrides and separate global HDD/SSD defaults instead of falling through to built-in thresholds. A configured zero threshold is treated as disabled.
+This historical release fixed disk-temperature severity so WAZ follows Unraid's per-device overrides and separate global HDD/SSD defaults instead of falling through to built-in thresholds. A configured zero threshold is treated as disabled.
 
 ## Unraid Dashboard v0.8.0 — build 2026.09.01.04
 
@@ -68,6 +68,6 @@ This release added Unraid's native Tile Management window through the blue wrenc
 
 SHA-256: `c13aaa646f7896ed83d1ad0c22f48cf0596063ecac3691502b4eb36043495b48`
 
-## Unraid Dashboard v0.8.4 — build 2026.10.22.01
+## Unraid Dashboard v0.8.4 — build 2026.10.22.02
 
-Adds three-stage CPU disclosure (socket, physical core, logical thread), browser-persisted expansion choices, and weighted utilization summaries. The previous v0.8.3 canonical artifact is preserved in `releases/history/waz.dashboard-v0.8.3.plg`.
+Adds three-stage CPU disclosure (socket, physical core, logical thread), browser-persisted expansion choices, and weighted utilization summaries. Also fixes pool-only disk/parity reporting, hides unconfigured arrays, removes unavailable fan controls, and avoids polling absent fan/HBA plugins. Adds a bundled dashboard icon and a Dashboard launch link. The previous v0.8.3 canonical artifact is preserved in `releases/history/waz.dashboard-v0.8.3.plg`.

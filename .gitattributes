@@ -12,3 +12,5 @@ VERSION text eol=lf
 PLUGIN_VERSION text eol=lf
 RELEASE text eol=lf
 SHA256SUMS text eol=lf
+*.png binary
+*.svg text eol=lf

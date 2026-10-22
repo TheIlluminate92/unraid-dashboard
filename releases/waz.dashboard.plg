@@ -2,14 +2,17 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.22.01">
+  <!ENTITY version "2026.10.22.02">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
-<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="fa-tachometer">
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
-### 0.8.4 - Build 2026.10.22.01
+### 0.8.4 - Build 2026.10.22.02
 - Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
+- Supports pool-only systems: hides the array section when no array is assigned, excludes empty disk slots, and reports unconfigured parity without false failures. Assigned missing disks still raise faults.
+- Hides unavailable MD12xx fan controls and skips polling absent fan and HBA Viewer plugins. Stops on confirmed missing endpoints while retrying transient failures.
+- Adds a bundled dashboard icon and direct Dashboard launch link. Asset cache versions now follow the package build.
 
 ### 0.8.3 - Build 2026.10.20.01
 - Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
@@ -3245,6 +3248,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   var snapshotTimer = null;
   var hbaTimer = null;
   var hbaHasData = false;
+  var hbaAvailable = root.getAttribute('data-hba-available') !== 'no';
   var previousCpu = null;
   var previousRapl = null;
   var previousNetwork = null;
@@ -3739,24 +3743,35 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
 
   function hbaLoop() {
     if (stopped) return;
+    if (!hbaAvailable) {
+      text('waz-hba-0-detail', 'HBA Viewer not installed');
+      text('waz-hba-1-detail', 'HBA Viewer not installed');
+      return;
+    }
     fetch('/plugins/hbaviewer/export.php?format=json&_=' + Date.now(), {
       cache: 'no-store',
       credentials: 'same-origin'
     })
       .then(function (response) {
+        if (response.status === 404 || response.status === 410) {
+          hbaAvailable = false;
+          hbaHasData = false;
+          renderHbaCell(0, null);
+          renderHbaCell(1, null);
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status);
         return response.json();
       })
       .then(renderHba)
       .catch(function (error) {
         if (!hbaHasData) {
-          var message = /HTTP 404/.test(String(error && error.message)) ? 'HBA Viewer not installed' : 'HBA Viewer warming…';
+          var message = !hbaAvailable ? 'HBA Viewer not installed' : 'HBA Viewer warming…';
           text('waz-hba-0-detail', message);
           text('waz-hba-1-detail', message);
         }
       })
       .then(function () {
-        if (!stopped) hbaTimer = window.setTimeout(hbaLoop, hbaHasData ? 60000 : 5000);
+        if (!stopped && hbaAvailable) hbaTimer = window.setTimeout(hbaLoop, hbaHasData ? 60000 : 5000);
       });
   }
 
@@ -4342,6 +4357,29 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   window.setTimeout(syncHeight, 0);
   workloadsLoop();
 })();
+
+]]>
+</INLINE>
+</FILE>
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/images/waz.dashboard.png" Type="base64"><INLINE>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</INLINE></FILE>
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/images/waz.dashboard.svg">
+<INLINE>
+<![CDATA[
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">WAZ Dashboard</title>
+  <defs>
+    <linearGradient id="tile" x2="0.8" y2="1"><stop stop-color="#253844"/><stop offset="1" stop-color="#10171e"/></linearGradient>
+    <linearGradient id="arc" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#22b8f0"/><stop offset="1" stop-color="#62e2e8"/></linearGradient>
+  </defs>
+  <rect x="5" y="5" width="246" height="246" rx="55" fill="url(#tile)" stroke="#48616f" stroke-width="3"/>
+  <path d="M49 145a79 79 0 1 1 158 0" fill="none" stroke="#344954" stroke-width="17" stroke-linecap="round"/>
+  <path d="M49 145a79 79 0 0 1 139-51" fill="none" stroke="url(#arc)" stroke-width="17" stroke-linecap="round"/>
+  <path d="m128 145 43-45" fill="none" stroke="#f4fbff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="128" cy="145" r="14" fill="#22b8f0" stroke="#14232b" stroke-width="5"/>
+  <rect x="49" y="184" width="43" height="20" rx="5" fill="#22b8f0"/>
+  <rect x="106" y="184" width="43" height="20" rx="5" fill="#62e2e8"/>
+  <rect x="163" y="184" width="43" height="20" rx="5" fill="#f2a900"/>
+</svg>
 
 ]]>
 </INLINE>
@@ -5329,7 +5367,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.4',
-        'pluginVersion' => '2026.10.22.01',
+        'pluginVersion' => '2026.10.22.02',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5355,7 +5393,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.4';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.01';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.02';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5847,7 +5885,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.4';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.01';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.02';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6621,7 +6659,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.4';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.01';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.02';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7367,6 +7405,18 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_IN
 ]]>
 </INLINE>
 </FILE>
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/README.md">
+<INLINE>
+<![CDATA[
+**WAZ Dashboard** combines server status, Docker workloads, storage, and a health banner.
+
+Expand CPU sockets to see physical cores, then expand cores for individual threads. Pool-only systems hide the array section. Optional HBA Viewer and MD12xx integrations activate only when installed.
+
+Open **Dashboard** to view the panels. Existing settings are retained during updates.
+
+]]>
+</INLINE>
+</FILE>
 <FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/scripts/start.sh">
 <INLINE>
 <![CDATA[
@@ -7446,7 +7496,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.4">
+  <section class="waz-system" data-version="0.8.4" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7515,10 +7565,11 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
 </td></tr>
 </tbody>
 EOT;
+$mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=0.8.4">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=0.8.4"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.02">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.02"></script>
 
 ]]>
 </INLINE>
@@ -7619,8 +7670,8 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=0.8.4">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=0.8.4"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.02">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.02"></script>
 
 ]]>
 </INLINE>
@@ -7706,9 +7757,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=0.8.4">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=0.8.4"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=0.8.4"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.02">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.02"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.02"></script>
 
 ]]>
 </INLINE>
@@ -7730,6 +7781,8 @@ chmod 0644 "$RUNTIME_DIR/assets/css/system.css" "$RUNTIME_DIR/assets/css/workloa
 chmod 0644 "$RUNTIME_DIR/assets/js/system.js" "$RUNTIME_DIR/assets/js/workloads.js" "$RUNTIME_DIR/assets/js/storage.js" "$RUNTIME_DIR/assets/js/banner.js"
 chmod 0644 "$RUNTIME_DIR/include/metrics.php" "$RUNTIME_DIR/include/workloads.php" "$RUNTIME_DIR/include/storage.php" "$RUNTIME_DIR/include/gpu-sampler.php" "$RUNTIME_DIR/include/health.php" "$RUNTIME_DIR/include/status.php"
 chmod 0755 "$RUNTIME_DIR/scripts/start.sh" "$RUNTIME_DIR/scripts/stop.sh"
+chmod 0644 "$RUNTIME_DIR/images/waz.dashboard.png" "$RUNTIME_DIR/images/waz.dashboard.svg"
+php -r '$image = getimagesize($argv[1]); if (!$image || $image[0] !== 256 || $image[1] !== 256 || $image[2] !== IMAGETYPE_PNG) exit(1);' "$RUNTIME_DIR/images/waz.dashboard.png"
 
 php -l "$RUNTIME_DIR/include/metrics.php" >/dev/null
 php -l "$RUNTIME_DIR/include/workloads.php" >/dev/null

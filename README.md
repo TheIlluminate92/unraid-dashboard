@@ -1,6 +1,8 @@
 # Unraid Dashboard
 
-Current maintenance build: **0.8.4 / 2026.10.22.01**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
+<img src="src/waz-dashboard-plugin/source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png" width="96" height="96" alt="WAZ Dashboard icon">
+
+Current maintenance build: **0.8.4 / 2026.10.22.02**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
 
 Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.4**.
 
@@ -9,7 +11,7 @@ Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI p
 
 ![Unraid Dashboard status](https://img.shields.io/badge/status-rolling%20test-f2a900)
 ![Version](https://img.shields.io/badge/version-0.8.4-22b8f0)
-![Tested on Unraid](https://img.shields.io/badge/tested-Unraid%207.3.2-e95420)
+![Tested on Unraid](https://img.shields.io/badge/tested-Unraid%207.3.3-e95420)
 
 ## What v0.8.4 includes
 
@@ -22,14 +24,14 @@ Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI p
 - Clickable container cards that retain Unraid's native controls and load a dynamic telemetry inspector
 - Selected-container CPU, RAM, network, disk I/O, pool/share access, GPU activity, address, port, and status data
 - Top four host/Docker CPU processes
-- Compact parity state, last/next check timing, dynamic pools, physical disk locations, and a permanent array table
+- Compact parity state, last/next check timing, dynamic pools, physical disk locations, and an array table when an array is configured
 - Decimal storage units and collection paths designed not to wake sleeping array disks
 - One installable rolling plugin without permanent edits to Unraid core files
 - Optional compact MD12xx fan status and controls in the header through the separate [MD12xx Fan Control](https://github.com/TheIlluminate92/unraid-md12xx-fan-control) plugin's local API
 - API-provided shelf names, average RPM, controller health, Auto/Manual mode, targets, and supported manual speeds
 - No WAZ-owned serial access, SES discovery, temperature policy, commissioning, watchdog, or fan-controller process
 
-The Docker and Storage panels deliberately use dynamic detail windows. Selecting a Docker folder filters the visible containers; selecting a container loads its live details below. Selecting a pool loads only that pool's member disks while the full Array and physical Disk Location views remain visible.
+The Docker and Storage panels deliberately use dynamic detail windows. Selecting a Docker folder filters the visible containers; selecting a container loads its live details below. Selecting a pool loads only that pool's member disks while configured Array and physical Disk Location views remain visible. Pool-only servers hide the Array section.
 
 ## Install
 

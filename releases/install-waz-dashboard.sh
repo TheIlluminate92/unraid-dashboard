@@ -3,7 +3,7 @@ set -euo pipefail
 
 PLUGIN_NAME="waz.dashboard.plg"
 PLUGIN_URL="https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg"
-EXPECTED_SHA256="a5b2cd91a79636e069d5abc04fc47dc23eb0241c8ca71569add0e59013c5c155"
+EXPECTED_SHA256="343721ac6c8314d87b4d41b5af366a81eb9ababab87fb4fdc2e536cc25fa4ffb"
 SOURCE="${1:-$PLUGIN_URL}"
 WORK_DIR="$(mktemp -d /tmp/waz-dashboard-install.XXXXXX)"
 PACKAGE="$WORK_DIR/$PLUGIN_NAME"

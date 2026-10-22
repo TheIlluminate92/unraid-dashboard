@@ -9,7 +9,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="@@APP_VERSION@@">
+  <section class="waz-system" data-version="@@APP_VERSION@@" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -78,7 +78,8 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
 </td></tr>
 </tbody>
 EOT;
+$mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=@@APP_VERSION@@">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=@@APP_VERSION@@"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=@@PLUGIN_VERSION@@">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=@@PLUGIN_VERSION@@"></script>
