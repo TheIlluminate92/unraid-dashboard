@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.5 — 2026-10-22 (build 2026.10.22.04)
+
+- Keeps the wrench, clock and uptime anchored to the right when optional cooling controls are absent.
+- Supports WAZ Cooling Control: hides shelf controls when no MD12xx shelves are available, shows a chassis IPMI settings link when available, and includes chassis faults in Cooling and overall health. Existing shelf-only payloads remain compatible.
+- Preserves the plugin update identity and saved configuration. The dashboard displays cooling state; fan policy and hardware writes remain in the cooling plugin.
+- Validation: 16 JavaScript regressions, Windows manifest checks, and all five Windows/Linux PHP compatibility jobs passed. See #15 and #16.
+
+## 0.8.4 — 2026-10-22 (build 2026.10.22.03)
+
+- Adds three CPU views: socket summaries, physical cores, and all logical threads. Remembers expansion choices and calculates utilization from valid weighted counter deltas.
+- Supports pool-only systems by hiding the array section when no array disks are assigned. Empty slots do not create faults; assigned missing disks still do.
+- Hides unavailable MD12xx controls and avoids polling missing optional plugin endpoints while retrying transient failures.
+- Adds a bundled dashboard icon, Dashboard launch link, and asset cache versions tied to the package build. See #7, #8, #9 and #13.
+
 ## 0.8.3 — 2026-10-20
 
 Restricts the GPU worker to CLI, serializes instances and reaps its child. Removes full process arguments from responses, reports missing required sensors as unknown, and validates a staged runtime before activation with rollback. Adds regression coverage, PHP compatibility CI and migration documentation. No live installation or 7.4 hardware certification is claimed.
