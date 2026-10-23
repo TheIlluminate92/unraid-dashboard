@@ -71,3 +71,7 @@ SHA-256: `c13aaa646f7896ed83d1ad0c22f48cf0596063ecac3691502b4eb36043495b48`
 ## Unraid Dashboard v0.8.4 — build 2026.10.22.03
 
 Adds three-stage CPU disclosure (socket, physical core, logical thread), browser-persisted expansion choices, and weighted utilization summaries. Also fixes pool-only disk/parity reporting, hides unconfigured arrays, removes unavailable fan controls, and avoids polling absent fan/HBA plugins. Adds a bundled dashboard icon and a Dashboard launch link. The previous v0.8.3 canonical artifact is preserved in `releases/history/waz.dashboard-v0.8.3.plg`.
+
+## Unraid Dashboard v0.8.5 — build 2026.10.22.04
+
+Keeps header metadata on the right with or without fan controls. Understands combined cooling-plugin capabilities, with independently hidden MD12xx/IPMI indicators and chassis fault reporting. Preserves v0.8.4 in release history.

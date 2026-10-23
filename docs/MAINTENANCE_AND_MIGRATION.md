@@ -1,6 +1,6 @@
 # Maintenance and migration
 
-## 0.8.4 / build 2026.10.22.03
+## 0.8.5 / build 2026.10.22.04
 
 The CPU section defaults to one summary per detected socket. Expand a socket to show physical cores, then a core to show logical threads. Choices are stored per browser origin and safely fall back when storage is blocked. A socket temperature is the hottest available core reading; no new sensor collection is added. Combined utilization uses valid busy/total counter deltas, excluding missing or reset samples. Existing configuration, polling cadence, and unrelated panels are retained.
 

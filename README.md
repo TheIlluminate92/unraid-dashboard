@@ -2,18 +2,18 @@
 
 <img src="src/waz-dashboard-plugin/source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png" width="96" height="96" alt="WAZ Dashboard icon">
 
-Current maintenance build: **0.8.4 / 2026.10.22.03**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
+Current maintenance build: **0.8.5 / 2026.10.22.04**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
 
-Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.4**.
+Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.5**.
 
 > [!WARNING]
 > **This is a reference build, not a universal or supported Community Applications plugin.** It depends on specific Unraid plugins, runtime files, sensors, hardware, and WebUI behavior. Expect to adapt configuration or code for another server. Read the [disclaimer](DISCLAIMER.md), [dependencies](docs/DEPENDENCIES.md), and [recovery steps](docs/RECOVERY.md) before installing it.
 
 ![Unraid Dashboard status](https://img.shields.io/badge/status-rolling%20test-f2a900)
-![Version](https://img.shields.io/badge/version-0.8.4-22b8f0)
+![Version](https://img.shields.io/badge/version-0.8.5-22b8f0)
 ![Tested on Unraid](https://img.shields.io/badge/tested-Unraid%207.3.3-e95420)
 
-## What v0.8.4 includes
+## What v0.8.5 includes
 
 - Sticky full-width Health banner across Unraid WebUI pages
 - Live Array, Storage, Cooling, and UPS state with an expandable fault-detail row
