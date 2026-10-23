@@ -161,6 +161,14 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--waz-health-fault) 18%, transparent);
 }
 
+#waz-health-banner .waz-health__right {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: clamp(12px, 1.3vw, 20px);
+  margin-left: auto;
+}
+
 #waz-health-banner .waz-health__meta {
   flex: 0 0 auto;
   gap: clamp(12px, 1.3vw, 20px);
@@ -208,7 +216,7 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 9px;
-  margin-left: auto;
+  margin-left: 0;
   color: var(--waz-health-text);
   letter-spacing: 0.045em;
 }

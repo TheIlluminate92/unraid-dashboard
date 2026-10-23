@@ -99,7 +99,8 @@
       ? "MD12xx controller status is stale"
       : (controller.message || "");
     return {
-      available: true,
+      available: payload.md12xxAvailable !== false,
+      ipmi: payload.ipmi && typeof payload.ipmi === 'object' ? payload.ipmi : null,
       version: payload.version || "",
       enabled: enabled,
       mode: payload.mode === "manual" ? "manual" : "auto",
@@ -118,6 +119,12 @@
     state.subsystems = Object.assign({}, state.healthSubsystems || {});
     state.overall = Object.assign({}, state.healthOverall || state.overall);
     var fans = state.fans || {};
+    var ipmi = fans.ipmi || {};
+    if (ipmi.supported && (ipmi.state === 'fault' || (ipmi.stale && ipmi.config && ipmi.config.enabled))) {
+      var chassisMessage = ipmi.stale ? 'Chassis cooling status is stale' : (ipmi.message || 'Chassis cooling requires attention');
+      state.subsystems.cooling = Object.assign({}, state.subsystems.cooling || {}, { label: 'COOLING', state: 'fault', message: chassisMessage });
+      state.overall = Object.assign({}, state.overall, { label: 'FAULT', state: 'fault', message: chassisMessage });
+    }
     if (!fans.available || !fans.enabled || stateRank(fans.healthState) === 0) return;
     var cooling = Object.assign({ label: "COOLING", state: "unknown", message: "" }, state.subsystems.cooling || {});
     if (stateRank(fans.healthState) > stateRank(cooling.state)) {
@@ -262,9 +269,19 @@
     inner.appendChild(dividerOne);
     inner.appendChild(subsystems);
     inner.appendChild(dividerTwo);
-    inner.appendChild(fanControl);
-    inner.appendChild(dividerThree);
-    inner.appendChild(meta);
+    var right = document.createElement("span");
+    right.className = "waz-health__right";
+    var chassis = document.createElement('a');
+    chassis.className = 'waz-health__fans';
+    chassis.dataset.field = 'chassis';
+    chassis.href = '/MD12xxFanControl';
+    chassis.hidden = true;
+    chassis.title = 'Open chassis cooling controls';
+    right.appendChild(chassis);
+    right.appendChild(fanControl);
+    right.appendChild(dividerThree);
+    right.appendChild(meta);
+    inner.appendChild(right);
     root.appendChild(inner);
 
     var issues = document.createElement("div");
@@ -379,13 +396,21 @@
     if (!control) return;
     var fans = state.fans || {};
     var available = fans.available === true;
+    var ipmi = fans.ipmi || {};
+    var chassis = banner.querySelector('[data-field="chassis"]');
+    var chassisAvailable = ipmi.available === true;
+    if (chassis) {
+      chassis.hidden = !chassisAvailable;
+      chassis.dataset.state = ipmi.stale || ipmi.state === 'fault' ? 'fault' : 'normal';
+      chassis.textContent = 'IPMI · ' + (ipmi.stale ? 'STALE' : ipmi.mode === 'firmware' ? 'iDRAC AUTO' : ((ipmi.mode === 'manual' ? 'MANUAL ' : 'CURVE ') + (ipmi.targetPercent == null ? '—' : ipmi.targetPercent + '%'))) + (Number.isFinite(ipmi.averageRpm) ? ' · ' + ipmi.averageRpm + ' RPM' : '');
+    }
     var enabled = fans.enabled === true;
     var mode = fans.mode === "manual" ? "manual" : "auto";
     var select = control.querySelector("select");
     var readings = control.querySelector(".waz-health__fan-readings");
     control.hidden = !available;
     Array.prototype.forEach.call(banner.querySelectorAll(".waz-health__fan-divider"), function (divider) {
-      divider.hidden = !available;
+      divider.hidden = !available && !chassisAvailable;
     });
     if (!available) return;
     control.dataset.state = enabled ? normalizeState(fans.healthState || "unknown") : "unknown";

@@ -1,8 +1,9 @@
-8ac9ac2700a4c3d003511d012ea973f74baf04dd5a02b74b37dad3426c5e11a8  waz.dashboard.plg
-756c317cef107e87c11ac595d13995b19dce123704fc15036ca742e1172c7ae9  install-waz-dashboard.sh
+262c0f8f87e7b665c0b9ee04d26a041a68a5f2050e0379ca632e46f1f62722c7  waz.dashboard.plg
+642dab02caf12a5ae841b4d2625e832fae1ce8876cbed56a18f384ffa5c978b8  install-waz-dashboard.sh
 3b86f3f8da10aca6c67db000f6efe9e6a08e3d94c8a73660adce9ce1706a8a6a  history/waz.health-v0.1.1.zip
 1dc8f44c03e2cf7e869477391611d3f2362787776cfd5e040e3881765a5e450a  history/waz.health-v0.2.0.zip
 aaafa0a28e831e3347e73a9b9c5ed1256fdb056c7c277f0ee4da1bfb74cd337e  history/waz.health-v0.3.0.plg
 777eb4ae236274a099daab59de9656ada445f3ffa88b245b409dffe856d4a0ab  ../original/waz.dashboard-reference-2026.08.24.12.plg
 64eb5f2f14af603da52cf3802bf98011c485277dbc749176c38525838bf22e9b  history/waz.dashboard-v0.8.2.plg
 02ea1928accb6acd387f503481b55c5ccebf936f9aa5efe990ac82017047afab  history/waz.dashboard-v0.8.3.plg
+8ac9ac2700a4c3d003511d012ea973f74baf04dd5a02b74b37dad3426c5e11a8  history/waz.dashboard-v0.8.4.plg

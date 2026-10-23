@@ -43,3 +43,16 @@ test('installed enabled plugin still supplies fan state', async () => {
   assert.equal(h.window.WAZHealth.getState().fans.enabled, true);
   assert.equal(h.window.WAZHealth.getState().fans.manualSpeed, 40);
 });
+
+test('combined cooling plugin can expose chassis control without MD12xx shelves', async () => {
+  const h = harness(true, [{ status: 200, body: { md12xxAvailable: false, enabled: false, ipmi: { available: true, mode: 'firmware', averageRpm: 8640 } } }]);
+  await h.refresh();
+  assert.equal(h.window.WAZHealth.getState().fans.available, false);
+  assert.equal(h.window.WAZHealth.getState().fans.ipmi.available, true);
+});
+test('chassis faults raise cooling and overall health even without MD12xx shelves', async () => {
+  const h = harness(true, [{ status: 200, body: { md12xxAvailable: false, enabled: false, ipmi: { supported: true, available: true, state: 'fault', message: 'Thermal limit' } } }]);
+  await h.refresh();
+  assert.equal(h.window.WAZHealth.getState().subsystems.cooling.state, 'fault');
+  assert.equal(h.window.WAZHealth.getState().overall.state, 'fault');
+});

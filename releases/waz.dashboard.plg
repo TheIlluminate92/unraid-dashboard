@@ -2,12 +2,16 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.22.03">
+  <!ENTITY version "2026.10.22.04">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.22.04
+- Keeps the wrench, time and uptime anchored to the right independently of optional fan controls.
+- Supports combined cooling status: hides the MD12xx control when no shelves are present and shows an IPMI status link only when chassis control is available. Chassis faults contribute to cooling/overall health.
+
 ### 0.8.4 - Build 2026.10.22.03
 - Adds socket summaries with expandable physical cores and logical threads. Remembers expansion choices, separates repeated core IDs across sockets, and calculates combined utilization from valid weighted counter deltas. Adds CPU rendering and aggregation regression tests.
 - Supports pool-only systems: hides the array section when no array is assigned, excludes empty disk slots, and reports unconfigured parity without false failures. Assigned missing disks still raise faults.
@@ -316,6 +320,14 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--waz-health-fault) 18%, transparent);
 }
 
+#waz-health-banner .waz-health__right {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: clamp(12px, 1.3vw, 20px);
+  margin-left: auto;
+}
+
 #waz-health-banner .waz-health__meta {
   flex: 0 0 auto;
   gap: clamp(12px, 1.3vw, 20px);
@@ -363,7 +375,7 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   flex: 0 0 auto;
   align-items: center;
   gap: 9px;
-  margin-left: auto;
+  margin-left: 0;
   color: var(--waz-health-text);
   letter-spacing: 0.045em;
 }
@@ -2315,7 +2327,8 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
       ? "MD12xx controller status is stale"
       : (controller.message || "");
     return {
-      available: true,
+      available: payload.md12xxAvailable !== false,
+      ipmi: payload.ipmi && typeof payload.ipmi === 'object' ? payload.ipmi : null,
       version: payload.version || "",
       enabled: enabled,
       mode: payload.mode === "manual" ? "manual" : "auto",
@@ -2334,6 +2347,12 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     state.subsystems = Object.assign({}, state.healthSubsystems || {});
     state.overall = Object.assign({}, state.healthOverall || state.overall);
     var fans = state.fans || {};
+    var ipmi = fans.ipmi || {};
+    if (ipmi.supported && (ipmi.state === 'fault' || (ipmi.stale && ipmi.config && ipmi.config.enabled))) {
+      var chassisMessage = ipmi.stale ? 'Chassis cooling status is stale' : (ipmi.message || 'Chassis cooling requires attention');
+      state.subsystems.cooling = Object.assign({}, state.subsystems.cooling || {}, { label: 'COOLING', state: 'fault', message: chassisMessage });
+      state.overall = Object.assign({}, state.overall, { label: 'FAULT', state: 'fault', message: chassisMessage });
+    }
     if (!fans.available || !fans.enabled || stateRank(fans.healthState) === 0) return;
     var cooling = Object.assign({ label: "COOLING", state: "unknown", message: "" }, state.subsystems.cooling || {});
     if (stateRank(fans.healthState) > stateRank(cooling.state)) {
@@ -2478,9 +2497,19 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     inner.appendChild(dividerOne);
     inner.appendChild(subsystems);
     inner.appendChild(dividerTwo);
-    inner.appendChild(fanControl);
-    inner.appendChild(dividerThree);
-    inner.appendChild(meta);
+    var right = document.createElement("span");
+    right.className = "waz-health__right";
+    var chassis = document.createElement('a');
+    chassis.className = 'waz-health__fans';
+    chassis.dataset.field = 'chassis';
+    chassis.href = '/MD12xxFanControl';
+    chassis.hidden = true;
+    chassis.title = 'Open chassis cooling controls';
+    right.appendChild(chassis);
+    right.appendChild(fanControl);
+    right.appendChild(dividerThree);
+    right.appendChild(meta);
+    inner.appendChild(right);
     root.appendChild(inner);
 
     var issues = document.createElement("div");
@@ -2595,13 +2624,21 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     if (!control) return;
     var fans = state.fans || {};
     var available = fans.available === true;
+    var ipmi = fans.ipmi || {};
+    var chassis = banner.querySelector('[data-field="chassis"]');
+    var chassisAvailable = ipmi.available === true;
+    if (chassis) {
+      chassis.hidden = !chassisAvailable;
+      chassis.dataset.state = ipmi.stale || ipmi.state === 'fault' ? 'fault' : 'normal';
+      chassis.textContent = 'IPMI · ' + (ipmi.stale ? 'STALE' : ipmi.mode === 'firmware' ? 'iDRAC AUTO' : ((ipmi.mode === 'manual' ? 'MANUAL ' : 'CURVE ') + (ipmi.targetPercent == null ? '—' : ipmi.targetPercent + '%'))) + (Number.isFinite(ipmi.averageRpm) ? ' · ' + ipmi.averageRpm + ' RPM' : '');
+    }
     var enabled = fans.enabled === true;
     var mode = fans.mode === "manual" ? "manual" : "auto";
     var select = control.querySelector("select");
     var readings = control.querySelector(".waz-health__fan-readings");
     control.hidden = !available;
     Array.prototype.forEach.call(banner.querySelectorAll(".waz-health__fan-divider"), function (divider) {
-      divider.hidden = !available;
+      divider.hidden = !available && !chassisAvailable;
     });
     if (!available) return;
     control.dataset.state = enabled ? normalizeState(fans.healthState || "unknown") : "unknown";
@@ -2749,7 +2786,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   }
 
   window.WAZHealth = {
-    version: "0.8.4",
+    version: "0.8.5",
     refresh: refresh,
     setState: function (next) {
       mergeSnapshot(next);
@@ -5366,8 +5403,8 @@ function waz_health_snapshot(): array
     ];
     return [
         'schemaVersion' => 3,
-        'version' => '0.8.4',
-        'pluginVersion' => '2026.10.22.03',
+        'version' => '0.8.5',
+        'pluginVersion' => '2026.10.22.04',
         'server' => [
             'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5392,8 +5429,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_DASHBOARD_VERSION = '0.8.4';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.03';
+const WAZ_DASHBOARD_VERSION = '0.8.5';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.04';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5884,8 +5921,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_STORAGE_VERSION = '0.8.4';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.03';
+const WAZ_STORAGE_VERSION = '0.8.5';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.04';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6658,8 +6695,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-const WAZ_WORKLOADS_VERSION = '0.8.4';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.03';
+const WAZ_WORKLOADS_VERSION = '0.8.5';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.04';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7496,7 +7533,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <section class="waz-system" data-version="0.8.4" data-hba-available="__WAZ_HBA_AVAILABLE__">
+  <section class="waz-system" data-version="0.8.5" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
@@ -7560,7 +7597,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
-    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
+    <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
 </td></tr>
 </tbody>
@@ -7568,8 +7605,8 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.03">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.03"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.04">
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.04"></script>
 
 ]]>
 </INLINE>
@@ -7617,7 +7654,7 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="0.8.4">
+  <section class="waz-storage" data-version="0.8.5">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
       <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7663,15 +7700,15 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
-    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
+    <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
 </td></tr>
 </tbody>
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.03">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.03"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.04">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.04"></script>
 
 ]]>
 </INLINE>
@@ -7690,7 +7727,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="0.8.4">
+  <section class="waz-workloads" data-version="0.8.5">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
@@ -7749,7 +7786,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
-    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.4</span></footer>
+    <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
@@ -7757,9 +7794,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.03">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.03"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.03"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.04">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.04"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.04"></script>
 
 ]]>
 </INLINE>
@@ -7905,7 +7942,7 @@ rm -rf "/usr/local/emhttp/plugins/waz.health"
 "$RUNTIME_DIR/scripts/start.sh"
 trap - EXIT
 
-echo "WAZ Dashboard v0.8.4 installed with integrated Health banner. Reload the Unraid WebUI to display it."
+echo "WAZ Dashboard v0.8.5 installed with integrated Health banner. Reload the Unraid WebUI to display it."
 ]]>
 </INLINE>
 </FILE>
