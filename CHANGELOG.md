@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.24.09
+
+- Reserve red for parity and four distinct blue array identity groups: 24 TB H, 24 TB C, 14 TB, and other sizes/models.
+- Classify from current native model identity and physical capacity, keeping pool colors unchanged. Array rows, mapped bays, tooltips and bay details share the assignment.
+- Label all five reserved array groups in the drive legend, including unused groups; pool-only servers do not show the array palette.
+- Compact drive maps to roughly 75% of the previous scale: bay heights/minimum widths, gaps and enclosure spacing shrink without changing physical row/column counts or full-width layout. Keep detail drawers and legend text readable.
+
+
 ## 2026.10.24.08
 
 - Apply a scoped Home Assistant Phone-inspired finish: navy surfaces, rounded cards, softer borders/shadows, muted labels, pastel blue/lavender accents and pill controls.

@@ -2,12 +2,17 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.24.08">
+  <!ENTITY version "2026.10.24.09">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 2026.10.24.09
+- Red parity plus four reserved blue array drive-family shades.
+- Distinct 24 TB H, 24 TB C and 14 TB identities with a matching legend; pool colors preserved.
+- Drive maps compacted to roughly 75% scale while retaining their physical bay arrangement.
+
 ### 2026.10.24.08
 - Softer Home Assistant-inspired navy cards, rounded edges and pill controls.
 - Existing layout, pool/health colors and refresh behavior preserved.
@@ -1231,16 +1236,16 @@ div.tile:has(:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)) {
 
 /* Physical maps retain the plugin's rows, columns and bay order. */
 .waz-storage .waz-location-groups { display: block; }
-.waz-location-group { margin: 16px 0; border: 1px solid var(--waz-border); padding: 12px; border-radius: 4px; }
-.waz-location-group > summary { cursor: pointer; font-size: 18px; line-height: 24px; font-weight: 700; padding: 4px 0 12px; }
-.waz-enclosure-scroll { overflow-x: auto; padding: 3px; }
-.waz-storage .waz-location-grid { grid-template-columns: repeat(var(--columns, 4), minmax(120px, 1fr)); gap: 8px; }
-.waz-storage .waz-location-grid[data-tray-direction="v"] { grid-template-columns: repeat(var(--columns, 8), minmax(64px, 1fr)); }
-.waz-storage .waz-bay { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 84px; padding: 10px 6px; border-radius: 3px; font: inherit; cursor: pointer; }
-.waz-storage .waz-location-grid[data-tray-direction="v"] .waz-bay { min-height: 112px; }
-.waz-storage .waz-bay b { font-size: 18px; line-height: 24px; }
-.waz-storage .waz-bay small { font-size: 14px; line-height: 18px; white-space: normal; overflow-wrap: anywhere; writing-mode: horizontal-tb; }
-.waz-bay-state { font-size: 11px; line-height: 16px; color: var(--waz-muted); }
+.waz-location-group { margin: 12px 0; border: 1px solid var(--waz-border); padding: 9px; border-radius: 4px; }
+.waz-location-group > summary { cursor: pointer; font-size: 16px; line-height: 20px; font-weight: 700; padding: 3px 0 9px; }
+.waz-enclosure-scroll { overflow-x: auto; padding: 2px; }
+.waz-storage .waz-location-grid { grid-template-columns: repeat(var(--columns, 4), minmax(90px, 1fr)); gap: 6px; }
+.waz-storage .waz-location-grid[data-tray-direction="v"] { grid-template-columns: repeat(var(--columns, 8), minmax(48px, 1fr)); }
+.waz-storage .waz-bay { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 63px; padding: 7px 4px; border-radius: 3px; font: inherit; cursor: pointer; }
+.waz-storage .waz-location-grid[data-tray-direction="v"] .waz-bay { min-height: 84px; }
+.waz-storage .waz-bay b { font-size: 14px; line-height: 18px; }
+.waz-storage .waz-bay small { font-size: 12px; line-height: 16px; white-space: normal; overflow-wrap: anywhere; writing-mode: horizontal-tb; }
+.waz-bay-state { font-size: 11px; line-height: 14px; color: var(--waz-muted); }
 .waz-is-fault .waz-bay-state { color: var(--waz-red); }
 .waz-is-attention .waz-bay-state { color: var(--waz-amber); }
 .waz-storage .waz-bay:focus-visible { outline: 3px solid var(--waz-cyan); outline-offset: 2px; }
@@ -3364,7 +3369,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     dot.className = 'waz-disk-state' + stateClass(disk.state) + (disk.spunDown ? ' waz-is-sleeping' : '');
     link.appendChild(dot);
     link.appendChild(document.createTextNode(disk.name.replace(/^disk/i, 'Disk ')));
-    link.title = disk.name + ' · ' + disk.device + ' · ' + disk.mediaType;
+    link.title = disk.name + ' · ' + disk.device + ' · ' + disk.mediaType + (disk.identityLabel ? ' · ' + disk.identityLabel : '');
     return link;
   }
 
@@ -3548,6 +3553,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     detailField(fields, 'Status', cell.disk ? (disk.spunDown ? 'Standby' : String(disk.state || 'unknown')) : (cell.present ? 'Unassigned drive' : 'Empty bay'));
     if (cell.present || cell.disk) {
       detailField(fields, 'Drive', disk.name || 'Not assigned to array/pool');
+      if (disk.identityLabel) detailField(fields, 'Drive group', disk.identityLabel);
       detailField(fields, 'Temperature', disk.spunDown ? 'Standby' : temperature(number(disk.temperatureC), false));
       detailField(fields, 'Capacity', bytes(number(inventory.capacityBytes || disk.sizeBytes)));
       detailField(fields, 'Model', inventory.model); detailField(fields, 'Serial', inventory.serial);
@@ -3602,7 +3608,9 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
         healthLabel.textContent = health === 'normal' ? 'OK' : (health === 'attention' ? 'Warning' : health === 'fault' ? 'Fault' : health);
         bay.setAttribute('aria-label', group.name + ', bay ' + cell.tray + ', ' + bayRole(cell) + ', ' + health);
         bay.setAttribute('aria-pressed', String(selectedBay === key));
-        bay.title = 'Bay ' + cell.tray + ' · ' + bayRole(cell) + ' · ' + health;
+        var family = cell.disk && cell.disk.identityLabel ? ' · ' + cell.disk.identityLabel : '';
+        bay.title = 'Bay ' + cell.tray + ' · ' + bayRole(cell) + family + ' · ' + health;
+        if (family) bay.setAttribute('aria-label', group.name + ', bay ' + cell.tray + ', ' + bayRole(cell) + family + ', ' + health);
         if (selectedBay === key) { bay.className += ' waz-is-selected'; chosen = cell; }
         if (focused === key) focusTarget = bay;
         bay.addEventListener('click', function () {
@@ -3683,8 +3691,15 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     if (legend) {
       legend.textContent = '';
       var assignments = {};
+      var reserved = Array.isArray(data.driveColorGroups) ? data.driveColorGroups : [];
+      reserved.forEach(function (group) {
+        var item = document.createElement('span');
+        item.textContent = group.label + (group.count ? ' · ' + group.count : ' · reserved');
+        item.title = group.count ? group.count + ' assigned drive(s)' : 'Color reserved for this drive group';
+        identity(item, group.color); legend.appendChild(item);
+      });
       ((data.locations || {}).groups || []).forEach(function (g) { (g.cells || []).forEach(function (c) {
-        if (!c.hidden && c.disk) assignments[c.disk.poolName ? poolLabel(c.disk.poolName) : c.disk.type === 'Parity' ? 'Parity' : 'Array'] = c.disk.identityColor;
+        if (!c.hidden && c.disk && (c.disk.poolName || !reserved.length)) assignments[c.disk.poolName ? poolLabel(c.disk.poolName) : (c.disk.identityLabel || (c.disk.type === 'Parity' ? 'Parity' : 'Array'))] = c.disk.identityColor;
       }); });
       Object.keys(assignments).forEach(function (label) {
         var item = document.createElement('span'); item.textContent = label; identity(item, assignments[label]); legend.appendChild(item);
@@ -6055,7 +6070,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.5',
-        'pluginVersion' => '2026.10.24.08',
+        'pluginVersion' => '2026.10.24.09',
         'server' => [
             'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -6081,7 +6096,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.5';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.08';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.09';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -6560,7 +6575,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.5';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.08';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.09';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6665,6 +6680,56 @@ function waz_storage_pool_colors(array $names): array
         $used[] = $colors[$name];
     }
     return $colors;
+}
+
+
+function waz_storage_array_palette(): array
+{
+    return [
+        'parity' => ['label' => 'Parity', 'color' => '#e55454'],
+        '24tb-h' => ['label' => '24 TB · H series', 'color' => '#3975db'],
+        '24tb-c' => ['label' => '24 TB · C series', 'color' => '#329fd9'],
+        '14tb' => ['label' => '14 TB', 'color' => '#9bc9ff'],
+        'other' => ['label' => 'Other array drives', 'color' => '#617fa8'],
+    ];
+}
+
+function waz_storage_array_identity(array $disk): array
+{
+    $palette = waz_storage_array_palette();
+    $model = strtoupper(trim((string) ($disk['model'] ?? '')));
+    // The native id is model_serial; classification never relies on tray order.
+    if ($model === '') $model = strtoupper(explode('_', (string) ($disk['id'] ?? ''), 2)[0]);
+    $capacity = waz_storage_number($disk['capacityBytes'] ?? null);
+    $group = 'other';
+    if (($disk['type'] ?? '') === 'Parity') $group = 'parity';
+    elseif (preg_match('/^ST24000NM[0-9]{3}H(?:-|$)/', $model)) $group = '24tb-h';
+    elseif (preg_match('/^ST24000NM[0-9]{3}C(?:-|$)/', $model)) $group = '24tb-c';
+    elseif (preg_match('/^ST14000NM/', $model) || ($capacity !== null && round($capacity / 1e12) === 14.0)) $group = '14tb';
+    return ['identityGroup' => $group, 'identityLabel' => $palette[$group]['label'], 'identityColor' => $palette[$group]['color']];
+}
+
+function waz_storage_apply_array_colors(array $disks): array
+{
+    foreach ($disks as &$disk) {
+        if (in_array($disk['type'] ?? '', ['Data', 'Parity'], true)) $disk = array_merge($disk, waz_storage_array_identity($disk));
+    }
+    unset($disk);
+    return $disks;
+}
+
+function waz_storage_array_color_legend(array $disks): array
+{
+    $groups = [];
+    foreach (waz_storage_array_palette() as $key => $identity) $groups[$key] = array_merge(['key' => $key, 'count' => 0], $identity);
+    $total = 0;
+    foreach ($disks as $disk) {
+        if (in_array($disk['type'] ?? '', ['Data', 'Parity'], true) && isset($groups[$disk['identityGroup'] ?? ''])) {
+            $groups[$disk['identityGroup']]['count']++;
+            $total++;
+        }
+    }
+    return $total ? array_values($groups) : [];
 }
 
 function waz_storage_media(array $disk): string
@@ -6794,6 +6859,8 @@ function waz_storage_disk_records(): array
         $records[] = [
             'name' => $name,
             'index' => (int) ($raw['idx'] ?? 0),
+            'model' => trim((string) ($raw['model'] ?? '')) ?: explode('_', (string) ($raw['id'] ?? ''), 2)[0],
+            'capacityBytes' => waz_storage_kib_bytes($raw['size'] ?? null),
             'device' => trim((string) ($raw['device'] ?? '')),
             'type' => $type,
             'mediaType' => $media,
@@ -7335,19 +7402,9 @@ function waz_storage_snapshot(): array
     $disks = waz_storage_disk_records();
     $locations = waz_storage_location_data($disks);
     $pools = waz_storage_pool_data($disks);
+    $disks = waz_storage_apply_array_colors($disks);
     foreach ($disks as &$disk) {
-        if ($disk['type'] === 'Data') $disk['identityColor'] = '#60a5fa';
-        if ($disk['type'] === 'Parity') $disk['identityColor'] = '#e55454';
-        if (!$disk['identityColor']) {
-            if ($disk['type'] === 'Parity') {
-                $disk['identityColor'] = '#e55454';
-            } elseif ($disk['type'] === 'Data') {
-                $terabytes = $disk['sizeBytes'] ? (string) round($disk['sizeBytes'] / 1000000000000.0) : 'unknown';
-                $disk['identityColor'] = waz_storage_identity_color('data:' . $disk['mediaType'] . ':' . $terabytes);
-            } else {
-                $disk['identityColor'] = waz_storage_identity_color('pool:' . ($disk['poolName'] ?: $disk['name']));
-            }
-        }
+        if (!$disk['identityColor']) $disk['identityColor'] = waz_storage_identity_color('pool:' . ($disk['poolName'] ?: $disk['name']));
     }
     unset($disk);
     $diskByDevice = [];
@@ -7355,6 +7412,8 @@ function waz_storage_snapshot(): array
         $diskByDevice[(string) $disk['device']] = [
             'poolName' => $disk['poolName'],
             'identityColor' => $disk['identityColor'],
+            'identityGroup' => $disk['identityGroup'] ?? null,
+            'identityLabel' => $disk['identityLabel'] ?? null,
         ];
     }
     foreach ($locations['groups'] as &$group) {
@@ -7363,6 +7422,8 @@ function waz_storage_snapshot(): array
                 $meta = $diskByDevice[(string) ($cell['disk']['device'] ?? '')] ?? null;
                 $cell['disk']['poolName'] = $meta['poolName'] ?? null;
                 $cell['disk']['identityColor'] = $meta['identityColor'] ?? $cell['disk']['identityColor'];
+                $cell['disk']['identityGroup'] = $meta['identityGroup'] ?? null;
+                $cell['disk']['identityLabel'] = $meta['identityLabel'] ?? null;
             }
         }
         unset($cell);
@@ -7382,6 +7443,7 @@ function waz_storage_snapshot(): array
         'parity' => $parity,
         'pools' => $pools,
         'locations' => $locations,
+        'driveColorGroups' => waz_storage_array_color_legend($disks),
     ];
 }
 
@@ -7414,7 +7476,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.5';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.08';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.09';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -8360,11 +8422,11 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.08"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.09">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.09"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.09"></script>
 
 ]]>
 </INLINE>
@@ -8454,11 +8516,11 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 </tbody>
 EOT;
 ?>
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.08"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.09">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.09"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.09"></script>
 
 ]]>
 </INLINE>
@@ -8548,12 +8610,12 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.08">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.08"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.08"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.09">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.09">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.09"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.09"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.09"></script>
 
 ]]>
 </INLINE>

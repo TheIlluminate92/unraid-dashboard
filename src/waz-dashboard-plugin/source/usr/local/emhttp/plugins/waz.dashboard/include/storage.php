@@ -114,6 +114,56 @@ function waz_storage_pool_colors(array $names): array
     return $colors;
 }
 
+
+function waz_storage_array_palette(): array
+{
+    return [
+        'parity' => ['label' => 'Parity', 'color' => '#e55454'],
+        '24tb-h' => ['label' => '24 TB · H series', 'color' => '#3975db'],
+        '24tb-c' => ['label' => '24 TB · C series', 'color' => '#329fd9'],
+        '14tb' => ['label' => '14 TB', 'color' => '#9bc9ff'],
+        'other' => ['label' => 'Other array drives', 'color' => '#617fa8'],
+    ];
+}
+
+function waz_storage_array_identity(array $disk): array
+{
+    $palette = waz_storage_array_palette();
+    $model = strtoupper(trim((string) ($disk['model'] ?? '')));
+    // The native id is model_serial; classification never relies on tray order.
+    if ($model === '') $model = strtoupper(explode('_', (string) ($disk['id'] ?? ''), 2)[0]);
+    $capacity = waz_storage_number($disk['capacityBytes'] ?? null);
+    $group = 'other';
+    if (($disk['type'] ?? '') === 'Parity') $group = 'parity';
+    elseif (preg_match('/^ST24000NM[0-9]{3}H(?:-|$)/', $model)) $group = '24tb-h';
+    elseif (preg_match('/^ST24000NM[0-9]{3}C(?:-|$)/', $model)) $group = '24tb-c';
+    elseif (preg_match('/^ST14000NM/', $model) || ($capacity !== null && round($capacity / 1e12) === 14.0)) $group = '14tb';
+    return ['identityGroup' => $group, 'identityLabel' => $palette[$group]['label'], 'identityColor' => $palette[$group]['color']];
+}
+
+function waz_storage_apply_array_colors(array $disks): array
+{
+    foreach ($disks as &$disk) {
+        if (in_array($disk['type'] ?? '', ['Data', 'Parity'], true)) $disk = array_merge($disk, waz_storage_array_identity($disk));
+    }
+    unset($disk);
+    return $disks;
+}
+
+function waz_storage_array_color_legend(array $disks): array
+{
+    $groups = [];
+    foreach (waz_storage_array_palette() as $key => $identity) $groups[$key] = array_merge(['key' => $key, 'count' => 0], $identity);
+    $total = 0;
+    foreach ($disks as $disk) {
+        if (in_array($disk['type'] ?? '', ['Data', 'Parity'], true) && isset($groups[$disk['identityGroup'] ?? ''])) {
+            $groups[$disk['identityGroup']]['count']++;
+            $total++;
+        }
+    }
+    return $total ? array_values($groups) : [];
+}
+
 function waz_storage_media(array $disk): string
 {
     if (strtolower((string) ($disk['transport'] ?? '')) === 'nvme') {
@@ -241,6 +291,8 @@ function waz_storage_disk_records(): array
         $records[] = [
             'name' => $name,
             'index' => (int) ($raw['idx'] ?? 0),
+            'model' => trim((string) ($raw['model'] ?? '')) ?: explode('_', (string) ($raw['id'] ?? ''), 2)[0],
+            'capacityBytes' => waz_storage_kib_bytes($raw['size'] ?? null),
             'device' => trim((string) ($raw['device'] ?? '')),
             'type' => $type,
             'mediaType' => $media,
@@ -782,19 +834,9 @@ function waz_storage_snapshot(): array
     $disks = waz_storage_disk_records();
     $locations = waz_storage_location_data($disks);
     $pools = waz_storage_pool_data($disks);
+    $disks = waz_storage_apply_array_colors($disks);
     foreach ($disks as &$disk) {
-        if ($disk['type'] === 'Data') $disk['identityColor'] = '#60a5fa';
-        if ($disk['type'] === 'Parity') $disk['identityColor'] = '#e55454';
-        if (!$disk['identityColor']) {
-            if ($disk['type'] === 'Parity') {
-                $disk['identityColor'] = '#e55454';
-            } elseif ($disk['type'] === 'Data') {
-                $terabytes = $disk['sizeBytes'] ? (string) round($disk['sizeBytes'] / 1000000000000.0) : 'unknown';
-                $disk['identityColor'] = waz_storage_identity_color('data:' . $disk['mediaType'] . ':' . $terabytes);
-            } else {
-                $disk['identityColor'] = waz_storage_identity_color('pool:' . ($disk['poolName'] ?: $disk['name']));
-            }
-        }
+        if (!$disk['identityColor']) $disk['identityColor'] = waz_storage_identity_color('pool:' . ($disk['poolName'] ?: $disk['name']));
     }
     unset($disk);
     $diskByDevice = [];
@@ -802,6 +844,8 @@ function waz_storage_snapshot(): array
         $diskByDevice[(string) $disk['device']] = [
             'poolName' => $disk['poolName'],
             'identityColor' => $disk['identityColor'],
+            'identityGroup' => $disk['identityGroup'] ?? null,
+            'identityLabel' => $disk['identityLabel'] ?? null,
         ];
     }
     foreach ($locations['groups'] as &$group) {
@@ -810,6 +854,8 @@ function waz_storage_snapshot(): array
                 $meta = $diskByDevice[(string) ($cell['disk']['device'] ?? '')] ?? null;
                 $cell['disk']['poolName'] = $meta['poolName'] ?? null;
                 $cell['disk']['identityColor'] = $meta['identityColor'] ?? $cell['disk']['identityColor'];
+                $cell['disk']['identityGroup'] = $meta['identityGroup'] ?? null;
+                $cell['disk']['identityLabel'] = $meta['identityLabel'] ?? null;
             }
         }
         unset($cell);
@@ -829,6 +875,7 @@ function waz_storage_snapshot(): array
         'parity' => $parity,
         'pools' => $pools,
         'locations' => $locations,
+        'driveColorGroups' => waz_storage_array_color_legend($disks),
     ];
 }
 

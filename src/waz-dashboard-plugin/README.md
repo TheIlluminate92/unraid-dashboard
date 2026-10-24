@@ -140,3 +140,9 @@ Server Status samples CPU/RAM/network every 250 ms (requests never overlap), wit
 ### Surface style
 
 The WAZ panels use the owner's Home Assistant Phone dashboard as a visual reference: navy surfaces, 22px outer corners, 18px inner cards, subtle borders/shadows, muted labels, pastel blue/lavender accents and rounded controls. `polish.css` loads after each panel's structural CSS and is scoped to WAZ IDs. It does not set grids, physical bay dimensions, saved block sizes or polling. Assignment colors and warning/fault indicators remain independent. Keyboard focus stays visible; reduced-motion users receive no WAZ panel transitions or animations. No Home Assistant resources or frontend libraries are required. The health banner uses matching surface tokens.
+
+### Array drive colors
+
+Parity is always red (`#e55454`). Four blue identities are reserved separately: 24 TB H-series (`#3975db`), 24 TB C-series (`#329fd9`), 14 TB (`#9bc9ff`) and other array drives (`#617fa8`). H/C identification uses the current native Seagate model family, so swapping bays or replacing a drive updates its identity. The 14 TB group uses the model or advertised physical capacity, never filesystem utilization or formatted capacity. The legend includes counts and marks unused array groups reserved; it is omitted on pool-only servers. Existing pool assignment colors and independent warning/fault labels remain unchanged.
+
+Drive maps use roughly 75% of their former size: 63px horizontal bays (formerly 84px), 84px vertical bays (formerly 112px), 90/48px minimum widths, 6px gaps and 9px enclosure padding. Physical columns/rows and displayed bay numbers remain unchanged. The full-width section still uses available screen width, while bay details and legend text keep their readable sizes.

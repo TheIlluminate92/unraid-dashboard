@@ -8,6 +8,11 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 2026.10.24.09
+- Red parity plus four reserved blue array drive-family shades.
+- Distinct 24 TB H, 24 TB C and 14 TB identities with a matching legend; pool colors preserved.
+- Drive maps compacted to roughly 75% scale while retaining their physical bay arrangement.
+
 ### 2026.10.24.08
 - Softer Home Assistant-inspired navy cards, rounded edges and pill controls.
 - Existing layout, pool/health colors and refresh behavior preserved.
