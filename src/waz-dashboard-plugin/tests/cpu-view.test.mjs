@@ -29,15 +29,25 @@ async function harness(initial = snapshot(), storage = new Map()) {
   const chart = new Element('polyline');
   const rack = { parentElement: { hidden: false }, textContent: '' };
   let current = initial;
-  const window = { localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) }, setTimeout: () => 1, clearTimeout() {} };
+  const timers = [], calls = [];
+  const window = { localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) }, setTimeout(fn,delay) { timers.push({fn,delay}); return timers.length; }, clearTimeout() {} };
   const root = new Element('section');
   const document = { querySelector: () => root, getElementById: id => ({ 'waz-core-list': list, 'waz-cpu-chart-line': chart, 'waz-summary-power': rack })[id], createElement: tag => new Element(tag), createTextNode: value => { const e = new Element('#text'); e.textContent = value; return e; } };
-  const fetch = async url => ({ ok: !url.includes('hbaviewer'), status: url.includes('hbaviewer') ? 404 : 200, json: async () => current });
+  const fetch = async url => { calls.push(url); return { ok: !url.includes('hbaviewer'), status: url.includes('hbaviewer') ? 404 : 200, json: async () => current }; };
   vm.runInNewContext(source, { window, document, fetch, console });
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
-  return { list, chart, rack, storage, window, async sample(next) { current = next; window.WAZSystem.refresh(); await flush(); } };
+  return { list, chart, rack, storage, window, timers, calls, async sample(next) { current = next; window.WAZSystem.refresh(); await flush(); } };
 }
+
+test('system refresh targets 250 ms and concurrent refreshes cannot overlap',async()=>{
+  const h=await harness();
+  assert.ok(h.timers.at(-1).delay>100&&h.timers.at(-1).delay<=250);
+  const count=h.calls.filter(url=>url.includes('section=snapshot')).length;
+  h.window.WAZSystem.refresh();h.window.WAZSystem.refresh();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls.filter(url=>url.includes('section=snapshot')).length,count+1);
+});
 
 test('rack power disappears without telemetry and returns when the UPS source becomes available', async () => {
   const h = await harness();

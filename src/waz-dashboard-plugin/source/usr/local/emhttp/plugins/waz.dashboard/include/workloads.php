@@ -473,7 +473,8 @@ function waz_workloads_stats(array $stats): array
     }
     return [
         'available' => true,
-        'cpuPercent' => round(max(0.0, $cpuPercent), 1),
+        'cpuPercent' => $cpuBefore > 0 && $systemBefore > 0 ? round(max(0.0, $cpuPercent), 1) : null,
+        'cpuCounters' => ['usage' => $cpuNow, 'system' => $systemNow, 'online' => $online],
         'memoryBytes' => $memoryUsage,
         'memoryLimitBytes' => $memoryLimit,
         'memoryPercent' => $memoryLimit > 0 ? round($memoryUsage * 100.0 / $memoryLimit, 1) : null,
@@ -614,6 +615,28 @@ function waz_workloads_container_public(array $container, array $info, array $gp
     ];
 }
 
+
+// Fast path: validate the selected container against its current Docker state.
+// It never reads the inventory/templates, scans host processes, or samples peers.
+function waz_workloads_active_stats($client, string $name): array
+{
+    if ($name === '' || !preg_match('/^[a-zA-Z0-9_.-]+$/D', $name)) return ['selected' => null];
+    $details = $client->getContainerDetails(rawurlencode($name));
+    if (!is_array($details) || empty($details['Id'])) return ['selected' => null];
+    $state = $details['State'] ?? [];
+    $running = !empty($state['Running']) && empty($state['Paused']) && empty($state['Restarting']);
+    $status = !empty($state['Paused']) ? 'paused' : (!empty($state['Restarting']) ? 'restarting' : ($running ? 'running' : 'stopped'));
+    $id = (string) $details['Id'];
+    $raw = $running ? $client->getDockerJSON('/containers/' . rawurlencode($id) . '/stats?stream=false&one-shot=true') : [];
+    return ['selected' => [
+        'id' => $id,
+        'name' => ltrim((string) ($details['Name'] ?? $name), '/'),
+        'state' => $status,
+        'health' => waz_workloads_current_health($status, (string) ($state['Health']['Status'] ?? 'none')),
+        'stats' => waz_workloads_stats(is_array($raw) ? $raw : []),
+    ]];
+}
+
 $response = [];
 try {
     $docroot = $_SERVER['DOCUMENT_ROOT'] ?? '/usr/local/emhttp';
@@ -627,6 +650,10 @@ try {
     $_SERVER['REQUEST_URI'] = 'docker';
     require_once $dockerClientPath;
     $client = new DockerClient();
+    if (($_GET['section'] ?? '') === 'stats') {
+        $response = waz_workloads_active_stats($client, trim((string) ($_GET['selected'] ?? '')));
+        $response['sampledAtMs'] = (int) round(microtime(true) * 1000);
+    } else {
     $templates = new DockerTemplates();
     $rawContainers = $client->getDockerContainers();
     $allInfo = $templates->getAllInfo();
@@ -662,9 +689,7 @@ try {
     if ($selected !== null) {
         $raw = $selected['_raw'];
         $details = $client->getContainerDetails((string) $selected['id']);
-        $stats = $selected['state'] === 'running'
-            ? $client->getDockerJSON('/containers/' . rawurlencode((string) $selected['id']) . '/stats?stream=false')
-            : [];
+        $stats = []; // Stats are sampled only by the active inspector's fast path.
         $health = (string) ($details['State']['Health']['Status'] ?? $selected['health']);
         $startedAt = strtotime((string) ($details['State']['StartedAt'] ?? '')) ?: 0;
         $addresses = waz_workloads_addresses($raw);
@@ -741,6 +766,7 @@ try {
         'generatedAt' => time(),
         'sampledAtMs' => (int) round(microtime(true) * 1000),
     ];
+    }
 } catch (Throwable $error) {
     http_response_code(503);
     $response = [

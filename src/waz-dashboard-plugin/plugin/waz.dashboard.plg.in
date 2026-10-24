@@ -8,6 +8,10 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 2026.10.24.07
+- 250 ms Server Status with five-minute charts.
+- One-second selected running-container stats when visible; inventory and other dashboard data retain their slower refresh intervals.
+
 ### 2026.10.24.06
 - Consolidated attention list, useful collapsed summaries and compact CPU overview.
 - Pool-colored bays with cached SMART details; selecting a bay never probes a drive.

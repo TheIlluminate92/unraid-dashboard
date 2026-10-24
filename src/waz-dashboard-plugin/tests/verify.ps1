@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $node = Get-Command node -ErrorAction Stop
+& $node.Source --test (Join-Path $projectRoot 'tests/workload-refresh.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Active workload refresh regressions failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/status-layout.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Status layout regressions failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/panel-layouts.test.mjs')
@@ -249,6 +251,8 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/active-stats.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Selected active stats regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/cached-smart.php')
     if ($LASTEXITCODE -ne 0) { throw 'Cached SMART regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/identity-health.php')
