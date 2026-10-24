@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.5 - 2026-10-24 (build 2026.10.24.03)
+
+- Extends the shared layout editor to Workloads and Storage. Each panel saves its own order and dimensions; existing Server Status layouts remain compatible.
+- Adds individually editable Workloads summary tiles and sections for folders, containers, processes and selected-container details. Storage exposes parity, pool selection, selected-pool details, disk locations and array as separate blocks.
+- Keeps headers and health alerts outside movable content, retains native Docker controls and pool selection, and preserves hidden array sections on pool-only hosts. Panels grow with their content rather than being clipped to Server Status height.
+- Adds regressions for per-panel saved settings, repeated initialization, hidden blocks, page structure and native control IDs.
+
 ## 0.8.5 - 2026-10-24 (build 2026.10.24.02)
 
 - Default and legacy banner names follow the local hostname; custom labels remain supported.

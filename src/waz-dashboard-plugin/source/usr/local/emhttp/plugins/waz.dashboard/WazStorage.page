@@ -9,14 +9,15 @@ $pluginname = 'waz.storage';
 $mytiles[$pluginname]['column3'] = <<<'EOT'
 <tbody id="waz-storage-tile" title="Live parity, array, pool, and physical disk telemetry">
 <tr><td>
-  <section class="waz-storage" data-version="@@APP_VERSION@@">
+  <section class="waz-storage" data-dashboard-layout="storage" data-layout-key="waz.dashboard.storageLayout.v1" data-version="@@APP_VERSION@@">
     <header class="waz-storage-header">
       <span><b>STORAGE</b><small id="waz-storage-subtitle">Parity, pools, array, and locations</small></span>
-      <span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span>
+      <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-storage-health" class="waz-storage-health waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
     <div id="waz-storage-alert" class="waz-storage-alert" hidden></div>
 
-    <section class="waz-storage-section waz-parity-section">
+    <div data-layout-group="sections">
+    <section class="waz-storage-section waz-parity-section" data-layout-item="parity" data-layout-label="Parity">
       <div class="waz-storage-section-head">
         <b>PARITY</b>
         <span id="waz-parity-state">READING…</span>
@@ -31,22 +32,22 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div class="waz-storage-meter"><i id="waz-parity-progress"></i></div>
     </section>
 
-    <section class="waz-storage-section waz-pools-section">
+    <section class="waz-storage-section waz-pools-section" data-layout-item="pools" data-layout-label="Pools">
       <div class="waz-storage-section-head"><b>POOLS</b><span id="waz-pool-count">--</span></div>
       <div id="waz-pool-tabs" class="waz-pool-tabs"></div>
-      <div id="waz-pool-detail" class="waz-pool-detail">
+    </section>
+    <section id="waz-pool-detail" class="waz-pool-detail waz-storage-section" data-layout-item="pooldetails" data-layout-label="Pool details">
         <div class="waz-pool-detail-head"><strong id="waz-pool-title">Select a pool</strong><span id="waz-pool-usage">--</span></div>
         <div class="waz-storage-meter"><i id="waz-pool-bar"></i></div>
         <div id="waz-pool-members" class="waz-pool-members"></div>
-      </div>
     </section>
 
-    <section class="waz-storage-section waz-location-section">
+    <section class="waz-storage-section waz-location-section" data-layout-item="locations" data-layout-label="Locations">
       <div class="waz-storage-section-head"><b>DISK LOCATION</b><span id="waz-location-count">--</span></div>
       <div id="waz-location-groups" class="waz-location-groups"></div>
     </section>
 
-    <section id="waz-array-section" class="waz-storage-section waz-array-section" hidden>
+    <section id="waz-array-section" class="waz-storage-section waz-array-section" hidden data-layout-item="array" data-layout-label="Array">
       <div class="waz-storage-section-head">
         <b>ARRAY</b>
         <span id="waz-array-summary">--</span>
@@ -55,6 +56,7 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <div id="waz-array-disks" class="waz-array-disks"></div>
     </section>
 
+    </div>
     <footer class="waz-storage-footer"><span id="waz-storage-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
 </td></tr>
@@ -62,5 +64,7 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 EOT;
 ?>
 
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=@@PLUGIN_VERSION@@">
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=@@PLUGIN_VERSION@@">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=@@PLUGIN_VERSION@@"></script>

@@ -470,6 +470,7 @@
   }
 
   function syncHeight() {
+    if (root.hasAttribute("data-dashboard-layout")) { root.style.height = ""; return; }
     var system = document.querySelector('#waz-system-tile .waz-system');
     if (!system || window.innerWidth <= 620) {
       root.style.height = '';

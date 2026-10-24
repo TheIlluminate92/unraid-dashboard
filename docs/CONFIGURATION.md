@@ -45,6 +45,20 @@ GPU, coolant, flow, HBA and rack-power tiles hide until telemetry is detected.
 Previously detected GPU/cooling/HBA readings remain visible if telemetry
 later goes missing, so loss of data does not look like removal of hardware.
 
+## Workloads and Storage layouts
+
+Both panels provide the same **Edit layout**, drag, resize, keyboard controls,
+Auto size and Reset layout actions. Workloads edits its four summary tiles
+independently and provides blocks for Docker folders, container cards, top
+processes and container details. Storage provides blocks for parity, pools,
+selected-pool details, Disk Location and the array. Native container controls
+and pool selection keep working after blocks move.
+
+Each panel saves its own settings per browser origin; resetting Workloads or
+Storage does not reset Server Status. Health alerts and panel headers stay
+visible above the movable blocks. Pool-only hosts keep the array block hidden,
+including while editing or resetting. Panel height follows the edited content.
+
 ## Disk Location
 
 Disk Location owns enclosure shape, names, bay assignments and display numbering.
