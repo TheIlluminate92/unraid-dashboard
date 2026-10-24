@@ -18,17 +18,39 @@ class Element {
   querySelector(selector) { return selector==='[data-layout-edit]' ? this.edit : selector==='[data-layout-reset]' ? this.reset : null; }
   click() { this.listeners.click({stopPropagation(){}}); }
 }
-function harness(storage = new Map(), blocked = false) {
-  const root=new Element(); root.edit=new Element(); root.reset=new Element();
-  for(const [group,ids] of Object.entries({summary:['cpu','gpu','power','memory','coolant','hba0','network','flow','hba1'],sections:['cpu','memory','network']})) {
-    const container=new Element({layoutGroup:group}); root.appendChild(container);
+function harness(storage = new Map(), blocked = false, definitions = {summary:['cpu','gpu','power','memory','coolant','hba0','network','flow','hba1'],sections:['cpu','memory','network']}, panel = 'status') {
+  const root=new Element({layoutKey:'waz.dashboard.'+panel+'Layout.v1'}); root.edit=new Element(); root.reset=new Element();
+  for(const [group,ids] of Object.entries(definitions)) {
+    const container=new Element({layoutGroup:group,layoutColumns:group==='summary' && panel==='workloads' ? 3 : undefined}); root.appendChild(container);
     ids.forEach(id=>container.appendChild(new Element({layoutItem:id,layoutLabel:id})));
   }
   const window={localStorage:{ getItem:k=>{if(blocked)throw Error(); return storage.get(k)},setItem:(k,v)=>{if(blocked)throw Error();storage.set(k,v)}}};
-  const document={readyState:'complete', querySelector:()=>root, createElement:()=>new Element()};
+  const document={readyState:'complete', querySelectorAll:()=>[root], createElement:()=>new Element()};
   vm.runInNewContext(source,{window,document});
   return {root,storage,window,summary:root.children[0],sections:root.children[1]};
 }
+
+test('Workloads and Storage save independent layouts without replacing existing Server Status choices',()=>{
+  const storage=new Map();const status=harness(storage);status.root.edit.click();status.summary.children[0].children[0].children[3].click();
+  const workDefs={summary:['running','vdisk','updates','gpu'],sections:['folders','containers','processes','inspector']};
+  const work=harness(storage,false,workDefs,'workloads');work.root.edit.click();
+  assert.equal(work.summary.children[0].style.gridColumn,'span 3');
+  const inspector=work.sections.children[3];inspector.children[0].children[0].click();
+  inspector.children[0].children[2].click();assert.equal(inspector.style.gridColumn,'span 11');
+  const diskDefs={sections:['parity','pools','pooldetails','locations','array']};
+  const disk=harness(storage,false,diskDefs,'storage');const group=disk.root.children[0];group.children.at(-1).hidden=true;
+  disk.root.edit.click();group.children[0].children[0].children[1].click();disk.root.reset.click();
+  assert.equal(group.children.find(x=>x.dataset.layoutItem==='array').hidden,true);
+  assert.equal(harness(storage).summary.children[0].style.gridColumn,'span 5');
+  const restored=harness(storage,false,workDefs,'workloads');assert.equal(restored.sections.children[2].dataset.layoutItem,'inspector');assert.equal(restored.sections.children[2].style.gridColumn,'span 11');
+  assert.equal(storage.size,3);
+});
+
+test('mounting the shared script again does not duplicate editing controls',()=>{
+  const h=harness();const before=h.summary.children[0].children.length;
+  h.window.WAZDashboardLayout.start();h.window.WAZDashboardLayout.mount(h.root);
+  assert.equal(h.summary.children[0].children.length,before);
+});
 test('all nine summary tiles and three sections get independent controls; edits persist and reset',()=>{
   const h=harness(); assert.equal(h.summary.children.length,9); assert.equal(h.sections.children.length,3);
   h.root.edit.click();

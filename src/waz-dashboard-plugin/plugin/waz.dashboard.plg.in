@@ -8,6 +8,11 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.24.03
+- Extends move/resize layout editing to Workloads and Storage, with independent per-panel settings and reset.
+- Workloads summary tiles and folder/container/process/detail sections are editable; Storage parity, pools, pool details, locations and array sections are editable.
+- Preserves existing Server Status layouts, native Docker actions, pool selection and pool-only hiding. Panels grow naturally instead of clipping resized blocks to Server Status height.
+
 ### 0.8.5 - Build 2026.10.24.02
 - Hostname-based banner names, movable and resizable Server Status sections and summary tiles, keyboard layout controls, reset and per-browser saved layouts.
 - Hides absent hardware, shares local/network UPS telemetry between health and power, and preserves communication fault reporting. Does not change UPS shutdown settings.

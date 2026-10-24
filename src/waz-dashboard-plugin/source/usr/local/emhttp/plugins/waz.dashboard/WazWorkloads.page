@@ -9,37 +9,38 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <section class="waz-workloads" data-version="@@APP_VERSION@@">
+  <section class="waz-workloads" data-dashboard-layout="workloads" data-layout-key="waz.dashboard.workloadsLayout.v1" data-version="@@APP_VERSION@@">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
-      <span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span>
+      <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
     <div id="waz-workloads-alert" class="waz-workloads-alert" hidden></div>
 
-    <div class="waz-workloads-summary" aria-label="Docker summary">
-      <div><span>CONTAINERS RUNNING</span><strong id="waz-workloads-running">--</strong></div>
-      <div><span>DOCKER VDISK</span><strong id="waz-workloads-docker">--</strong></div>
-      <div><span>UPDATES</span><strong id="waz-workloads-updates">--</strong></div>
-      <div><span>GPU CLIENTS</span><strong id="waz-workloads-gpu">--</strong></div>
+    <div class="waz-workloads-summary" aria-label="Docker summary" data-layout-group="summary" data-layout-columns="3">
+      <div data-layout-item="running" data-layout-label="CONTAINERS RUNNING"><span>CONTAINERS RUNNING</span><strong id="waz-workloads-running">--</strong></div>
+      <div data-layout-item="vdisk" data-layout-label="DOCKER VDISK"><span>DOCKER VDISK</span><strong id="waz-workloads-docker">--</strong></div>
+      <div data-layout-item="updates" data-layout-label="UPDATES"><span>UPDATES</span><strong id="waz-workloads-updates">--</strong></div>
+      <div data-layout-item="gpu" data-layout-label="GPU CLIENTS"><span>GPU CLIENTS</span><strong id="waz-workloads-gpu">--</strong></div>
     </div>
 
-    <section class="waz-workloads-section waz-folder-section">
+    <div data-layout-group="sections">
+    <section class="waz-workloads-section waz-folder-section" data-layout-item="folders" data-layout-label="Folders">
       <div class="waz-workloads-section-head"><b>DOCKER FOLDERS</b><span id="waz-folder-count">--</span></div>
       <div id="waz-folder-tabs" class="waz-folder-tabs"></div>
     </section>
 
-    <section class="waz-workloads-section waz-container-section">
+    <section class="waz-workloads-section waz-container-section" data-layout-item="containers" data-layout-label="Containers">
       <div class="waz-workloads-section-head"><b id="waz-container-section-title">CONTAINERS</b><span id="waz-container-count">--</span></div>
       <div id="waz-container-grid" class="waz-container-grid"><span class="waz-workloads-muted">Loading containers…</span></div>
     </section>
 
-    <section class="waz-workloads-section waz-top-process-section">
+    <section class="waz-workloads-section waz-top-process-section" data-layout-item="processes" data-layout-label="Top processes">
       <div class="waz-workloads-section-head"><b>TOP PROCESSES</b><span>LIVE CPU · HOST + DOCKER</span></div>
       <div class="waz-process-head"><span>PROCESS</span><span>OWNER</span><span>CPU</span><span>RAM</span></div>
       <div id="waz-top-processes" class="waz-process-list"><span class="waz-workloads-muted">Taking first process sample…</span></div>
     </section>
 
-    <section class="waz-workloads-section waz-inspector-section">
+    <section class="waz-workloads-section waz-inspector-section" data-layout-item="inspector" data-layout-label="Container details">
       <header class="waz-inspector-header">
         <span id="waz-selected-icon" class="waz-selected-icon"><i class="fa fa-cube"></i></span>
         <span class="waz-inspector-title"><b id="waz-selected-name">SELECT A CONTAINER</b><small id="waz-selected-state">Click an icon above for live details and native controls</small></span>
@@ -68,6 +69,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 
     </section>
 
+    </div>
     <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
@@ -76,6 +78,8 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=@@PLUGIN_VERSION@@">
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=@@PLUGIN_VERSION@@">
 <script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=@@PLUGIN_VERSION@@"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=@@PLUGIN_VERSION@@"></script>

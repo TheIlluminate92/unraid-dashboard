@@ -1,37 +1,45 @@
 (function () {
   'use strict';
+  if (window.WAZDashboardLayout) { window.WAZDashboardLayout.start(); return; }
   var storageKey = 'waz.dashboard.statusLayout.v1';
   var groups = { summary: ['cpu', 'gpu', 'power', 'memory', 'coolant', 'hba0', 'network', 'flow', 'hba1'], sections: ['cpu', 'memory', 'network'] };
   function clamp(value, low, high, fallback) {
     value = Number(value);
     return Number.isFinite(value) ? Math.max(low, Math.min(high, Math.round(value))) : fallback;
   }
-  function normalize(raw) {
+  function normalize(raw, definitions, defaults) {
+    definitions = definitions || groups;
+    defaults = defaults || {};
     var result = {};
-    Object.keys(groups).forEach(function (group) {
+    Object.keys(definitions).forEach(function (group) {
       var entries = raw && typeof raw[group] === 'object' && raw[group] || {};
       result[group] = {};
-      groups[group].forEach(function (id, index) {
+      definitions[group].forEach(function (id, index) {
         var item = entries[id] || {};
         result[group][id] = {
           order: clamp(item.order, 0, 50, index),
-          columns: clamp(item.columns, group === 'summary' ? 2 : 4, 12, group === 'summary' ? 4 : 12),
+          columns: clamp(item.columns, group === 'summary' ? 2 : 4, 12, defaults[group] || (group === 'summary' ? 4 : 12)),
           height: item.height == null ? null : clamp(item.height, group === 'summary' ? 56 : 120, 2400, null)
         };
       });
     });
     return result;
   }
-  function read() {
-    try { return normalize(JSON.parse(window.localStorage.getItem(storageKey))); }
-    catch (_) { return normalize(null); }
+  function read(key, definitions, defaults) {
+    try { return normalize(JSON.parse(window.localStorage.getItem(key)), definitions, defaults); }
+    catch (_) { return normalize(null, definitions, defaults); }
   }
   function mount(root) {
     if (!root || root.dataset.layoutMounted) return;
     root.dataset.layoutMounted = 'yes';
-    var state = read(), editing = false, dragging = null;
     var containers = Array.prototype.slice.call(root.querySelectorAll('[data-layout-group]'));
-    function save() { try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) {} }
+    var definitions = {}, defaults = {}, key = root.dataset.layoutKey || storageKey;
+    containers.forEach(function (container) {
+      definitions[container.dataset.layoutGroup] = items(container).map(function (item) { return item.dataset.layoutItem; });
+      defaults[container.dataset.layoutGroup] = clamp(container.dataset.layoutColumns, 2, 12, container.dataset.layoutGroup === 'summary' ? 4 : 12);
+    });
+    var state = read(key, definitions, defaults), editing = false, dragging = null;
+    function save() { try { window.localStorage.setItem(key, JSON.stringify(state)); } catch (_) {} }
     function items(container) { return Array.prototype.filter.call(container.children, function (item) { return item.dataset.layoutItem; }); }
     function apply(container) {
       var group = container.dataset.layoutGroup;
@@ -79,7 +87,7 @@
         button('+W', 'Wider:', function () { resize(1, 0); });
         button('−H', 'Shorter:', function () { resize(0, -24); });
         button('+H', 'Taller:', function () { resize(0, 24); });
-        button('Auto', 'Reset size:', function () { state[group][id].columns = group === 'summary' ? 4 : 12; state[group][id].height = null; apply(container); save(); });
+        button('Auto', 'Reset size:', function () { state[group][id].columns = defaults[group]; state[group][id].height = null; apply(container); save(); });
         item.insertBefore(controls, item.firstChild);
         var grip = document.createElement('span'); grip.className = 'waz-layout-grip'; grip.hidden = true;
         grip.textContent = '↘'; grip.setAttribute('aria-hidden', 'true'); item.appendChild(grip);
@@ -101,6 +109,7 @@
           grip.addEventListener('pointermove', update); grip.addEventListener('pointerup', finish); grip.addEventListener('pointercancel', finish);
         });
         item.addEventListener('dragstart', function (e) {
+          e.stopPropagation();
           if (!editing || e.target === grip || /^(BUTTON|INPUT|SELECT)$/.test(e.target.tagName)) { e.preventDefault(); return; }
           dragging = item; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id);
         });
@@ -123,9 +132,9 @@
       if (reset) reset.hidden = !editing;
       containers.forEach(function (container) { items(container).forEach(function (item) { item.draggable = editing; Array.prototype.forEach.call(item.querySelectorAll('.waz-layout-controls, .waz-layout-grip'), function (control) { control.hidden = !editing; }); }); });
     });
-    if (reset) reset.addEventListener('click', function () { state = normalize(null); containers.forEach(apply); save(); });
+    if (reset) reset.addEventListener('click', function () { state = normalize(null, definitions, defaults); containers.forEach(apply); save(); });
   }
-  window.WAZStatusLayout = { normalize: normalize, mount: mount };
-  function start() { mount(document.querySelector('#waz-system-tile .waz-system')); }
+  function start() { Array.prototype.forEach.call(document.querySelectorAll('[data-dashboard-layout]'), mount); }
+  window.WAZDashboardLayout = window.WAZStatusLayout = { normalize: normalize, mount: mount, start: start };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
