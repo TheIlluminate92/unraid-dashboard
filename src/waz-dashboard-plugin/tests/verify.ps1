@@ -13,6 +13,8 @@ if ($LASTEXITCODE -ne 0) { throw 'CPU disclosure and aggregation regression test
 if ($LASTEXITCODE -ne 0) { throw 'Optional fan plugin regression tests failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/optional-hba.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Optional HBA plugin regression tests failed.' }
+& $node.Source --test (Join-Path $projectRoot 'tests/attention.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Attention summary regressions failed.' }
 $manifest = Join-Path $projectRoot 'dist/waz.dashboard.plg'
 
 & (Join-Path $projectRoot 'scripts/build.ps1') -OutputPath $manifest
@@ -247,6 +249,8 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/cached-smart.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Cached SMART regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/identity-health.php')
     if ($LASTEXITCODE -ne 0) { throw 'Host identity and lifecycle health regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/ups-source.php')

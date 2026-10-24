@@ -23,6 +23,14 @@
   var histories = {};
   var MAX_HISTORY = 60;
 
+
+  function publishAttention(state, messages, stale) {
+    var payload = { state: state, messages: messages || [], stale: !!stale, receivedAt: Date.now() };
+    window.WAZDashboardTelemetry = window.WAZDashboardTelemetry || {};
+    window.WAZDashboardTelemetry["workloads"] = payload;
+    if (window.WAZHealth && window.WAZHealth.dashboardUpdate) window.WAZHealth.dashboardUpdate("workloads", payload);
+  }
+
   function node(id) { return document.getElementById(id); }
 
   function text(id, value) {
@@ -406,7 +414,10 @@
     renderInspector(data.selected && data.selected.name === selectedContainer ? data.selected : null);
     setHealth(data.state || 'normal', data.state === 'attention' ? 'ATTENTION' : 'NORMAL');
     renderAttention(data.attention || {}, data.state || 'normal');
-    text('waz-workloads-subtitle', Number((data.summary || {}).running || 0) + ' running · click an icon for controls');
+    publishAttention(data.state || 'normal', (data.attention || {}).messages || []);
+    var unhealthy = (data.containers || []).filter(function (c) { return c.state === 'running' && c.health === 'unhealthy'; }).length;
+    text('waz-workloads-collapsed-summary', Number((data.summary || {}).running || 0) + ' running · ' + unhealthy + ' unhealthy · ' + Number((data.summary || {}).updates || 0) + ' updates');
+    text('waz-workloads-subtitle', 'Docker containers and controls');
     text('waz-workloads-updated', 'Updated ' + new Date(Number(data.sampledAtMs) || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   }
 
@@ -501,6 +512,8 @@
       })
       .catch(function () {
         setHealth('fault', 'DATA STALE');
+        text('waz-workloads-collapsed-summary', 'Readings unavailable · showing last snapshot');
+        publishAttention('fault', ['Docker telemetry unavailable; showing last snapshot'], true);
         renderAttention({ messages: ['Docker telemetry is unavailable'] }, 'fault');
         text('waz-workloads-updated', 'Unable to read Docker snapshot');
       })

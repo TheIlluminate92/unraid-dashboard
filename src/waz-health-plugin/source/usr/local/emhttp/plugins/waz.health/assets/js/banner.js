@@ -27,6 +27,20 @@
   var resizeObserver = null;
   var fanBusy = false;
 
+
+  var dashboardTelemetry = window.WAZDashboardTelemetry || {};
+  function dashboardIssues(now) {
+    var result = [];
+    Object.keys(dashboardTelemetry).forEach(function (key) {
+      var item = dashboardTelemetry[key];
+      if (['storage', 'workloads', 'system'].indexOf(key) < 0 || !item) return;
+      var stale = item.stale || now - item.receivedAt > (key === 'system' ? 8000 : 20000);
+      var messages = stale ? [key + ' telemetry unavailable; showing last snapshot'] : item.messages || [];
+      messages.forEach(function (message) { result.push({ label: key.toUpperCase(), state: stale ? 'fault' : normalizeState(item.state), message: String(message), source: key }); });
+    });
+    return result.filter(function (item) { return stateRank(item.state) > 0; });
+  }
+
   function normalizeState(value) {
     value = String(value || "unknown").toLowerCase();
     return allowedStates.indexOf(value) >= 0 ? value : "unknown";
@@ -297,11 +311,12 @@
     var issuesNode = banner.querySelector('[data-field="issues"]');
     if (!issuesNode) return;
 
-    var activeIssues = [];
+    var activeIssues = dashboardIssues(Date.now());
     subsystemOrder.forEach(function (key) {
       var value = state.subsystems[key] || {};
       var issueState = normalizeState(value.state);
       if (issueState !== "attention" && issueState !== "fault") return;
+      if ((key === 'array' || key === 'storage') && activeIssues.some(function (i) { return i.source === 'storage' && stateRank(i.state) >= stateRank(issueState); })) return;
       activeIssues.push({
         label: value.label || key.toUpperCase(),
         state: issueState,
@@ -323,6 +338,16 @@
       return (rank[right.state] || 0) - (rank[left.state] || 0);
     });
 
+    var seen = {};
+    activeIssues = activeIssues.filter(function (issue) { var key = issue.message.toLowerCase().trim(); if (seen[key]) return false; seen[key] = true; return true; });
+    var overallNode = banner.querySelector('[data-field="overall"]');
+    var overallDot = banner.querySelector('.waz-health__overall');
+    if (activeIssues.length) {
+      if (overallNode) overallNode.textContent = 'NEEDS ATTENTION · ' + activeIssues.length;
+      if (overallDot) overallDot.dataset.state = activeIssues.some(function (i) { return i.state === 'fault'; }) ? 'fault' : 'attention';
+    } else if (Object.keys(state.healthSubsystems || {}).length && normalizeState(state.overall.state) === 'normal' && !Object.keys(state.healthSubsystems).some(function (k) { return normalizeState(state.healthSubsystems[k].state) === 'unknown'; })) {
+      if (overallNode) overallNode.textContent = 'ALL CLEAR';
+    }
     issuesNode.replaceChildren();
     activeIssues.forEach(function (issue) {
       var item = document.createElement("span");
@@ -561,6 +586,10 @@
   window.WAZHealth = {
     version: "@@APP_VERSION@@",
     refresh: refresh,
+    dashboardUpdate: function (section, payload) {
+      dashboardTelemetry[section] = payload;
+      render();
+    },
     setState: function (next) {
       mergeSnapshot(next);
       return JSON.parse(JSON.stringify(state));

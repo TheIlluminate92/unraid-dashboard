@@ -14,7 +14,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
-    <details class="waz-secondary-panel"><summary>System details</summary>
+    <details class="waz-secondary-panel"><summary>System details <span id="waz-system-collapsed-summary">Connecting…</span></summary>
 
     <div class="waz-summary" aria-label="System summary" data-layout-group="summary">
       <div class="waz-summary-cell" data-layout-item="cpu" data-layout-label="CPU"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
@@ -31,7 +31,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
     <div class="waz-system-sections" data-layout-group="sections">
     <section class="waz-block waz-cpu-block" data-layout-item="cpu" data-layout-label="CPU">
       <header class="waz-block-header">
-        <span><b>CPU</b><small><span id="waz-system-model">Loading processor…</span> · <span id="waz-cpu-count">-- cores / -- threads</span></small></span>
+        <span><b>CPU <span id="waz-cpu-overview">--</span></b><small><span id="waz-system-model">Loading processor…</span> · <span id="waz-cpu-count">-- cores / -- threads</span></small></span>
       </header>
       <div class="waz-chart-wrap">
         <span>5 MINUTE LOAD</span>
@@ -42,7 +42,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
           <polyline id="waz-cpu-chart-line" points=""></polyline>
         </svg>
       </div>
-      <div id="waz-core-list" class="waz-core-list"><span class="waz-muted">Sampling CPU topology…</span></div>
+      <details class="waz-cpu-detail"><summary>Processors &amp; cores</summary><div id="waz-core-list" class="waz-core-list"><span class="waz-muted">Sampling CPU topology…</span></div></details>
     </section>
 
     <section class="waz-block waz-memory-block" data-layout-item="memory" data-layout-label="Memory">

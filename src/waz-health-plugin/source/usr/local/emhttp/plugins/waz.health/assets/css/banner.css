@@ -331,3 +331,6 @@
     scroll-behavior: auto !important;
   }
 }
+
+#waz-health-banner .waz-health__issues { flex-wrap: wrap; white-space: normal; }
+#waz-health-banner .waz-health__issue { line-height: 1.5; }

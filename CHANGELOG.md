@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.24.06
+
+- Consolidate dashboard problems into the existing health banner; show all clear only for healthy known data.
+- Add useful collapsed panel/enclosure summaries and an overall CPU view with optional processor/core detail.
+- Color drive bays and legends by pool assignment, independently of warning/fault markers.
+- Show existing Unraid cached SMART attributes and cache time in bay details without drive commands or click-triggered requests.
+- Keep missing optional hardware hidden and distinguish unavailable readings after detection.
+
 ## 0.8.5 - 2026-10-24 (build 2026.10.24.05)
 
 - Keeps Drives & Storage full-width above a two-column Server Status / Workloads row on screens at least 1200px wide. Smaller screens stack the panels.
