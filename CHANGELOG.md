@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.5 - 2026-10-24 (build 2026.10.24.01)
+
+- Default and legacy banner names follow the local hostname; custom labels remain supported.
+- Adds per-browser movable/resizable Server Status sections and summary tiles, keyboard editing controls and layout reset. Missing optional hardware tiles hide automatically.
+- Stopped and paused containers no longer inherit a historical healthcheck failure in the inspector. Running health alerts and autostart failure detection remain active.
+- Health and rack-power collection share local NUT/apcupsd discovery and an optional dashboard-only network APC source. Missing UPS widgets hide; an explicitly configured failed source still reports a fault. No UPS daemon or shutdown settings are changed.
+- Disk layout redesign is tracked separately in #22; Docker folder ownership remains with its managers.
+
 ## 0.8.5 — 2026-10-22 (build 2026.10.22.04)
 
 - Keeps the wrench, clock and uptime anchored to the right when optional cooling controls are absent.

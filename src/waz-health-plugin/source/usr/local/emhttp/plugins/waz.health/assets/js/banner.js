@@ -377,6 +377,7 @@
       var item = banner.querySelector('[data-subsystem="' + key + '"]');
       var value = state.subsystems[key] || { label: key.toUpperCase(), state: "unknown" };
       if (!item) return;
+      item.hidden = key === 'ups' && value.metrics && value.metrics.available === false && normalizeState(value.state) === 'normal';
       item.dataset.state = normalizeState(value.state);
       var label = item.querySelector(".waz-health__subsystem-label");
       if (label) label.textContent = escapeText(value.label || key.toUpperCase());

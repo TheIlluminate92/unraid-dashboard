@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $node = Get-Command node -ErrorAction Stop
+& $node.Source --test (Join-Path $projectRoot 'tests/status-layout.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Status layout regressions failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/cpu-view.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'CPU disclosure and aggregation regression tests failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/optional-fans.test.mjs')
@@ -32,6 +34,7 @@ $required = @(
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/storage.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/banner.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/js/system.js',
+    '/usr/local/emhttp/plugins/waz.dashboard/assets/js/layout.js',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/js/workloads.js',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/js/storage.js',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/js/banner.js',
@@ -239,6 +242,10 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/identity-health.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Host identity and lifecycle health regressions failed.' }
+    & $php.Source (Join-Path $projectRoot 'tests/ups-source.php')
+    if ($LASTEXITCODE -ne 0) { throw 'UPS source regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/pool-only.php')
     if ($LASTEXITCODE -ne 0) { throw 'Pool-only parity regression failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/registration.php') $manifest

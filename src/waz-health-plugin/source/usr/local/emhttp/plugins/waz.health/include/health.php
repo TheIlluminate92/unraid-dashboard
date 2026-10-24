@@ -16,10 +16,21 @@ function waz_health_state_rank(string $state): int
     return $ranks[waz_health_allowed_state($state)] ?? 1;
 }
 
+function waz_health_display_name(array $config, ?string $hostname = null): string
+{
+    $name = trim((string) ($config['DISPLAY_NAME'] ?? ''));
+    if ($name !== '' && !in_array(strtolower($name), ['auto', 'waz-server'], true)) {
+        return $name;
+    }
+    $hostname = trim($hostname ?? (gethostname() ?: ''));
+    return $hostname !== '' ? $hostname : 'SERVER';
+}
+
 function waz_health_read_config(): array
 {
     $defaults = [
-        'DISPLAY_NAME' => 'WAZ-SERVER',
+        'DISPLAY_NAME' => 'auto',
+        'UPS_APC_TARGET' => '',
         'OVERALL_STATE' => 'normal',
         'OVERALL_MESSAGE' => '',
         'ARRAY_STATE' => 'normal',
@@ -425,8 +436,15 @@ function waz_health_run_command(string $command): ?array
 
 function waz_health_read_ups_data(): ?array
 {
+    $config = waz_health_read_config();
+    $target = trim((string) ($config['UPS_APC_TARGET'] ?? ''));
+    // A dashboard-only override reads an existing network UPS server. It does
+    // not change the host's UPS daemon, shutdown policy, or network listeners.
+    if ($target !== '' && !preg_match('/^[a-zA-Z0-9][a-zA-Z0-9._-]*(?::[0-9]{1,5})?$/D', $target)) {
+        return ['source' => 'apcupsd', 'STATUS' => 'COMMLOST'];
+    }
     $upsc = waz_health_find_executable(['/usr/bin/upsc', '/usr/sbin/upsc', '/sbin/upsc']);
-    if ($upsc !== null) {
+    if ($target === '' && $upsc !== null) {
         $names = waz_health_run_command(escapeshellarg($upsc) . ' -l');
         $name = is_array($names) ? trim((string) ($names[0] ?? '')) : '';
         if ($name !== '') {
@@ -445,7 +463,7 @@ function waz_health_read_ups_data(): ?array
 
     $apcaccess = waz_health_find_executable(['/sbin/apcaccess', '/usr/sbin/apcaccess', '/usr/bin/apcaccess']);
     if ($apcaccess !== null) {
-        $lines = waz_health_run_command(escapeshellarg($apcaccess) . ' status');
+        $lines = waz_health_run_command(escapeshellarg($apcaccess) . ' status' . ($target !== '' ? ' ' . escapeshellarg($target) : ''));
         if (is_array($lines) && $lines) {
             $data = ['source' => 'apcupsd'];
             foreach ($lines as $line) {
@@ -455,6 +473,9 @@ function waz_health_read_ups_data(): ?array
             }
             return $data;
         }
+    }
+    if ($target !== '') {
+        return ['source' => 'apcupsd', 'STATUS' => 'COMMLOST'];
     }
     return null;
 }
@@ -581,7 +602,7 @@ function waz_health_snapshot(): array
         'version' => '@@APP_VERSION@@',
         'pluginVersion' => '@@PLUGIN_VERSION@@',
         'server' => [
-            'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
+            'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
         ],
         'overall' => waz_health_overall_status($config, $subsystems),

@@ -104,6 +104,23 @@
   background: var(--waz-panel);
 }
 
+/* Independent grids keep summary tiles inside the status board and sections below it. */
+.waz-system .waz-summary,
+.waz-system .waz-system-sections { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.waz-system .waz-system-sections { margin-top: 8px; }
+.waz-system [data-layout-item] { position: relative; min-width: 0; box-sizing: border-box; }
+.waz-system .waz-summary-cell { grid-column: span 4; height: auto; min-height: 70px; }
+.waz-system .waz-system-sections > .waz-block { grid-column: span 12; margin: 0; }
+.waz-system .waz-layout-sized { overflow: auto; }
+.waz-system [hidden] { display: none !important; }
+.waz-layout-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.waz-layout-actions button, .waz-layout-controls button { background: #26323b; color: var(--waz-cyan); border: 1px solid #456070; border-radius: 3px; padding: 3px 6px; font: inherit; cursor: pointer; }
+.waz-layout-controls { display: flex; gap: 3px; flex-wrap: wrap; padding-bottom: 5px; }
+.waz-layout-editing [data-layout-item] { outline: 1px dashed var(--waz-cyan); }
+.waz-layout-editing .waz-layout-controls { position: relative; margin-bottom: 6px; }
+.waz-layout-grip { position: absolute; bottom: 0; right: 0; padding: 2px 5px; color: var(--waz-cyan); cursor: nwse-resize; touch-action: none; background: #26323b; z-index: 2; }
+@media (max-width: 600px) { .waz-system [data-layout-item] { grid-column: span 12 !important; } }
+
 .waz-summary-cell span,
 .waz-block-header b {
   display: block;

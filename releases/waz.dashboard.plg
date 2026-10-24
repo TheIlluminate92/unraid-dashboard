@@ -2,12 +2,17 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.22.04">
+  <!ENTITY version "2026.10.24.01">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.24.01
+- Hostname-based banner names, movable and resizable Server Status sections and summary tiles, keyboard layout controls, reset and per-browser saved layouts.
+- Hides absent hardware, shares local/network UPS telemetry between health and power, and preserves communication fault reporting. Does not change UPS shutdown settings.
+- Corrects retained healthcheck results on stopped or paused containers.
+
 ### 0.8.5 - Build 2026.10.22.04
 - Keeps the wrench, time and uptime anchored to the right independently of optional fan controls.
 - Supports combined cooling status: hides the MD12xx control when no shelves are present and shows an IPMI status link only when chassis control is available. Chassis faults contribute to cooling/overall health.
@@ -1124,6 +1129,23 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   padding: .58rem .7rem;
   background: var(--waz-panel);
 }
+
+/* Independent grids keep summary tiles inside the status board and sections below it. */
+.waz-system .waz-summary,
+.waz-system .waz-system-sections { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.waz-system .waz-system-sections { margin-top: 8px; }
+.waz-system [data-layout-item] { position: relative; min-width: 0; box-sizing: border-box; }
+.waz-system .waz-summary-cell { grid-column: span 4; height: auto; min-height: 70px; }
+.waz-system .waz-system-sections > .waz-block { grid-column: span 12; margin: 0; }
+.waz-system .waz-layout-sized { overflow: auto; }
+.waz-system [hidden] { display: none !important; }
+.waz-layout-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.waz-layout-actions button, .waz-layout-controls button { background: #26323b; color: var(--waz-cyan); border: 1px solid #456070; border-radius: 3px; padding: 3px 6px; font: inherit; cursor: pointer; }
+.waz-layout-controls { display: flex; gap: 3px; flex-wrap: wrap; padding-bottom: 5px; }
+.waz-layout-editing [data-layout-item] { outline: 1px dashed var(--waz-cyan); }
+.waz-layout-editing .waz-layout-controls { position: relative; margin-bottom: 6px; }
+.waz-layout-grip { position: absolute; bottom: 0; right: 0; padding: 2px 5px; color: var(--waz-cyan); cursor: nwse-resize; touch-action: none; background: #26323b; z-index: 2; }
+@media (max-width: 600px) { .waz-system [data-layout-item] { grid-column: span 12 !important; } }
 
 .waz-summary-cell span,
 .waz-block-header b {
@@ -2605,6 +2627,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
       var item = banner.querySelector('[data-subsystem="' + key + '"]');
       var value = state.subsystems[key] || { label: key.toUpperCase(), state: "unknown" };
       if (!item) return;
+      item.hidden = key === 'ups' && value.metrics && value.metrics.available === false && normalizeState(value.state) === 'normal';
       item.dataset.state = normalizeState(value.state);
       var label = item.querySelector(".waz-health__subsystem-label");
       if (label) label.textContent = escapeText(value.label || key.toUpperCase());
@@ -2809,6 +2832,144 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   } else {
     mount();
   }
+})();
+
+]]>
+</INLINE>
+</FILE>
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/js/layout.js">
+<INLINE>
+<![CDATA[
+(function () {
+  'use strict';
+  var storageKey = 'waz.dashboard.statusLayout.v1';
+  var groups = { summary: ['cpu', 'gpu', 'power', 'memory', 'coolant', 'hba0', 'network', 'flow', 'hba1'], sections: ['cpu', 'memory', 'network'] };
+  function clamp(value, low, high, fallback) {
+    value = Number(value);
+    return Number.isFinite(value) ? Math.max(low, Math.min(high, Math.round(value))) : fallback;
+  }
+  function normalize(raw) {
+    var result = {};
+    Object.keys(groups).forEach(function (group) {
+      var entries = raw && typeof raw[group] === 'object' && raw[group] || {};
+      result[group] = {};
+      groups[group].forEach(function (id, index) {
+        var item = entries[id] || {};
+        result[group][id] = {
+          order: clamp(item.order, 0, 50, index),
+          columns: clamp(item.columns, group === 'summary' ? 2 : 4, 12, group === 'summary' ? 4 : 12),
+          height: item.height == null ? null : clamp(item.height, group === 'summary' ? 56 : 120, 2400, null)
+        };
+      });
+    });
+    return result;
+  }
+  function read() {
+    try { return normalize(JSON.parse(window.localStorage.getItem(storageKey))); }
+    catch (_) { return normalize(null); }
+  }
+  function mount(root) {
+    if (!root || root.dataset.layoutMounted) return;
+    root.dataset.layoutMounted = 'yes';
+    var state = read(), editing = false, dragging = null;
+    var containers = Array.prototype.slice.call(root.querySelectorAll('[data-layout-group]'));
+    function save() { try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) {} }
+    function items(container) { return Array.prototype.filter.call(container.children, function (item) { return item.dataset.layoutItem; }); }
+    function apply(container) {
+      var group = container.dataset.layoutGroup;
+      items(container).sort(function (a, b) { return state[group][a.dataset.layoutItem].order - state[group][b.dataset.layoutItem].order; }).forEach(function (item) {
+        var size = state[group][item.dataset.layoutItem];
+        item.style.gridColumn = 'span ' + size.columns;
+        item.style.height = size.height == null ? '' : size.height + 'px';
+        item.classList.toggle('waz-layout-sized', size.height != null);
+        container.appendChild(item);
+      });
+    }
+    function recordOrder(container) {
+      items(container).forEach(function (item, i) { state[container.dataset.layoutGroup][item.dataset.layoutItem].order = i; });
+      save();
+    }
+    function move(container, item, offset) {
+      var visible = items(container).filter(function (x) { return !x.hidden; });
+      var index = visible.indexOf(item), target = visible[index + offset];
+      if (!target) return;
+      container.insertBefore(item, offset < 0 ? target : target.nextSibling);
+      recordOrder(container);
+    }
+    containers.forEach(function (container) {
+      var group = container.dataset.layoutGroup;
+      items(container).forEach(function (item) {
+        var id = item.dataset.layoutItem, label = item.dataset.layoutLabel || id;
+        var controls = document.createElement('div');
+        controls.className = 'waz-layout-controls';
+        controls.hidden = true;
+        function button(text, title, action) {
+          var b = document.createElement('button'); b.type = 'button'; b.textContent = text;
+          b.title = title + ' ' + label; b.setAttribute('aria-label', b.title);
+          b.addEventListener('click', function (e) { e.stopPropagation(); action(); });
+          controls.appendChild(b); return b;
+        }
+        button('←', 'Move earlier:', function () { move(container, item, -1); });
+        button('→', 'Move later:', function () { move(container, item, 1); });
+        function resize(width, height) {
+          var size = state[group][id];
+          size.columns = clamp(size.columns + width, group === 'summary' ? 2 : 4, 12, size.columns);
+          if (height) size.height = clamp((size.height || item.getBoundingClientRect().height) + height, group === 'summary' ? 56 : 120, 2400, null);
+          apply(container); save();
+        }
+        button('−W', 'Narrower:', function () { resize(-1, 0); });
+        button('+W', 'Wider:', function () { resize(1, 0); });
+        button('−H', 'Shorter:', function () { resize(0, -24); });
+        button('+H', 'Taller:', function () { resize(0, 24); });
+        button('Auto', 'Reset size:', function () { state[group][id].columns = group === 'summary' ? 4 : 12; state[group][id].height = null; apply(container); save(); });
+        item.insertBefore(controls, item.firstChild);
+        var grip = document.createElement('span'); grip.className = 'waz-layout-grip'; grip.hidden = true;
+        grip.textContent = '↘'; grip.setAttribute('aria-hidden', 'true'); item.appendChild(grip);
+        grip.addEventListener('pointerdown', function (e) {
+          if (!editing) return;
+          e.preventDefault(); e.stopPropagation();
+          var startX = e.clientX, startY = e.clientY, rect = item.getBoundingClientRect();
+          var columns = state[group][id].columns;
+          var step = (container.getBoundingClientRect().width + 8) / 12;
+          grip.setPointerCapture(e.pointerId);
+          function update(event) {
+            state[group][id].columns = clamp(columns + (event.clientX - startX) / step, group === 'summary' ? 2 : 4, 12, columns);
+            state[group][id].height = clamp(rect.height + event.clientY - startY, group === 'summary' ? 56 : 120, 2400, null);
+            item.style.gridColumn = 'span ' + state[group][id].columns;
+            item.style.height = state[group][id].height + 'px';
+            item.classList.add('waz-layout-sized');
+          }
+          function finish() { grip.removeEventListener('pointermove', update); grip.removeEventListener('pointerup', finish); grip.removeEventListener('pointercancel', finish); save(); }
+          grip.addEventListener('pointermove', update); grip.addEventListener('pointerup', finish); grip.addEventListener('pointercancel', finish);
+        });
+        item.addEventListener('dragstart', function (e) {
+          if (!editing || e.target === grip || /^(BUTTON|INPUT|SELECT)$/.test(e.target.tagName)) { e.preventDefault(); return; }
+          dragging = item; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id);
+        });
+        item.addEventListener('dragover', function (e) { if (editing && dragging && dragging.parentElement === container) e.preventDefault(); });
+        item.addEventListener('drop', function (e) {
+          if (!editing || !dragging || dragging === item || dragging.parentElement !== container) return;
+          e.preventDefault(); e.stopPropagation();
+          var rect = item.getBoundingClientRect();
+          container.insertBefore(dragging, e.clientY > rect.top + rect.height / 2 ? item.nextSibling : item);
+          recordOrder(container); dragging = null;
+        });
+        item.addEventListener('dragend', function () { dragging = null; });
+      });
+      apply(container);
+    });
+    var toggle = root.querySelector('[data-layout-edit]'), reset = root.querySelector('[data-layout-reset]');
+    if (toggle) toggle.addEventListener('click', function () {
+      editing = !editing; root.classList.toggle('waz-layout-editing', editing);
+      toggle.textContent = editing ? 'Done' : 'Edit layout'; toggle.setAttribute('aria-pressed', String(editing));
+      if (reset) reset.hidden = !editing;
+      containers.forEach(function (container) { items(container).forEach(function (item) { item.draggable = editing; Array.prototype.forEach.call(item.querySelectorAll('.waz-layout-controls, .waz-layout-grip'), function (control) { control.hidden = !editing; }); }); });
+    });
+    if (reset) reset.addEventListener('click', function () { state = normalize(null); containers.forEach(apply); save(); });
+  }
+  window.WAZStatusLayout = { normalize: normalize, mount: mount };
+  function start() { mount(document.querySelector('#waz-system-tile .waz-system')); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 
 ]]>
@@ -3285,6 +3446,12 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   var snapshotTimer = null;
   var hbaTimer = null;
   var hbaHasData = false;
+  var detectedHardware = {};
+  function hardwareField(id, present) {
+    if (present) detectedHardware[id] = true;
+    var field = document.getElementById(id);
+    if (field && field.parentElement) field.parentElement.hidden = !present && !detectedHardware[id];
+  }
   var hbaAvailable = root.getAttribute('data-hba-available') !== 'no';
   var previousCpu = null;
   var previousRapl = null;
@@ -3629,6 +3796,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   function renderGpu(gpu) {
     gpu = gpu || {};
     var available = gpu.available === true && gpu.stale !== true;
+    hardwareField('waz-summary-gpu', gpu.available === true);
     text('waz-summary-gpu', available ? percent(gpu.loadPercent) : 'N/A');
     var processes = Array.isArray(gpu.processes) ? gpu.processes : [];
     text('waz-summary-gpu-detail', available
@@ -3691,6 +3859,10 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     var cooling = data.cooling || {};
     var power = data.power || {};
     var rack = power.rack || {};
+    var rackField = node('waz-summary-power');
+    if (rackField && rackField.parentElement) rackField.parentElement.hidden = !rack.available;
+    hardwareField('waz-summary-cooling', finite(cooling.coolantTempC));
+    hardwareField('waz-summary-flow', finite(cooling.flowLph));
     text('waz-summary-cpu', percent(cpuLoad) + ' · ' + temperature(cooling.cpuTempC));
     text('waz-summary-cpu-detail', 'Package power ' + watts(cpuPower));
     text('waz-summary-power', watts(rack.watts));
@@ -3740,6 +3912,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
   }
 
   function renderHbaCell(position, controller) {
+    hardwareField('waz-hba-' + position + '-temp', !!controller);
     var label = node('waz-hba-' + position + '-label');
     var value = node('waz-hba-' + position + '-temp');
     var detail = node('waz-hba-' + position + '-detail');
@@ -4841,10 +5014,21 @@ function waz_health_state_rank(string $state): int
     return $ranks[waz_health_allowed_state($state)] ?? 1;
 }
 
+function waz_health_display_name(array $config, ?string $hostname = null): string
+{
+    $name = trim((string) ($config['DISPLAY_NAME'] ?? ''));
+    if ($name !== '' && !in_array(strtolower($name), ['auto', 'waz-server'], true)) {
+        return $name;
+    }
+    $hostname = trim($hostname ?? (gethostname() ?: ''));
+    return $hostname !== '' ? $hostname : 'SERVER';
+}
+
 function waz_health_read_config(): array
 {
     $defaults = [
-        'DISPLAY_NAME' => 'WAZ-SERVER',
+        'DISPLAY_NAME' => 'auto',
+        'UPS_APC_TARGET' => '',
         'OVERALL_STATE' => 'normal',
         'OVERALL_MESSAGE' => '',
         'ARRAY_STATE' => 'normal',
@@ -5250,8 +5434,15 @@ function waz_health_run_command(string $command): ?array
 
 function waz_health_read_ups_data(): ?array
 {
+    $config = waz_health_read_config();
+    $target = trim((string) ($config['UPS_APC_TARGET'] ?? ''));
+    // A dashboard-only override reads an existing network UPS server. It does
+    // not change the host's UPS daemon, shutdown policy, or network listeners.
+    if ($target !== '' && !preg_match('/^[a-zA-Z0-9][a-zA-Z0-9._-]*(?::[0-9]{1,5})?$/D', $target)) {
+        return ['source' => 'apcupsd', 'STATUS' => 'COMMLOST'];
+    }
     $upsc = waz_health_find_executable(['/usr/bin/upsc', '/usr/sbin/upsc', '/sbin/upsc']);
-    if ($upsc !== null) {
+    if ($target === '' && $upsc !== null) {
         $names = waz_health_run_command(escapeshellarg($upsc) . ' -l');
         $name = is_array($names) ? trim((string) ($names[0] ?? '')) : '';
         if ($name !== '') {
@@ -5270,7 +5461,7 @@ function waz_health_read_ups_data(): ?array
 
     $apcaccess = waz_health_find_executable(['/sbin/apcaccess', '/usr/sbin/apcaccess', '/usr/bin/apcaccess']);
     if ($apcaccess !== null) {
-        $lines = waz_health_run_command(escapeshellarg($apcaccess) . ' status');
+        $lines = waz_health_run_command(escapeshellarg($apcaccess) . ' status' . ($target !== '' ? ' ' . escapeshellarg($target) : ''));
         if (is_array($lines) && $lines) {
             $data = ['source' => 'apcupsd'];
             foreach ($lines as $line) {
@@ -5280,6 +5471,9 @@ function waz_health_read_ups_data(): ?array
             }
             return $data;
         }
+    }
+    if ($target !== '') {
+        return ['source' => 'apcupsd', 'STATUS' => 'COMMLOST'];
     }
     return null;
 }
@@ -5404,9 +5598,9 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.5',
-        'pluginVersion' => '2026.10.22.04',
+        'pluginVersion' => '2026.10.24.01',
         'server' => [
-            'label' => trim((string) $config['DISPLAY_NAME']) ?: 'WAZ-SERVER',
+            'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
         ],
         'overall' => waz_health_overall_status($config, $subsystems),
@@ -5430,7 +5624,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.5';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.22.04';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.01';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -5690,33 +5884,20 @@ function waz_ups_rack_power(): array
     }
 
     $result = ['available' => false, 'source' => null, 'watts' => null, 'loadPercent' => null, 'nominalWatts' => null];
-    foreach (['/sbin/apcaccess', '/usr/sbin/apcaccess', '/usr/bin/apcaccess'] as $binary) {
-        if (!is_file($binary) || !is_executable($binary)) {
-            continue;
-        }
-        $lines = [];
-        $exitCode = 1;
-        @exec(escapeshellarg($binary) . ' status 2>/dev/null', $lines, $exitCode);
-        if ($exitCode !== 0) {
-            break;
-        }
-        $values = [];
-        foreach ($lines as $line) {
-            if (preg_match('/^([^:]+):\s*(.*)$/', $line, $match)) {
-                $values[strtoupper(trim($match[1]))] = trim($match[2]);
-            }
-        }
-        $load = waz_first_number($values['LOADPCT'] ?? null);
-        $nominal = waz_first_number($values['NOMPOWER'] ?? null);
+    require_once __DIR__ . '/health.php';
+    $values = waz_health_read_ups_data();
+    if ($values !== null) {
+        $nut = ($values['source'] ?? '') === 'nut';
+        $load = waz_first_number($values[$nut ? 'ups.load' : 'LOADPCT'] ?? null);
+        $nominal = waz_first_number($values[$nut ? 'ups.realpower.nominal' : 'NOMPOWER'] ?? null);
         $watts = $load !== null && $nominal !== null ? $nominal * $load / 100.0 : null;
         $result = [
             'available' => $watts !== null,
-            'source' => 'apcupsd',
+            'source' => $values['source'],
             'watts' => $watts,
             'loadPercent' => $load,
             'nominalWatts' => $nominal,
         ];
-        break;
     }
 
     @mkdir(WAZ_DASHBOARD_STATE, 0755, true);
@@ -5922,7 +6103,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.5';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.22.04';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.01';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6696,7 +6877,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.5';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.22.04';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.01';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7249,11 +7430,18 @@ function waz_workloads_addresses(array $container): array
     return ['addresses' => array_values(array_unique($addresses)), 'ports' => array_values(array_unique($ports))];
 }
 
+function waz_workloads_current_health(string $state, string $health): string
+{
+    return $state === 'running' && in_array($health, ['healthy', 'unhealthy', 'starting'], true)
+        ? $health : 'none';
+}
+
 function waz_workloads_container_public(array $container, array $info, array $gpu): array
 {
     $status = (string) ($container['Status'] ?? '');
     $health = stripos($status, '(unhealthy)') !== false ? 'unhealthy' : (stripos($status, '(healthy)') !== false ? 'healthy' : 'none');
     $state = !empty($container['Paused']) ? 'paused' : (!empty($container['Running']) ? 'running' : 'stopped');
+    $health = waz_workloads_current_health($state, $health);
     $updated = (string) ($info['updated'] ?? 'undef');
     $updateStatus = $updated === 'false' ? 1 : ($updated === 'true' ? 0 : 3);
     $name = (string) $container['Name'];
@@ -7357,7 +7545,7 @@ try {
         $selected['ports'] = $addresses['ports'];
         $selected['uptimeSeconds'] = $selected['state'] === 'running' && $startedAt > 0 ? max(0, time() - $startedAt) : null;
         $selected['restartCount'] = (int) ($details['RestartCount'] ?? 0);
-        $selected['health'] = $health !== '' ? $health : 'none';
+        $selected['health'] = waz_workloads_current_health($selected['state'], $health);
     }
 
     $running = count(array_filter($containers, static fn(array $container): bool => $container['state'] === 'running'));
@@ -7536,22 +7724,23 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
   <section class="waz-system" data-version="0.8.5" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
-      <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
+      <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
 
-    <div class="waz-summary" aria-label="System summary">
-      <div class="waz-summary-cell"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
-      <div class="waz-summary-cell waz-accent-gpu"><span>GPU</span><strong id="waz-summary-gpu">--</strong><small id="waz-summary-gpu-detail">No active processes</small></div>
-      <div class="waz-summary-cell"><span>RACK POWER</span><strong id="waz-summary-power">--</strong><small id="waz-summary-power-detail">Reading UPS load…</small></div>
-      <div class="waz-summary-cell"><span>RAM</span><strong id="waz-summary-memory">--</strong><small id="waz-summary-memory-detail">-- used</small></div>
-      <div class="waz-summary-cell waz-accent-cooling"><span>COOLANT</span><strong id="waz-summary-cooling">--</strong><small>Loop temperature</small></div>
-      <div class="waz-summary-cell waz-accent-hba"><span id="waz-hba-0-label">HBA /C0</span><strong id="waz-hba-0-temp">--</strong><small id="waz-hba-0-detail">Reading HBA Viewer…</small></div>
-      <div class="waz-summary-cell"><span>NETWORK</span><strong id="waz-summary-network" class="waz-network-pair"><em id="waz-summary-network-rx">↓ --</em><em id="waz-summary-network-tx">↑ --</em></strong><small id="waz-summary-network-detail">DOWNLOAD · UPLOAD</small></div>
-      <div class="waz-summary-cell waz-accent-cooling"><span>COOLANT FLOW</span><strong id="waz-summary-flow">--</strong><small>High Flow NEXT</small></div>
-      <div class="waz-summary-cell waz-accent-hba"><span id="waz-hba-1-label">HBA /C1</span><strong id="waz-hba-1-temp">--</strong><small id="waz-hba-1-detail">Reading HBA Viewer…</small></div>
+    <div class="waz-summary" aria-label="System summary" data-layout-group="summary">
+      <div class="waz-summary-cell" data-layout-item="cpu" data-layout-label="CPU"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
+      <div class="waz-summary-cell waz-accent-gpu" data-layout-item="gpu" data-layout-label="GPU" hidden><span>GPU</span><strong id="waz-summary-gpu">--</strong><small id="waz-summary-gpu-detail">No active processes</small></div>
+      <div class="waz-summary-cell" data-layout-item="power" data-layout-label="Rack power" hidden><span>RACK POWER</span><strong id="waz-summary-power">--</strong><small id="waz-summary-power-detail">Reading UPS load…</small></div>
+      <div class="waz-summary-cell" data-layout-item="memory" data-layout-label="RAM"><span>RAM</span><strong id="waz-summary-memory">--</strong><small id="waz-summary-memory-detail">-- used</small></div>
+      <div class="waz-summary-cell waz-accent-cooling" data-layout-item="coolant" data-layout-label="Coolant" hidden><span>COOLANT</span><strong id="waz-summary-cooling">--</strong><small>Loop temperature</small></div>
+      <div class="waz-summary-cell waz-accent-hba" data-layout-item="hba0" data-layout-label="HBA 0" hidden><span id="waz-hba-0-label">HBA /C0</span><strong id="waz-hba-0-temp">--</strong><small id="waz-hba-0-detail">Reading HBA Viewer…</small></div>
+      <div class="waz-summary-cell" data-layout-item="network" data-layout-label="Network"><span>NETWORK</span><strong id="waz-summary-network" class="waz-network-pair"><em id="waz-summary-network-rx">↓ --</em><em id="waz-summary-network-tx">↑ --</em></strong><small id="waz-summary-network-detail">DOWNLOAD · UPLOAD</small></div>
+      <div class="waz-summary-cell waz-accent-cooling" data-layout-item="flow" data-layout-label="Coolant flow" hidden><span>COOLANT FLOW</span><strong id="waz-summary-flow">--</strong><small>High Flow NEXT</small></div>
+      <div class="waz-summary-cell waz-accent-hba" data-layout-item="hba1" data-layout-label="HBA 1" hidden><span id="waz-hba-1-label">HBA /C1</span><strong id="waz-hba-1-temp">--</strong><small id="waz-hba-1-detail">Reading HBA Viewer…</small></div>
     </div>
 
-    <section class="waz-block waz-cpu-block">
+    <div class="waz-system-sections" data-layout-group="sections">
+    <section class="waz-block waz-cpu-block" data-layout-item="cpu" data-layout-label="CPU">
       <header class="waz-block-header">
         <span><b>CPU</b><small><span id="waz-system-model">Loading processor…</span> · <span id="waz-cpu-count">-- cores / -- threads</span></small></span>
       </header>
@@ -7567,7 +7756,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       <div id="waz-core-list" class="waz-core-list"><span class="waz-muted">Sampling CPU topology…</span></div>
     </section>
 
-    <section class="waz-block waz-memory-block">
+    <section class="waz-block waz-memory-block" data-layout-item="memory" data-layout-label="Memory">
       <header class="waz-block-header">
         <span><b>MEMORY</b><small id="waz-memory-hardware">Detecting installed memory…</small></span>
       </header>
@@ -7583,7 +7772,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
     </section>
 
-    <section class="waz-block waz-network-block">
+    <section class="waz-block waz-network-block" data-layout-item="network" data-layout-label="Network">
       <header class="waz-block-header">
         <span><b>NETWORK</b><small id="waz-network-link">Detecting primary interface…</small></span>
       </header>
@@ -7597,6 +7786,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
+    </div>
     <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
 </td></tr>
@@ -7605,8 +7795,9 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.22.04">
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.22.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.01">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.01"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.01"></script>
 
 ]]>
 </INLINE>
@@ -7707,8 +7898,8 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.22.04">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.22.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.01">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.01"></script>
 
 ]]>
 </INLINE>
@@ -7794,9 +7985,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.22.04">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.22.04"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.22.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.01">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.01"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.01"></script>
 
 ]]>
 </INLINE>
@@ -7866,7 +8057,7 @@ mv -- "$STAGED_DIR" "$RUNTIME_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   cat > "$CONFIG_FILE" <<'WAZ_CONFIG'
-DISPLAY_NAME="WAZ-SERVER"
+DISPLAY_NAME="auto"
 PRIMARY_INTERFACE="bond0"
 GPU_CARD="auto"
 GPU_RECENT_SECONDS="5"
@@ -7895,7 +8086,7 @@ WAZ_CONFIG
 fi
 
 for DEFAULT in \
-  'DISPLAY_NAME="WAZ-SERVER"' \
+  'DISPLAY_NAME="auto"' \
   'PRIMARY_INTERFACE="bond0"' \
   'GPU_CARD="auto"' \
   'GPU_RECENT_SECONDS="5"' \

@@ -267,33 +267,20 @@ function waz_ups_rack_power(): array
     }
 
     $result = ['available' => false, 'source' => null, 'watts' => null, 'loadPercent' => null, 'nominalWatts' => null];
-    foreach (['/sbin/apcaccess', '/usr/sbin/apcaccess', '/usr/bin/apcaccess'] as $binary) {
-        if (!is_file($binary) || !is_executable($binary)) {
-            continue;
-        }
-        $lines = [];
-        $exitCode = 1;
-        @exec(escapeshellarg($binary) . ' status 2>/dev/null', $lines, $exitCode);
-        if ($exitCode !== 0) {
-            break;
-        }
-        $values = [];
-        foreach ($lines as $line) {
-            if (preg_match('/^([^:]+):\s*(.*)$/', $line, $match)) {
-                $values[strtoupper(trim($match[1]))] = trim($match[2]);
-            }
-        }
-        $load = waz_first_number($values['LOADPCT'] ?? null);
-        $nominal = waz_first_number($values['NOMPOWER'] ?? null);
+    require_once __DIR__ . '/health.php';
+    $values = waz_health_read_ups_data();
+    if ($values !== null) {
+        $nut = ($values['source'] ?? '') === 'nut';
+        $load = waz_first_number($values[$nut ? 'ups.load' : 'LOADPCT'] ?? null);
+        $nominal = waz_first_number($values[$nut ? 'ups.realpower.nominal' : 'NOMPOWER'] ?? null);
         $watts = $load !== null && $nominal !== null ? $nominal * $load / 100.0 : null;
         $result = [
             'available' => $watts !== null,
-            'source' => 'apcupsd',
+            'source' => $values['source'],
             'watts' => $watts,
             'loadPercent' => $load,
             'nominalWatts' => $nominal,
         ];
-        break;
     }
 
     @mkdir(WAZ_DASHBOARD_STATE, 0755, true);
