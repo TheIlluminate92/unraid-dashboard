@@ -13,7 +13,8 @@ function harness(){
  let response=()=>({selected:{...container(),stats:{available:true,sampledAtMs:1000,cpuCounters:{usage:100,system:1000,online:4}}}});
  const fetch=async url=>{calls.push(url);return {ok:true,json:async()=>response(url)}};
  const cut=source.lastIndexOf('\n  removeNativeTiles();\n');assert.ok(cut>0);
- vm.runInNewContext(source.slice(0,cut)+`window.fixture={stats:statsLoop,overview:workloadsLoop,activity:handleActivity,seed:function(c){selectedContainer=c.name;lastData={containers:[c],selected:c};},live:function(){return liveStats;},stop:function(){stopped=true;}};})();`,{window,document,fetch,console});
+ class Clock extends Date { static now(){return 50000;} }
+ vm.runInNewContext(source.slice(0,cut)+`window.fixture={stats:statsLoop,overview:workloadsLoop,activity:handleActivity,seed:function(c){selectedContainer=c.name;lastData={containers:[c],selected:c};},live:function(){return liveStats;},stop:function(){stopped=true;}};})();`,{window,document,fetch,console,Date:Clock});
  window.fixture.seed(container());
  return {window,document,panel,calls,timers,fields,seed:c=>window.fixture.seed(c),respond:fn=>response=fn};
 }

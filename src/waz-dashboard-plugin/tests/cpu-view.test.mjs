@@ -34,7 +34,8 @@ async function harness(initial = snapshot(), storage = new Map()) {
   const root = new Element('section');
   const document = { querySelector: () => root, getElementById: id => ({ 'waz-core-list': list, 'waz-cpu-chart-line': chart, 'waz-summary-power': rack })[id], createElement: tag => new Element(tag), createTextNode: value => { const e = new Element('#text'); e.textContent = value; return e; } };
   const fetch = async url => { calls.push(url); return { ok: !url.includes('hbaviewer'), status: url.includes('hbaviewer') ? 404 : 200, json: async () => current }; };
-  vm.runInNewContext(source, { window, document, fetch, console });
+  class Clock extends Date { static now(){return 50000;} }
+  vm.runInNewContext(source, { window, document, fetch, console, Date:Clock });
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
   return { list, chart, rack, storage, window, timers, calls, async sample(next) { current = next; window.WAZSystem.refresh(); await flush(); } };
