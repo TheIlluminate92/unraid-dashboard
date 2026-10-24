@@ -18,7 +18,7 @@ function tree(file) {
 for(const [file,expected] of [
  ['WazDashboard.page',{summary:['cpu','gpu','power','memory','coolant','hba0','network','flow','hba1'],sections:['cpu','memory','network']}],
  ['WazWorkloads.page',{summary:['running','vdisk','updates','gpu'],sections:['folders','containers','processes','inspector']}],
- ['WazStorage.page',{sections:['parity','pools','pooldetails','locations','array']}]
+ ['WazStorage.page',{sections:['locations','parity','pools','pooldetails','array']}]
 ])test(file+' declares independent layout blocks without breaking its markup',()=>{
  const {source,nodes}=tree(file);
  for(const [group,ids] of Object.entries(expected)) {

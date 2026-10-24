@@ -5,6 +5,8 @@ $node = Get-Command node -ErrorAction Stop
 if ($LASTEXITCODE -ne 0) { throw 'Status layout regressions failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/panel-layouts.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Panel layout markup regressions failed.' }
+& $node.Source --test (Join-Path $projectRoot 'tests/drive-drawer.test.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Drive detail drawer regressions failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/cpu-view.test.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'CPU disclosure and aggregation regression tests failed.' }
 & $node.Source --test (Join-Path $projectRoot 'tests/optional-fans.test.mjs')

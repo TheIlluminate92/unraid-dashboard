@@ -515,3 +515,26 @@
   .waz-pool-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .waz-storage { height: auto !important; overflow: visible; }
 }
+
+/* Physical maps retain the plugin's rows, columns and bay order. */
+.waz-storage .waz-location-groups { display: block; }
+.waz-location-group { margin: 16px 0; border: 1px solid var(--waz-border); padding: 12px; border-radius: 4px; }
+.waz-location-group > summary { cursor: pointer; font-size: 18px; line-height: 24px; font-weight: 700; padding: 4px 0 12px; }
+.waz-enclosure-scroll { overflow-x: auto; padding: 3px; }
+.waz-storage .waz-location-grid { grid-template-columns: repeat(var(--columns, 4), minmax(120px, 1fr)); gap: 8px; }
+.waz-storage .waz-location-grid[data-tray-direction="v"] { grid-template-columns: repeat(var(--columns, 8), minmax(64px, 1fr)); }
+.waz-storage .waz-bay { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 84px; padding: 10px 6px; border-radius: 3px; font: inherit; cursor: pointer; }
+.waz-storage .waz-location-grid[data-tray-direction="v"] .waz-bay { min-height: 112px; }
+.waz-storage .waz-bay b { font-size: 18px; line-height: 24px; }
+.waz-storage .waz-bay small { font-size: 14px; line-height: 18px; white-space: normal; overflow-wrap: anywhere; writing-mode: horizontal-tb; }
+.waz-bay-state { font-size: 11px; line-height: 16px; color: var(--waz-muted); }
+.waz-is-fault .waz-bay-state { color: var(--waz-red); }
+.waz-is-attention .waz-bay-state { color: var(--waz-amber); }
+.waz-storage .waz-bay:focus-visible { outline: 3px solid var(--waz-cyan); outline-offset: 2px; }
+.waz-drive-hint { color: var(--waz-muted); font-size: 14px; margin: 8px 0; }
+.waz-bay-details { margin-top: 14px; padding: 16px; border: 1px solid var(--waz-cyan); background: var(--waz-panel); }
+.waz-bay-details h3 { display: inline-block; font-size: 18px; margin: 0 12px 12px 0; }
+.waz-bay-details > button { float: right; padding: 8px 12px; cursor: pointer; }
+.waz-bay-details dl { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; margin: 0; }
+.waz-bay-details dt { color: var(--waz-muted); font-size: 13px; }
+.waz-bay-details dd { margin: 3px 0 0; font-size: 16px; overflow-wrap: anywhere; }

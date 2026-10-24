@@ -166,7 +166,7 @@
     var bar = node('waz-parity-progress');
     if (bar) bar.style.width = (parity.active && finite(progress) ? clamp(progress, 0, 100) : (parity.valid ? 100 : 0)) + '%';
     var unconfigured = parity.configured === false && !parity.active;
-    text('waz-parity-state', unconfigured ? 'NOT CONFIGURED' : (parity.active ? 'CHECKING' : (parity.valid ? 'VALID' : 'ATTENTION')));
+    text('waz-parity-state', unconfigured ? 'NOT CONFIGURED' : (parity.active ? 'CHECKING' : (parity.state === 'fault' ? 'FAULT' : (parity.cancelled ? 'CANCELLED' : (parity.valid ? 'VALID' : 'ATTENTION')))));
 
     if (unconfigured) {
       text('waz-parity-summary', 'No parity disks assigned');
@@ -187,7 +187,7 @@
       text('waz-parity-summary', String(parity.action || 'Parity check').toUpperCase() + ' · ' + percent(progress));
       text('waz-parity-detail', rate(speed) + ' · ETA ' + duration(eta) + ' · ' + Number(parity.errors || 0) + ' errors');
     } else {
-      text('waz-parity-summary', 'LAST PARITY · ' + dateTime(number(parity.lastFinishedAt)) + ' · ' + duration(number(parity.lastDurationSeconds)) + ' · ' + Number(parity.errors || 0) + ' errors');
+      text('waz-parity-summary', (parity.cancelled ? 'CANCELLED PARITY · ' : 'LAST PARITY · ') + dateTime(number(parity.lastFinishedAt)) + ' · ' + duration(number(parity.lastDurationSeconds)) + ' · ' + Number(parity.errors || 0) + ' errors');
       text('waz-parity-detail', 'NEXT · ' + (number(parity.nextScheduledAt) ? dateTime(number(parity.nextScheduledAt)) : 'Not scheduled'));
     }
     previousParity = { sampledAt: sampledAt, positionBytes: number(parity.positionBytes) || 0 };
@@ -263,54 +263,90 @@
     }
   }
 
+  var selectedBay = '';
+  var enclosureKey = 'waz.dashboard.storage.enclosures.v1';
+  var enclosureOpen = Object.create(null);
+  try {
+    var savedEnclosures = JSON.parse(window.localStorage.getItem(enclosureKey));
+    if (savedEnclosures && typeof savedEnclosures === 'object' && !Array.isArray(savedEnclosures)) {
+      Object.keys(savedEnclosures).forEach(function (id) { if (typeof savedEnclosures[id] === 'boolean') enclosureOpen[id] = savedEnclosures[id]; });
+    }
+  } catch (_) {}
+  function poolLabel(name) { return String(name || '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+  function bayRole(cell) {
+    if (cell.disk) return cell.disk.poolName ? poolLabel(cell.disk.poolName) : cell.disk.name.replace(/^disk/i, 'Disk ');
+    return cell.present ? 'Unassigned' : 'Empty';
+  }
+  function detailField(target, label, value) {
+    var row = document.createElement('div'), title = document.createElement('dt'), text = document.createElement('dd');
+    title.textContent = label; text.textContent = value == null || value === '' ? 'Unavailable' : String(value);
+    row.appendChild(title); row.appendChild(text); target.appendChild(row);
+  }
+  function renderBayDetails(group, cell) {
+    var drawer = document.createElement('section'); drawer.className = 'waz-bay-details';
+    drawer.setAttribute('aria-label', group.name + ' bay ' + cell.tray + ' details');
+    var heading = document.createElement('h3'); heading.textContent = 'Bay ' + cell.tray + ' · ' + bayRole(cell);
+    var close = document.createElement('button'); close.type = 'button'; close.textContent = 'Close details';
+    close.addEventListener('click', function () { selectedBay = ''; if (lastData) renderLocations(lastData.locations || {}); });
+    drawer.appendChild(heading); drawer.appendChild(close);
+    var fields = document.createElement('dl'), disk = cell.disk || {}, inventory = cell.inventory || {};
+    detailField(fields, 'Status', cell.disk ? (disk.spunDown ? 'Standby' : String(disk.state || 'unknown')) : (cell.present ? 'Unassigned drive' : 'Empty bay'));
+    if (cell.present || cell.disk) {
+      detailField(fields, 'Drive', disk.name || 'Not assigned to array/pool');
+      detailField(fields, 'Temperature', disk.spunDown ? 'Standby' : temperature(number(disk.temperatureC), false));
+      detailField(fields, 'Capacity', bytes(number(inventory.capacityBytes || disk.sizeBytes)));
+      detailField(fields, 'Model', inventory.model); detailField(fields, 'Serial', inventory.serial);
+      if (disk.usagePercent != null) detailField(fields, 'Used', percent(number(disk.usagePercent)) + ' · ' + bytes(number(disk.usedBytes)));
+      if (disk.device) detailField(fields, 'Device', disk.device);
+    }
+    drawer.appendChild(fields); return drawer;
+  }
   function renderLocations(locations) {
-    var target = node('waz-location-groups');
-    if (!target) return;
-    target.textContent = '';
-    var occupied = 0;
-    var usable = 0;
+    var target = node('waz-location-groups'); if (!target) return;
+    var focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.bayKey : '';
+    target.textContent = ''; var occupied = 0, usable = 0, focusTarget = null;
     (locations.groups || []).forEach(function (group) {
-      var wrapper = document.createElement('div');
-      wrapper.className = 'waz-location-group';
-      var title = document.createElement('b');
-      title.textContent = group.name;
-      var grid = document.createElement('div');
-      grid.className = 'waz-location-grid';
+      var wrapper = document.createElement('details'); wrapper.className = 'waz-location-group';
+      wrapper.open = enclosureOpen[group.id] !== false;
+      wrapper.addEventListener('toggle', function () {
+        enclosureOpen[group.id] = wrapper.open;
+        try { window.localStorage.setItem(enclosureKey, JSON.stringify(enclosureOpen)); } catch (_) {}
+      });
+      var title = document.createElement('summary'); title.textContent = group.name; wrapper.appendChild(title);
+      var scroll = document.createElement('div'); scroll.className = 'waz-enclosure-scroll';
+      var grid = document.createElement('div'); grid.className = 'waz-location-grid';
       grid.dataset.trayDirection = group.trayDirection || 'h';
       grid.style.setProperty('--columns', Number(group.columns) || 1);
+      var chosen = null;
       (group.cells || []).forEach(function (cell) {
-        var bay = document.createElement('div');
-        bay.className = 'waz-bay';
-        if (cell.hidden) {
-          bay.className += ' waz-hidden';
-        } else {
-          usable += 1;
-        }
-        var label = document.createElement('b');
-        label.textContent = String(cell.tray);
-        var detail = document.createElement('small');
-        if (cell.disk) {
-          if (!cell.hidden) occupied += 1;
-          bay.dataset.disk = cell.disk.name;
-          bay.dataset.pool = cell.disk.poolName || '';
-          bay.className += stateClass(cell.disk.state) + (selectedDisk === cell.disk.name ? ' waz-is-selected' : '');
-          identity(bay, cell.disk.identityColor);
-          detail.textContent = cell.disk.name.replace(/^disk/i, 'D');
-          bay.title = group.name + ' bay ' + cell.tray + ' · ' + cell.disk.name + ' · ' + cell.disk.mediaType;
-        } else if (!cell.hidden) {
-          bay.className += ' waz-empty';
-          if (cell.present) occupied += 1;
-          detail.textContent = cell.present ? 'UNASSIGNED' : 'EMPTY';
-          bay.title = group.name + ' bay ' + cell.tray + (cell.present ? ' · unassigned drive' : ' · empty');
-        }
-        bay.appendChild(label);
-        bay.appendChild(detail);
-        grid.appendChild(bay);
+        var key = String(group.id) + ':' + cell.sourceTray;
+        var bay = document.createElement('button'); bay.type = 'button'; bay.className = 'waz-bay'; bay.dataset.bayKey = key;
+        if (cell.hidden) { bay.className += ' waz-hidden'; bay.disabled = true; }
+        else { usable++; if (cell.disk || cell.present) occupied++; }
+        var label = document.createElement('b'); label.textContent = String(cell.tray);
+        var role = document.createElement('small'); role.textContent = bayRole(cell);
+        if (cell.disk) { bay.className += stateClass(cell.disk.state); identity(bay, cell.disk.identityColor); }
+        else bay.className += ' waz-empty';
+        var health = cell.disk ? String(cell.disk.state || 'unknown') : (cell.present ? 'unassigned' : 'empty');
+        var healthLabel = document.createElement('span'); healthLabel.className = 'waz-bay-state';
+        healthLabel.textContent = health === 'normal' ? 'OK' : (health === 'attention' ? 'Warning' : health === 'fault' ? 'Fault' : health);
+        bay.setAttribute('aria-label', group.name + ', bay ' + cell.tray + ', ' + bayRole(cell) + ', ' + health);
+        bay.setAttribute('aria-pressed', String(selectedBay === key));
+        bay.title = 'Bay ' + cell.tray + ' · ' + bayRole(cell) + ' · ' + health;
+        if (selectedBay === key) { bay.className += ' waz-is-selected'; chosen = cell; }
+        if (focused === key) focusTarget = bay;
+        bay.addEventListener('click', function () {
+          selectedBay = selectedBay === key ? '' : key;
+          if (cell.disk) { selectedDisk = cell.disk.name; if (cell.disk.poolName) saveSelection(cell.disk.poolName); }
+          if (lastData) renderLocations(lastData.locations || {});
+        });
+        bay.appendChild(label); bay.appendChild(role); bay.appendChild(healthLabel); grid.appendChild(bay);
       });
-      wrapper.appendChild(title);
-      wrapper.appendChild(grid);
+      scroll.appendChild(grid); wrapper.appendChild(scroll);
+      if (chosen) wrapper.appendChild(renderBayDetails(group, chosen));
       target.appendChild(wrapper);
     });
+    if (focusTarget && focusTarget.focus) focusTarget.focus({ preventScroll: true });
     text('waz-location-count', occupied + ' / ' + usable + ' OCCUPIED');
   }
 

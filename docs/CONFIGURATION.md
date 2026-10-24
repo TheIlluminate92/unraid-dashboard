@@ -61,6 +61,19 @@ including while editing or resetting. Panel height follows the edited content.
 
 ## Disk Location
 
+Build 2026.10.24.04 prioritizes the physical map in full-width dashboard rows.
+Each enclosure is collapsible; selecting a bay opens one detail drawer beneath
+that enclosure. Bays retain their plugin-assigned positions and labels, with
+horizontal pool/role labels. Small displays scroll the spatial diagram rather
+than shrinking text or changing the physical shape. Secondary panels and
+statistics start collapsed; health alerts remain visible.
+
+The new drive-first Storage preset uses `waz.dashboard.storageLayout.v2`.
+Existing v1 settings are retained in browser storage but do not override this
+preset. Enclosure collapse preferences use a separate per-origin key. Server
+Status and Workloads settings remain compatible. Model/serial details are read
+from the existing local plugin inventory and are not saved in browser settings.
+
 Disk Location owns enclosure shape, names, bay assignments and display numbering.
 The dashboard reads its saved groups, devices and locations without modifying
 them. Stored association keys remain one-based; displayed labels follow the

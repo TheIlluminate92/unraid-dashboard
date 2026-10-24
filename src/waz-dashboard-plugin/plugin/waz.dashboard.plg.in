@@ -8,6 +8,11 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.24.04
+- Drive-first full-width dashboard rows, readable bay labels and collapsible enclosures. Selecting a bay opens details beneath its enclosure; a single drawer is open at a time.
+- Collapses secondary system, workload, pool, parity and array details while keeping health alerts visible. Preserves plugin geometry and zero-based numbering.
+- Persists live SAS identity, pool-label and cancelled-parity fixes. No management-daemon, array, service or Disk Location configuration changes.
+
 ### 0.8.5 - Build 2026.10.24.03
 - Extends move/resize layout editing to Workloads and Storage, with independent per-panel settings and reset.
 - Workloads summary tiles and folder/container/process/detail sections are editable; Storage parity, pools, pool details, locations and array sections are editable.

@@ -9,6 +9,7 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
+  <details class="waz-secondary-panel"><summary>Server Status</summary>
   <section class="waz-system" data-dashboard-layout="status" data-layout-key="waz.dashboard.statusLayout.v1" data-version="@@APP_VERSION@@" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
@@ -77,6 +78,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
     </div>
     <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
+  </details>
 </td></tr>
 </tbody>
 EOT;

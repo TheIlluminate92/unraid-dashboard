@@ -9,6 +9,7 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
+  <details class="waz-secondary-panel"><summary>Workloads</summary>
   <section class="waz-workloads" data-dashboard-layout="workloads" data-layout-key="waz.dashboard.workloadsLayout.v1" data-version="@@APP_VERSION@@">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
@@ -72,6 +73,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
     </div>
     <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
+  </details>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
 </tbody>

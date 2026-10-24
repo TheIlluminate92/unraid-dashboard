@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.5 - 2026-10-24 (build 2026.10.24.04)
+
+- Prioritizes drive layouts in full-width dashboard rows. Secondary system/workload panels and parity/pool/array statistics use native collapsible details; health alerts stay visible.
+- Uses readable horizontal bay labels and retains Disk Location's geometry and numbering. Spatial maps scroll on small displays rather than squeezing labels or silently changing the physical layout.
+- Adds keyboard-accessible bay buttons and one selected-bay drawer, including available model, serial, capacity, temperature and assignment details. Empty and unassigned bays remain distinct; enclosure collapse settings survive refresh.
+- Preserves the live SAS serial-token matching fix and pool names without member suffixes. Cancelled parity checks report attention without masking actual parity errors.
+- Storage uses a new drive-first layout preset; Server Status and Workloads saved layouts remain unchanged. No management daemon, array, service or Disk Location settings are altered.
+
 ## 0.8.5 - 2026-10-24 (build 2026.10.24.03)
 
 - Extends the shared layout editor to Workloads and Storage. Each panel saves its own order and dimensions; existing Server Status layouts remain compatible.

@@ -40,6 +40,7 @@ jobs:
           node --test src/waz-dashboard-plugin/tests/cpu-view.test.mjs
           node --test src/waz-dashboard-plugin/tests/status-layout.test.mjs
           node --test src/waz-dashboard-plugin/tests/panel-layouts.test.mjs
+          node --test src/waz-dashboard-plugin/tests/drive-drawer.test.mjs
           node --test src/waz-dashboard-plugin/tests/optional-fans.test.mjs
           node --test src/waz-dashboard-plugin/tests/optional-hba.test.mjs
           bash src/waz-dashboard-plugin/scripts/build.sh
