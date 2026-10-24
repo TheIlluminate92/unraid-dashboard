@@ -14,6 +14,12 @@
   var stopped = false;
   var inFlight = false;
   var timer = null;
+  var statsTimer = null;
+  var statsInFlight = false;
+  var liveStats = null;
+  var cpuCounters = {};
+  var inspectorSamples = {};
+  var inspectorRates = {};
   var resizeObserver = null;
   var nativeLoadlist = typeof window.loadlist === 'function' ? window.loadlist : null;
   var lastData = null;
@@ -21,7 +27,7 @@
   var selectedContainer = readStorage(containerKey, '');
   var previousCounters = {};
   var histories = {};
-  var MAX_HISTORY = 60;
+  var MAX_HISTORY = 300;
 
 
   function publishAttention(state, messages, stale) {
@@ -289,7 +295,7 @@
 
   function currentRates(selected) {
     var stats = selected && selected.stats || {};
-    var key = selected && selected.name || '';
+    var key = selected && (selected.id || selected.name) || '';
     var now = number(stats.sampledAtMs);
     var current = {
       sampledAtMs: now,
@@ -350,7 +356,10 @@
       return;
     }
     var stats = selected.stats || {};
-    var rates = currentRates(selected);
+    var sampleKey = selected.id || selected.name;
+    var newSample = stats.available && inspectorSamples[sampleKey] !== stats.sampledAtMs;
+    var rates = newSample ? currentRates(selected) : (inspectorRates[sampleKey] || { rx: null, tx: null, read: null, write: null });
+    if (newSample) { inspectorSamples[sampleKey] = stats.sampledAtMs; inspectorRates[sampleKey] = rates; }
     var icon = node('waz-selected-icon');
     if (icon) {
       icon.textContent = '';
@@ -371,10 +380,12 @@
     var gpu = selected.gpu || {};
     text('waz-selected-gpu', gpu.active ? (percent(number(gpu.loadPercent)) + (gpu.videoActive ? ' · VIDEO ' + percent(number(gpu.videoLoadPercent)) : '')) : 'INACTIVE');
 
-    var historyPrefix = selected.name + ':';
-    pushHistory(historyPrefix + 'cpu', number(stats.cpuPercent));
-    pushHistory(historyPrefix + 'network', (rates.rx || 0) + (rates.tx || 0));
-    pushHistory(historyPrefix + 'disk', (rates.read || 0) + (rates.write || 0));
+    var historyPrefix = (selected.id || selected.name) + ':';
+    if (newSample) {
+      pushHistory(historyPrefix + 'cpu', number(stats.cpuPercent));
+      pushHistory(historyPrefix + 'network', (rates.rx || 0) + (rates.tx || 0));
+      pushHistory(historyPrefix + 'disk', (rates.read || 0) + (rates.write || 0));
+    }
     drawLine('waz-selected-cpu-line', histories[historyPrefix + 'cpu'], 100);
     drawLine('waz-selected-network-line', histories[historyPrefix + 'network']);
     drawLine('waz-selected-disk-line', histories[historyPrefix + 'disk']);
@@ -411,6 +422,7 @@
     renderFolders(data.folders || []);
     renderContainers();
     renderTopProcesses(data.topProcesses || []);
+    if (data.selected && liveStats && liveStats.id === data.selected.id && data.selected.state === 'running') data.selected.stats = liveStats.stats;
     renderInspector(data.selected && data.selected.name === selectedContainer ? data.selected : null);
     setHealth(data.state || 'normal', data.state === 'attention' ? 'ATTENTION' : 'NORMAL');
     renderAttention(data.attention || {}, data.state || 'normal');
@@ -456,7 +468,10 @@
     text('waz-selected-name', name.toUpperCase());
     text('waz-selected-state', 'Loading live telemetry…');
     if (openMenu) openNativeMenu(container);
+    liveStats = null;
+    previousCounters[container.id || name] = null;
     schedule(0);
+    scheduleStats(0);
   }
 
   function handleClick(event) {
@@ -480,6 +495,61 @@
     selectContainer(card.dataset.container || '', true);
   }
 
+
+  function inspectorVisible() {
+    var panel = root.querySelector('.waz-secondary-panel');
+    return !document.hidden && !!panel && panel.open;
+  }
+  function activeSelection() {
+    var selected = containerByName(selectedContainer);
+    return inspectorVisible() && selected && selected.state === 'running' ? selected : null;
+  }
+  function scheduleStats(delay) {
+    if (stopped) return;
+    if (statsTimer) window.clearTimeout(statsTimer);
+    statsTimer = window.setTimeout(statsLoop, delay);
+  }
+  function statsLoop() {
+    if (stopped || statsInFlight) return;
+    var selected = activeSelection();
+    if (!selected) { scheduleStats(5000); return; }
+    statsInFlight = true;
+    var name = selected.name, id = selected.id, started = Date.now();
+    fetch(endpoint + '?section=stats&selected=' + encodeURIComponent(name) + '&_=' + started, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        var current = activeSelection(), sample = data.selected;
+        if (!current || current.name !== name || current.id !== id) return;
+        if (!sample || sample.id !== id) { liveStats = null; delete cpuCounters[id]; schedule(0); return; }
+        var stats = sample.stats || {}, counters = stats.cpuCounters, previous = cpuCounters[id];
+        if (counters) {
+          var cpuDelta = previous ? counters.usage - previous.usage : -1;
+          var systemDelta = previous ? counters.system - previous.system : 0;
+          stats.cpuPercent = cpuDelta >= 0 && systemDelta > 0 ? cpuDelta / systemDelta * counters.online * 100 : null;
+          cpuCounters[id] = counters;
+        }
+        current.state = sample.state;
+        current.health = sample.health;
+        if (sample.state !== 'running') { delete cpuCounters[id]; delete previousCounters[id]; }
+        liveStats = sample;
+        var details = lastData && lastData.selected && lastData.selected.id === id ? lastData.selected : current;
+        details = Object.assign({}, details, { state: sample.state, health: sample.health, stats: stats });
+        renderInspector(details);
+      })
+      .catch(function () {
+        if (selectedContainer === name && inspectorVisible()) text('waz-selected-state', 'Live statistics unavailable · retrying');
+      })
+      .then(function () {
+        statsInFlight = false;
+        scheduleStats(Math.max(100, 1000 - (Date.now() - started)));
+      });
+  }
+  function handleActivity() {
+    if (inspectorVisible()) { schedule(0); scheduleStats(0); }
+    else { liveStats = null; cpuCounters = {}; previousCounters = {}; }
+  }
+
   function syncHeight() {
     if (root.hasAttribute("data-dashboard-layout")) { root.style.height = ""; return; }
     var system = document.querySelector('#waz-system-tile .waz-system');
@@ -500,7 +570,7 @@
     if (stopped || inFlight) return;
     inFlight = true;
     var started = Date.now();
-    var query = selectedContainer ? '&selected=' + encodeURIComponent(selectedContainer) : '';
+    var query = inspectorVisible() && selectedContainer ? '&selected=' + encodeURIComponent(selectedContainer) : '';
     fetch(endpoint + '?_=' + started + query, { cache: 'no-store', credentials: 'same-origin' })
       .then(function (response) {
         if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -527,6 +597,8 @@
   removeNativeTiles();
   root.addEventListener('click', handleClick);
   root.addEventListener('keydown', handleKeydown);
+  root.addEventListener('toggle', handleActivity, true);
+  document.addEventListener('visibilitychange', handleActivity);
   window.addEventListener('resize', syncHeight);
   var system = document.querySelector('#waz-system-tile .waz-system');
   if (window.ResizeObserver && system) {
@@ -544,9 +616,12 @@
     destroy: function () {
       stopped = true;
       if (timer) window.clearTimeout(timer);
+      if (statsTimer) window.clearTimeout(statsTimer);
       if (resizeObserver) resizeObserver.disconnect();
       root.removeEventListener('click', handleClick);
       root.removeEventListener('keydown', handleKeydown);
+      root.removeEventListener('toggle', handleActivity, true);
+      document.removeEventListener('visibilitychange', handleActivity);
       window.removeEventListener('resize', syncHeight);
       if (nativeLoadlist) window.loadlist = nativeLoadlist;
       else delete window.loadlist;
@@ -557,4 +632,5 @@
 
   window.setTimeout(syncHeight, 0);
   workloadsLoop();
+  scheduleStats(1000);
 })();

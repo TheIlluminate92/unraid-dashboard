@@ -11,6 +11,7 @@
   var endpoint = '/plugins/waz.dashboard/include/metrics.php';
   var stopped = false;
   var snapshotTimer = null;
+  var snapshotInFlight = false;
   var hbaTimer = null;
   var hbaHasData = false;
   var detectedHardware = {};
@@ -39,7 +40,7 @@
   var cpuHistory = [];
   var rxHistory = [];
   var txHistory = [];
-  var MAX_HISTORY = 300;
+  var MAX_HISTORY = 1200; // Five minutes at four samples per second.
 
 
   function publishAttention(state, messages, stale) {
@@ -571,7 +572,9 @@
   }
 
   function snapshotLoop() {
-    if (stopped) return;
+    if (stopped || snapshotInFlight) return;
+    snapshotInFlight = true;
+    if (snapshotTimer) window.clearTimeout(snapshotTimer);
     var started = Date.now();
     fetchJson(endpoint + '?section=snapshot&_=' + started)
       .then(renderSnapshot)
@@ -584,7 +587,8 @@
         }
       })
       .then(function () {
-        if (!stopped) snapshotTimer = window.setTimeout(snapshotLoop, Math.max(100, 1000 - (Date.now() - started)));
+        snapshotInFlight = false;
+        if (!stopped) snapshotTimer = window.setTimeout(snapshotLoop, Math.max(50, 250 - (Date.now() - started)));
       });
   }
 

@@ -37,6 +37,7 @@ jobs:
           php-version: ${{ matrix.php }}
       - name: Build and verify canonical installer safeguards
         run: |
+          node --test src/waz-dashboard-plugin/tests/workload-refresh.test.mjs
           node --test src/waz-dashboard-plugin/tests/attention.test.mjs
           node --test src/waz-dashboard-plugin/tests/cpu-view.test.mjs
           node --test src/waz-dashboard-plugin/tests/status-layout.test.mjs
@@ -51,6 +52,7 @@ jobs:
           php src/waz-dashboard-plugin/tests/identity-health.php
           php src/waz-dashboard-plugin/tests/ups-source.php
           php src/waz-dashboard-plugin/tests/disk-location.php
+          php src/waz-dashboard-plugin/tests/active-stats.php
           php src/waz-dashboard-plugin/tests/cached-smart.php
           php src/waz-dashboard-plugin/tests/pool-only.php
           php src/waz-dashboard-plugin/tests/gpu-lifecycle.php

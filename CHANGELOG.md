@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.10.24.07
+
+- Refresh CPU, RAM and network at 250 ms without overlapping system requests; retain five-minute history.
+- Sample only the selected running container at one-second intervals while its inspector is expanded and the page is visible. Use Docker one-shot counters and calculate CPU between samples.
+- Keep workload inventory, metadata and top processes on the separate five-second path; storage/health remain five seconds and HBA remains sixty seconds. Stopped, paused and restarting containers are not sampled.
+
+
 ## 2026.10.24.06
 
 - Consolidate dashboard problems into the existing health banner; show all clear only for healthy known data.
