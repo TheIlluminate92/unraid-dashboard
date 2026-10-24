@@ -264,6 +264,7 @@
   }
 
   var selectedBay = '';
+  var enclosureScroll = Object.create(null);
   var enclosureKey = 'waz.dashboard.storage.enclosures.v1';
   var enclosureOpen = Object.create(null);
   try {
@@ -287,6 +288,7 @@
     drawer.setAttribute('aria-label', group.name + ' bay ' + cell.tray + ' details');
     var heading = document.createElement('h3'); heading.textContent = 'Bay ' + cell.tray + ' · ' + bayRole(cell);
     var close = document.createElement('button'); close.type = 'button'; close.textContent = 'Close details';
+    close.dataset.bayKey = selectedBay;
     close.addEventListener('click', function () { selectedBay = ''; if (lastData) renderLocations(lastData.locations || {}); });
     drawer.appendChild(heading); drawer.appendChild(close);
     var fields = document.createElement('dl'), disk = cell.disk || {}, inventory = cell.inventory || {};
@@ -304,15 +306,21 @@
   function renderLocations(locations) {
     var target = node('waz-location-groups'); if (!target) return;
     var focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.bayKey : '';
+    var focusedEnclosure = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.enclosureKey : '';
+    Array.prototype.forEach.call(target.children, function (previous) {
+      if (previous.dataset.enclosureId != null && previous.children[1]) enclosureScroll[previous.dataset.enclosureId] = previous.children[1].scrollLeft || 0;
+    });
     target.textContent = ''; var occupied = 0, usable = 0, focusTarget = null;
     (locations.groups || []).forEach(function (group) {
       var wrapper = document.createElement('details'); wrapper.className = 'waz-location-group';
+      wrapper.dataset.enclosureId = String(group.id);
       wrapper.open = enclosureOpen[group.id] !== false;
       wrapper.addEventListener('toggle', function () {
         enclosureOpen[group.id] = wrapper.open;
         try { window.localStorage.setItem(enclosureKey, JSON.stringify(enclosureOpen)); } catch (_) {}
       });
-      var title = document.createElement('summary'); title.textContent = group.name; wrapper.appendChild(title);
+      var title = document.createElement('summary'); title.textContent = group.name; title.dataset.enclosureKey = String(group.id); wrapper.appendChild(title);
+      if (focusedEnclosure === String(group.id)) focusTarget = title;
       var scroll = document.createElement('div'); scroll.className = 'waz-enclosure-scroll';
       var grid = document.createElement('div'); grid.className = 'waz-location-grid';
       grid.dataset.trayDirection = group.trayDirection || 'h';
@@ -345,6 +353,7 @@
       scroll.appendChild(grid); wrapper.appendChild(scroll);
       if (chosen) wrapper.appendChild(renderBayDetails(group, chosen));
       target.appendChild(wrapper);
+      scroll.scrollLeft = enclosureScroll[group.id] || 0;
     });
     if (focusTarget && focusTarget.focus) focusTarget.focus({ preventScroll: true });
     text('waz-location-count', occupied + ' / ' + usable + ' OCCUPIED');

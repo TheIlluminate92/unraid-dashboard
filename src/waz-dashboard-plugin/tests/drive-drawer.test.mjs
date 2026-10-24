@@ -42,6 +42,8 @@ test('enclosure collapse survives refresh and unavailable browser storage',()=>{
  for(const blocked of [false,true]){
   const h=harness(null,blocked);h.render(fixture());let front=h.fields['waz-location-groups'].children[0];
   front.open=false;front.listeners.toggle();h.render(fixture());assert.equal(h.fields['waz-location-groups'].children[0].open,false);
+  h.fields['waz-location-groups'].children[0].children[1].scrollLeft=120;
+  h.render(fixture());assert.equal(h.fields['waz-location-groups'].children[0].children[1].scrollLeft,120);
  }
  for(const malformed of ['"bad"','[true]','broken']){const h=harness(malformed);assert.doesNotThrow(()=>h.render(fixture()));}
 });
