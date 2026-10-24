@@ -14,12 +14,12 @@ class Element {
  focus(){}
 }
 function harness(initialStorage=null,blocked=false){
- const fields={'waz-location-groups':new Element(),'waz-location-count':new Element()},saved=new Map([['waz.dashboard.storage.enclosures.v1',initialStorage]]);
+ const fields={'waz-location-groups':new Element(),'waz-location-count':new Element(),'waz-drive-legend':new Element()},saved=new Map([['waz.dashboard.storage.enclosures.v1',initialStorage]]);
  const document={querySelector:()=>({}),getElementById:id=>fields[id],createElement:tag=>new Element(tag),activeElement:null};
  const window={localStorage:{getItem:k=>{if(blocked)throw Error();return saved.get(k)},setItem:(k,v)=>{if(blocked)throw Error();saved.set(k,v)}}};
  const cut=source.indexOf("  root.addEventListener('click', handleClick);");assert.ok(cut>0);
  vm.runInNewContext(source.slice(0,cut)+"window.fixture={render:renderSnapshot};})();",{window,document,console});
- const render=locations=>window.fixture.render({locations,pools:[],array:{configured:false},state:'normal',sampledAtMs:1});
+ const render=(locations,extra={})=>window.fixture.render({locations,pools:[],array:{configured:false},state:'normal',sampledAtMs:1,...extra});
  return {fields,saved,render};
 }
 function fixture(){return {groups:[{id:'front',name:'Front',columns:2,trayDirection:'v',cells:[
@@ -37,6 +37,19 @@ test('bay selection opens one drawer; labels preserve zero and pool names withou
  groups[1].children[1].children[0].children[0].click();groups=h.fields['waz-location-groups'].children;
  assert.equal(groups[0].children.length,2);assert.ok(groups[1].textContent.includes('SERIAL-B'));
  groups[1].children[2].children[1].click();assert.equal(h.fields['waz-location-groups'].children[1].children.length,2);
+});
+
+test('reserved family legend and bay details preserve pool colors and expose array identity',()=>{
+ const h=harness(),data=fixture();data.groups[0].cells[0].disk.identityColor='#a78bfa';
+ data.groups[0].cells[1]={sourceTray:2,tray:1,present:true,disk:{name:'disk1',type:'Data',identityLabel:'24 TB · H series',identityColor:'#3975db',state:'normal'}};
+ const groups=[{label:'Parity',color:'#e55454',count:2},{label:'24 TB · H series',color:'#3975db',count:1},{label:'24 TB · C series',color:'#329fd9',count:0},{label:'14 TB',color:'#9bc9ff',count:0},{label:'Other array drives',color:'#617fa8',count:0}];
+ h.render(data,{driveColorGroups:groups});
+ const legend=h.fields['waz-drive-legend'].children;
+ assert.equal(legend.length,6);assert.equal(legend[2].textContent,'24 TB · C series · reserved');
+ assert.equal(legend[5].textContent,'Cache');assert.equal(legend[5].style['--disk-color'],'#a78bfa');
+ const bay=h.fields['waz-location-groups'].children[0].children[1].children[0].children[1];
+ assert.equal(bay.style['--disk-color'],'#3975db');assert.ok(bay.title.includes('24 TB · H series'));
+ bay.click();assert.ok(h.fields['waz-location-groups'].children[0].children[2].textContent.includes('Drive group24 TB · H series'));
 });
 test('enclosure collapse survives refresh and unavailable browser storage',()=>{
  for(const blocked of [false,true]){

@@ -119,7 +119,7 @@
     dot.className = 'waz-disk-state' + stateClass(disk.state) + (disk.spunDown ? ' waz-is-sleeping' : '');
     link.appendChild(dot);
     link.appendChild(document.createTextNode(disk.name.replace(/^disk/i, 'Disk ')));
-    link.title = disk.name + ' · ' + disk.device + ' · ' + disk.mediaType;
+    link.title = disk.name + ' · ' + disk.device + ' · ' + disk.mediaType + (disk.identityLabel ? ' · ' + disk.identityLabel : '');
     return link;
   }
 
@@ -303,6 +303,7 @@
     detailField(fields, 'Status', cell.disk ? (disk.spunDown ? 'Standby' : String(disk.state || 'unknown')) : (cell.present ? 'Unassigned drive' : 'Empty bay'));
     if (cell.present || cell.disk) {
       detailField(fields, 'Drive', disk.name || 'Not assigned to array/pool');
+      if (disk.identityLabel) detailField(fields, 'Drive group', disk.identityLabel);
       detailField(fields, 'Temperature', disk.spunDown ? 'Standby' : temperature(number(disk.temperatureC), false));
       detailField(fields, 'Capacity', bytes(number(inventory.capacityBytes || disk.sizeBytes)));
       detailField(fields, 'Model', inventory.model); detailField(fields, 'Serial', inventory.serial);
@@ -357,7 +358,9 @@
         healthLabel.textContent = health === 'normal' ? 'OK' : (health === 'attention' ? 'Warning' : health === 'fault' ? 'Fault' : health);
         bay.setAttribute('aria-label', group.name + ', bay ' + cell.tray + ', ' + bayRole(cell) + ', ' + health);
         bay.setAttribute('aria-pressed', String(selectedBay === key));
-        bay.title = 'Bay ' + cell.tray + ' · ' + bayRole(cell) + ' · ' + health;
+        var family = cell.disk && cell.disk.identityLabel ? ' · ' + cell.disk.identityLabel : '';
+        bay.title = 'Bay ' + cell.tray + ' · ' + bayRole(cell) + family + ' · ' + health;
+        if (family) bay.setAttribute('aria-label', group.name + ', bay ' + cell.tray + ', ' + bayRole(cell) + family + ', ' + health);
         if (selectedBay === key) { bay.className += ' waz-is-selected'; chosen = cell; }
         if (focused === key) focusTarget = bay;
         bay.addEventListener('click', function () {
@@ -438,8 +441,15 @@
     if (legend) {
       legend.textContent = '';
       var assignments = {};
+      var reserved = Array.isArray(data.driveColorGroups) ? data.driveColorGroups : [];
+      reserved.forEach(function (group) {
+        var item = document.createElement('span');
+        item.textContent = group.label + (group.count ? ' · ' + group.count : ' · reserved');
+        item.title = group.count ? group.count + ' assigned drive(s)' : 'Color reserved for this drive group';
+        identity(item, group.color); legend.appendChild(item);
+      });
       ((data.locations || {}).groups || []).forEach(function (g) { (g.cells || []).forEach(function (c) {
-        if (!c.hidden && c.disk) assignments[c.disk.poolName ? poolLabel(c.disk.poolName) : c.disk.type === 'Parity' ? 'Parity' : 'Array'] = c.disk.identityColor;
+        if (!c.hidden && c.disk && (c.disk.poolName || !reserved.length)) assignments[c.disk.poolName ? poolLabel(c.disk.poolName) : (c.disk.identityLabel || (c.disk.type === 'Parity' ? 'Parity' : 'Array'))] = c.disk.identityColor;
       }); });
       Object.keys(assignments).forEach(function (label) {
         var item = document.createElement('span'); item.textContent = label; identity(item, assignments[label]); legend.appendChild(item);

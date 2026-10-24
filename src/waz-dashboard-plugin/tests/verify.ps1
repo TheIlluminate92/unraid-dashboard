@@ -252,6 +252,8 @@ if ($manifestText.Contains('/boot/config/plugins/waz.dashboard/waz.health.cfg'))
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {
+    & $php.Source (Join-Path $projectRoot 'tests/array-colors.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Array color regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/active-stats.php')
     if ($LASTEXITCODE -ne 0) { throw 'Selected active stats regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/cached-smart.php')

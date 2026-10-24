@@ -52,6 +52,7 @@ jobs:
           php src/waz-dashboard-plugin/tests/identity-health.php
           php src/waz-dashboard-plugin/tests/ups-source.php
           php src/waz-dashboard-plugin/tests/disk-location.php
+          php src/waz-dashboard-plugin/tests/array-colors.php
           php src/waz-dashboard-plugin/tests/active-stats.php
           php src/waz-dashboard-plugin/tests/cached-smart.php
           php src/waz-dashboard-plugin/tests/pool-only.php
