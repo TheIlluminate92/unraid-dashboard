@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.10.24.08
+
+- Apply a scoped Home Assistant Phone-inspired finish: navy surfaces, rounded cards, softer borders/shadows, muted labels, pastel blue/lavender accents and pill controls.
+- Preserve dashboard columns, modular block sizing, physical enclosure/bay shapes, assignment and health colors, polling and controls.
+- Keep keyboard focus visible and disable panel animation/transitions when reduced motion is requested.
+
+
 ## 2026.10.24.07
 
 - Refresh CPU, RAM and network at 250 ms without overlapping system requests; retain five-minute history.

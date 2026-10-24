@@ -136,3 +136,7 @@ The health banner combines actionable issues from the existing health reader and
 ### Refresh intervals
 
 Server Status samples CPU/RAM/network every 250 ms (requests never overlap), with five minutes of chart history. Workload inventory, metadata, folders and top processes refresh every five seconds. A separate lightweight endpoint samples only the selected running container every second while Workload details are expanded and the page is visible. Docker state is inspected again before every stats request; stopped, paused and restarting containers are excluded. One-shot counters avoid Docker's blocking two-sample wait; CPU is calculated from consecutive samples, so the first sample has no CPU percentage. Storage and health stay at five seconds, HBA at sixty, and SMART remains cache-only.
+
+### Surface style
+
+The WAZ panels use the owner's Home Assistant Phone dashboard as a visual reference: navy surfaces, 22px outer corners, 18px inner cards, subtle borders/shadows, muted labels, pastel blue/lavender accents and rounded controls. `polish.css` loads after each panel's structural CSS and is scoped to WAZ IDs. It does not set grids, physical bay dimensions, saved block sizes or polling. Assignment colors and warning/fault indicators remain independent. Keyboard focus stays visible; reduced-motion users receive no WAZ panel transitions or animations. No Home Assistant resources or frontend libraries are required. The health banner uses matching surface tokens.

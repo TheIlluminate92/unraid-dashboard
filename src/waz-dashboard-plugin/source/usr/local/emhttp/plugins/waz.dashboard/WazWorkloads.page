@@ -82,6 +82,7 @@ EOT;
 
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=@@PLUGIN_VERSION@@">
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=@@PLUGIN_VERSION@@">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=@@PLUGIN_VERSION@@">
 <script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=@@PLUGIN_VERSION@@"></script>

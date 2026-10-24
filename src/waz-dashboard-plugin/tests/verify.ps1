@@ -39,6 +39,7 @@ $required = @(
     '/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.svg',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/system.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/layout.css',
+    '/usr/local/emhttp/plugins/waz.dashboard/assets/css/polish.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/workloads.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/storage.css',
     '/usr/local/emhttp/plugins/waz.dashboard/assets/css/banner.css',
