@@ -87,5 +87,6 @@ $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file(
 
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=@@PLUGIN_VERSION@@">
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=@@PLUGIN_VERSION@@">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=@@PLUGIN_VERSION@@">
 <script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/system.js?v=@@PLUGIN_VERSION@@"></script>

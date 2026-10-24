@@ -2,12 +2,16 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.24.07">
+  <!ENTITY version "2026.10.24.08">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 2026.10.24.08
+- Softer Home Assistant-inspired navy cards, rounded edges and pill controls.
+- Existing layout, pool/health colors and refresh behavior preserved.
+
 ### 2026.10.24.07
 - 250 ms Server Status with five-minute charts.
 - One-second selected running-container stats when visible; inventory and other dashboard data retain their slower refresh intervals.
@@ -521,6 +525,21 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
 #waz-health-banner .waz-health__issues { flex-wrap: wrap; white-space: normal; }
 #waz-health-banner .waz-health__issue { line-height: 1.5; }
 
+/* Match the WAZ panels without changing sticky behavior or state colors. */
+#waz-health-banner.waz-health {
+  --waz-health-background: #0f172b;
+  --waz-health-raised: #17223b;
+  --waz-health-border: rgb(182 194 225 / 16%);
+  --waz-health-text: #f3f1fc;
+  --waz-health-muted: #a7b3ce;
+  --waz-health-cyan: #8ecbff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+}
+#waz-health-banner .waz-health__issues { background: #0c1324; border-radius: 0 0 14px 14px; }
+#waz-health-banner .waz-health__fan-select { border-radius: 999px; }
+
 ]]>
 </INLINE>
 </FILE>
@@ -569,6 +588,122 @@ div.grid:has(#waz-storage-tile) > #tile3 { order: -1; grid-column: 1 / -1; }
 /* Detailed issues live once in the health banner; retain local fallback if it is absent. */
 body:has(#waz-health-banner) #waz-storage-alert,
 body:has(#waz-health-banner) #waz-workloads-alert { display: none; }
+
+]]>
+</INLINE>
+</FILE>
+<FILE Name="/usr/local/emhttp/plugins/.waz.dashboard.staged/assets/css/polish.css">
+<INLINE>
+<![CDATA[
+/* Surface treatment from the owner's Home Assistant Phone dashboard.
+   Layout, bay geometry, assignment colors and state colors belong to their
+   existing styles; this layer changes only the WAZ presentation. */
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile) {
+  --waz-bg: #0f172b;
+  --waz-panel: #111a2f;
+  --waz-raised: #17223b;
+  --waz-border: rgb(182 194 225 / 16%);
+  --waz-text: #f3f1fc;
+  --waz-muted: #a7b3ce;
+  --waz-cyan: #8ecbff;
+  --waz-violet: #c2a5ff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+div.tile:has(:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)) {
+  border-radius: 22px;
+  background: #0f172b;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile) > tr > td {
+  border-radius: 22px;
+}
+
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-block, .waz-secondary-panel, .waz-workloads-section, .waz-storage-section, .waz-location-group) {
+  border-radius: 18px;
+  border-color: var(--waz-border);
+  background: var(--waz-panel);
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-system-header, .waz-workloads-header, .waz-storage-header) b {
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-summary, .waz-workloads-summary, .waz-selected-metrics) {
+  border: 0;
+  background: transparent;
+  border-radius: 14px;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-summary-cell, .waz-workloads-summary > div, .waz-selected-metrics > div) {
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 100% 0%, rgb(194 165 255 / 7%), transparent 78%), var(--waz-raised);
+  box-shadow: inset 0 0 0 1px var(--waz-border);
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-folder-tab, .waz-container-card, .waz-pool-tab, .waz-parity-disk, .waz-pool-member, .waz-array-disk) {
+  border-radius: 12px;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-folder-tab, .waz-container-card):not(.waz-selected) {
+  border-color: var(--waz-border);
+}
+#waz-workloads-tile :is(.waz-folder-tab, .waz-container-card).waz-selected {
+  border-color: var(--waz-cyan);
+  box-shadow: inset 0 0 0 1px rgb(142 203 255 / 20%);
+}
+#waz-storage-tile .waz-bay { border-radius: 10px; }
+#waz-storage-tile .waz-bay-details {
+  border-radius: 18px;
+  border-color: var(--waz-border);
+  background: var(--waz-raised);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+}
+#waz-system-tile :is(.waz-cpu-socket, .waz-core, .waz-chart-wrap, .waz-network-chart-wrap),
+#waz-workloads-tile :is(.waz-selected-charts > div, .waz-selected-detail-grid > div, .waz-process-row) {
+  border-radius: 10px;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-meter, .waz-storage-meter, .waz-disk-meter) {
+  border-radius: 999px;
+  overflow: hidden;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(.waz-layout-actions button, .waz-layout-controls button, .waz-bay-details > button) {
+  border-radius: 999px;
+  border: 1px solid var(--waz-border);
+  background: var(--waz-raised);
+  color: var(--waz-cyan);
+  padding: 5px 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(button, summary, [role="button"]) {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+:is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+:is(button, summary, [role="button"]):focus-visible {
+  outline: 3px solid var(--waz-cyan);
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  :is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile)
+  :is(.waz-layout-actions button, .waz-layout-controls button, .waz-bay-details > button):hover {
+    background: #223253;
+    border-color: var(--waz-cyan);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile) *,
+  :is(#waz-system-tile, #waz-workloads-tile, #waz-storage-tile) *::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}
 
 ]]>
 </INLINE>
@@ -5920,7 +6055,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.5',
-        'pluginVersion' => '2026.10.24.07',
+        'pluginVersion' => '2026.10.24.08',
         'server' => [
             'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5946,7 +6081,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.5';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.07';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.08';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -6425,7 +6560,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.5';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.07';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.08';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -7279,7 +7414,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.5';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.07';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.08';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -8225,10 +8360,11 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.07">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.07">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.07"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.07"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.08"></script>
 
 ]]>
 </INLINE>
@@ -8318,10 +8454,11 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 </tbody>
 EOT;
 ?>
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.07">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.07">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.07"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.07"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.08"></script>
 
 ]]>
 </INLINE>
@@ -8411,11 +8548,12 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.07">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.07">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.07"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.07"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.07"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.08">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=2026.10.24.08">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.08"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.08"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.08"></script>
 
 ]]>
 </INLINE>

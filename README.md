@@ -2,7 +2,7 @@
 
 <img src="src/waz-dashboard-plugin/source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png" width="96" height="96" alt="WAZ Dashboard icon">
 
-Current maintenance build: **0.8.5 / 2026.10.24.07**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
+Current maintenance build: **0.8.5 / 2026.10.24.08**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
 
 Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.5**.
 

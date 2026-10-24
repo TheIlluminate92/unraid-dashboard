@@ -53,5 +53,6 @@ EOT;
 ?>
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=@@PLUGIN_VERSION@@">
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=@@PLUGIN_VERSION@@">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/polish.css?v=@@PLUGIN_VERSION@@">
 <script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=@@PLUGIN_VERSION@@"></script>
