@@ -128,6 +128,8 @@
     var toggle = root.querySelector('[data-layout-edit]'), reset = root.querySelector('[data-layout-reset]');
     if (toggle) toggle.addEventListener('click', function () {
       editing = !editing; root.classList.toggle('waz-layout-editing', editing);
+      var secondary = root.querySelector('.waz-secondary-panel');
+      if (editing && secondary) secondary.open = true;
       toggle.textContent = editing ? 'Done' : 'Edit layout'; toggle.setAttribute('aria-pressed', String(editing));
       if (reset) reset.hidden = !editing;
       containers.forEach(function (container) { items(container).forEach(function (item) { item.draggable = editing; Array.prototype.forEach.call(item.querySelectorAll('.waz-layout-controls, .waz-layout-grip'), function (control) { control.hidden = !editing; }); }); });

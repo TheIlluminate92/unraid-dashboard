@@ -540,6 +540,7 @@ div.grid:has(#waz-storage-tile) > #tile3 { order: -1; }
 .waz-storage .waz-storage-section > summary > span { float: right; font-size: 14px; color: var(--waz-muted); }
 /* Flex display on details would reveal closed contents. */
 .waz-storage details.waz-storage-section { display: block; }
+.waz-workloads[data-dashboard-layout], .waz-storage[data-dashboard-layout] { min-height: 0; }
 
 ]]>
 </INLINE>
@@ -3025,6 +3026,8 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
     var toggle = root.querySelector('[data-layout-edit]'), reset = root.querySelector('[data-layout-reset]');
     if (toggle) toggle.addEventListener('click', function () {
       editing = !editing; root.classList.toggle('waz-layout-editing', editing);
+      var secondary = root.querySelector('.waz-secondary-panel');
+      if (editing && secondary) secondary.open = true;
       toggle.textContent = editing ? 'Done' : 'Edit layout'; toggle.setAttribute('aria-pressed', String(editing));
       if (reset) reset.hidden = !editing;
       containers.forEach(function (container) { items(container).forEach(function (item) { item.draggable = editing; Array.prototype.forEach.call(item.querySelectorAll('.waz-layout-controls, .waz-layout-grip'), function (control) { control.hidden = !editing; }); }); });
@@ -7856,12 +7859,12 @@ $pluginname = 'waz.dashboard';
 $mytiles[$pluginname]['column1'] = <<<'EOT'
 <tbody id="waz-system-tile" title="Live processor, memory, graphics, network, power, and cooling telemetry">
 <tr><td>
-  <details class="waz-secondary-panel"><summary>Server Status</summary>
   <section class="waz-system" data-dashboard-layout="status" data-layout-key="waz.dashboard.statusLayout.v1" data-version="0.8.5" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
       <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
+    <details class="waz-secondary-panel"><summary>System details</summary>
 
     <div class="waz-summary" aria-label="System summary" data-layout-group="summary">
       <div class="waz-summary-cell" data-layout-item="cpu" data-layout-label="CPU"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
@@ -7923,9 +7926,9 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
     </div>
+    </details>
     <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
-  </details>
 </td></tr>
 </tbody>
 EOT;
@@ -8046,13 +8049,13 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <details class="waz-secondary-panel"><summary>Workloads</summary>
   <section class="waz-workloads" data-dashboard-layout="workloads" data-layout-key="waz.dashboard.workloadsLayout.v1" data-version="0.8.5">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
     <div id="waz-workloads-alert" class="waz-workloads-alert" hidden></div>
+    <details class="waz-secondary-panel"><summary>Workload details</summary>
 
     <div class="waz-workloads-summary" aria-label="Docker summary" data-layout-group="summary" data-layout-columns="3">
       <div data-layout-item="running" data-layout-label="CONTAINERS RUNNING"><span>CONTAINERS RUNNING</span><strong id="waz-workloads-running">--</strong></div>
@@ -8108,9 +8111,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
     </section>
 
     </div>
+    </details>
     <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v0.8.5</span></footer>
   </section>
-  </details>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
 </tbody>

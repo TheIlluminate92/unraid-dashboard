@@ -9,13 +9,13 @@ $pluginname = 'waz.workloads';
 $mytiles[$pluginname]['column2'] = <<<'EOT'
 <tbody id="waz-workloads-tile" title="Docker workloads, live selected-container telemetry, and top processes">
 <tr><td>
-  <details class="waz-secondary-panel"><summary>Workloads</summary>
   <section class="waz-workloads" data-dashboard-layout="workloads" data-layout-key="waz.dashboard.workloadsLayout.v1" data-version="@@APP_VERSION@@">
     <header class="waz-workloads-header">
       <span><b>WORKLOADS</b><small id="waz-workloads-subtitle">Docker folders and selected-container telemetry</small></span>
       <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
     <div id="waz-workloads-alert" class="waz-workloads-alert" hidden></div>
+    <details class="waz-secondary-panel"><summary>Workload details</summary>
 
     <div class="waz-workloads-summary" aria-label="Docker summary" data-layout-group="summary" data-layout-columns="3">
       <div data-layout-item="running" data-layout-label="CONTAINERS RUNNING"><span>CONTAINERS RUNNING</span><strong id="waz-workloads-running">--</strong></div>
@@ -71,9 +71,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
     </section>
 
     </div>
+    </details>
     <footer class="waz-workloads-footer"><span id="waz-workloads-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
-  </details>
   <div id="iframe-popup" style="display:none;-webkit-overflow-scrolling:touch"></div>
 </td></tr>
 </tbody>

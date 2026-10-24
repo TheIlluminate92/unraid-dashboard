@@ -25,3 +25,4 @@ div.grid:has(#waz-storage-tile) > #tile3 { order: -1; }
 .waz-storage .waz-storage-section > summary > span { float: right; font-size: 14px; color: var(--waz-muted); }
 /* Flex display on details would reveal closed contents. */
 .waz-storage details.waz-storage-section { display: block; }
+.waz-workloads[data-dashboard-layout], .waz-storage[data-dashboard-layout] { min-height: 0; }
