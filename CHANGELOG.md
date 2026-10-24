@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.5 - 2026-10-24 (build 2026.10.24.05)
+
+- Keeps Drives & Storage full-width above a two-column Server Status / Workloads row on screens at least 1200px wide. Smaller screens stack the panels.
+- Retains bay drawers, enclosure geometry, collapsible details and existing saved block layouts. No backend, service or storage configuration changes.
+
 ## 0.8.5 - 2026-10-24 (build 2026.10.24.04)
 
 - Prioritizes drive layouts in full-width dashboard rows. Secondary system/workload panels and parity/pool/array statistics use native collapsible details; health alerts stay visible.

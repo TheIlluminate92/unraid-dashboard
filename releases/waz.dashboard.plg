@@ -2,12 +2,15 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.24.04">
+  <!ENTITY version "2026.10.24.05">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.24.05
+- Keeps Drives &amp; Storage full-width, with Server Status and Workloads side by side on screens at least 1200px wide. Narrower screens retain one stacked column.
+
 ### 0.8.5 - Build 2026.10.24.04
 - Drive-first full-width dashboard rows, readable bay labels and collapsible enclosures. Selecting a bay opens details beneath its enclosure; a single drawer is open at a time.
 - Collapses secondary system, workload, pool, parity and array details while keeping health alerts visible. Preserves plugin geometry and zero-based numbering.
@@ -531,7 +534,10 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
 
 /* Scope the row layout to dashboards containing the WAZ drive panel. */
 div.grid:has(#waz-storage-tile) { grid-template-columns: minmax(0, 1fr) !important; }
-div.grid:has(#waz-storage-tile) > #tile3 { order: -1; }
+div.grid:has(#waz-storage-tile) > #tile3 { order: -1; grid-column: 1 / -1; }
+@media (min-width: 1200px) {
+  div.grid:has(#waz-storage-tile) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
 .waz-secondary-panel { border: 1px solid #303840; padding: 12px; }
 .waz-secondary-panel > summary { cursor: pointer; font-size: 17px; font-weight: 700; padding: 8px; }
 .waz-secondary-panel > section { margin-top: 12px; }
@@ -5714,7 +5720,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.5',
-        'pluginVersion' => '2026.10.24.04',
+        'pluginVersion' => '2026.10.24.05',
         'server' => [
             'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5740,7 +5746,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.5';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.04';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.05';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -6219,7 +6225,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.5';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.04';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.05';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -7024,7 +7030,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.5';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.04';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.05';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7944,10 +7950,10 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.04">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.04">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.04"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.05">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.05">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.05"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.05"></script>
 
 ]]>
 </INLINE>
@@ -8036,10 +8042,10 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 </tbody>
 EOT;
 ?>
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.04">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.04">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.04"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.05">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.05">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.05"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.05"></script>
 
 ]]>
 </INLINE>
@@ -8129,11 +8135,11 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.04">
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.04">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.04"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.04"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.04"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/layout.css?v=2026.10.24.05">
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.05">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.05"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.05"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.05"></script>
 
 ]]>
 </INLINE>
