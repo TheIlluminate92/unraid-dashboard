@@ -62,6 +62,9 @@ including while editing or resetting. Panel height follows the edited content.
 ## Disk Location
 
 Build 2026.10.24.04 prioritizes the physical map in full-width dashboard rows.
+Build 2026.10.24.05 keeps this map full-width and puts Server Status and
+Workloads side by side below it when the viewport is at least 1200px wide.
+On smaller screens those panels stack; their saved internal layouts remain intact.
 Each enclosure is collapsible; selecting a bay opens one detail drawer beneath
 that enclosure. Bays retain their plugin-assigned positions and labels, with
 horizontal pool/role labels. Small displays scroll the spatial diagram rather
