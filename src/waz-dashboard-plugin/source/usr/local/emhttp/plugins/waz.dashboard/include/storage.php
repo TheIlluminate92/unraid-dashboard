@@ -264,7 +264,7 @@ function waz_storage_location_identity_matches(array $device, array $raw): bool
 {
     $serial = trim((string) ($device['smart_serialnumber'] ?? ''));
     $id = trim((string) ($raw['id'] ?? ''));
-    return $serial !== '' && ($id === $serial || str_ends_with($id, '_' . $serial));
+    return $serial !== '' && ($id === $serial || preg_match('/(?:^|_)' . preg_quote($serial, '/') . '(?:_|$)/', $id) === 1);
 }
 
 function waz_storage_location_data(array &$disks): array
@@ -363,6 +363,11 @@ function waz_storage_location_data(array &$disks): array
                 'sourceTray' => $sourceTray,
                 'hidden' => $layoutCell['hidden'],
                 'present' => !$layoutCell['hidden'] && $present,
+                'inventory' => !$present ? null : [
+                    'model' => trim((string) ($deviceMeta['model_name'] ?? '')),
+                    'serial' => trim((string) ($deviceMeta['smart_serialnumber'] ?? '')),
+                    'capacityBytes' => waz_storage_number($deviceMeta['capacity'] ?? null),
+                ],
                 'disk' => $active === null ? null : [
                     'name' => $active['name'],
                     'device' => $active['device'],
@@ -372,6 +377,9 @@ function waz_storage_location_data(array &$disks): array
                     'state' => $active['state'],
                     'spunDown' => $active['spunDown'],
                     'temperatureC' => $active['temperatureC'],
+                    'sizeBytes' => $active['sizeBytes'],
+                    'usedBytes' => $active['usedBytes'],
+                    'usagePercent' => $active['usagePercent'],
                     'identityColor' => $active['identityColor'],
                 ],
             ];
@@ -604,10 +612,11 @@ function waz_storage_parity_data(array $disks, array $variables, array $parityCo
     $errors = (int) ($variables['mdSyncErrs'] ?? ($variables['sbSyncErrs'] ?? 0));
     $missing = (int) ($variables['mdNumMissing'] ?? 0) + (int) ($variables['mdNumDisabled'] ?? 0) + (int) ($variables['mdNumInvalid'] ?? 0);
     $exit = trim((string) ($variables['sbSyncExit'] ?? '0'));
+    $cancelled = $exit === '-4';
     $states = array_column($parityDisks, 'state');
-    if ($errors > 0 || $missing > 0 || ($exit !== '' && $exit !== '0')) {
+    if ($errors > 0 || $missing > 0 || ($exit !== '' && $exit !== '0' && !$cancelled)) {
         $states[] = 'fault';
-    } elseif ($active) {
+    } elseif ($active || $cancelled) {
         $states[] = 'attention';
     }
     $started = (int) ($variables['sbSynced'] ?? 0);
@@ -618,6 +627,7 @@ function waz_storage_parity_data(array $disks, array $variables, array $parityCo
         'valid' => count($parityDisks) > 0 && !in_array('fault', $states, true) && $missing === 0 && $errors === 0 && ($exit === '' || $exit === '0'),
         'missingCount' => $missing,
         'exitCode' => $exit,
+        'cancelled' => $cancelled,
         'errors' => $errors,
         'action' => trim((string) ($variables['mdResyncAction'] ?? 'check')),
         'active' => $active,
@@ -674,7 +684,7 @@ function waz_storage_attention(array $array, array $parity, array $pools): array
     } elseif (($parity['configured'] ?? true) && ($parity['valid'] ?? true) !== true) {
         $messages[] = ((int) ($parity['errors'] ?? 0)) > 0
             ? 'Parity · ' . (int) $parity['errors'] . ' error' . ((int) $parity['errors'] === 1 ? '' : 's')
-            : 'Parity · last check did not complete cleanly';
+            : (($parity['cancelled'] ?? false) ? 'Parity · check cancelled' : 'Parity · last check did not complete cleanly');
     }
     foreach ((array) ($parity['disks'] ?? []) as $disk) {
         $message = is_array($disk) ? waz_storage_disk_attention($disk) : null;

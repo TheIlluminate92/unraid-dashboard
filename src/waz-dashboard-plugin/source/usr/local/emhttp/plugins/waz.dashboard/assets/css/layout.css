@@ -13,3 +13,16 @@
 .waz-workloads[data-dashboard-layout], .waz-storage[data-dashboard-layout] { height: auto !important; overflow: visible; }
 .waz-workloads[data-dashboard-layout] .waz-workloads-summary > [data-layout-item] { min-height: 70px; background: var(--waz-panel); padding: 8px; }
 @media (max-width: 600px) { [data-dashboard-layout] [data-layout-item] { grid-column: span 12 !important; } }
+
+/* Scope the row layout to dashboards containing the WAZ drive panel. */
+div.grid:has(#waz-storage-tile) { grid-template-columns: minmax(0, 1fr) !important; }
+div.grid:has(#waz-storage-tile) > #tile3 { order: -1; }
+.waz-secondary-panel { border: 1px solid #303840; padding: 12px; }
+.waz-secondary-panel > summary { cursor: pointer; font-size: 17px; font-weight: 700; padding: 8px; }
+.waz-secondary-panel > section { margin-top: 12px; }
+[data-dashboard-layout="storage"] > [data-layout-group] > [data-layout-item="locations"] { grid-column: 1 / -1 !important; height: auto !important; }
+.waz-storage .waz-storage-section > summary { cursor: pointer; padding: 8px 4px; font-size: 16px; font-weight: 600; }
+.waz-storage .waz-storage-section > summary > span { float: right; font-size: 14px; color: var(--waz-muted); }
+/* Flex display on details would reveal closed contents. */
+.waz-storage details.waz-storage-section { display: block; }
+.waz-workloads[data-dashboard-layout], .waz-storage[data-dashboard-layout] { min-height: 0; }

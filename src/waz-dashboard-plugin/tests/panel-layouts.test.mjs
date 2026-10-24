@@ -18,7 +18,7 @@ function tree(file) {
 for(const [file,expected] of [
  ['WazDashboard.page',{summary:['cpu','gpu','power','memory','coolant','hba0','network','flow','hba1'],sections:['cpu','memory','network']}],
  ['WazWorkloads.page',{summary:['running','vdisk','updates','gpu'],sections:['folders','containers','processes','inspector']}],
- ['WazStorage.page',{sections:['parity','pools','pooldetails','locations','array']}]
+ ['WazStorage.page',{sections:['locations','parity','pools','pooldetails','array']}]
 ])test(file+' declares independent layout blocks without breaking its markup',()=>{
  const {source,nodes}=tree(file);
  for(const [group,ids] of Object.entries(expected)) {
@@ -27,4 +27,6 @@ for(const [file,expected] of [
  }
  assert.ok(source.includes('assets/css/layout.css'));assert.equal((source.match(/assets\/js\/layout\.js/g)||[]).length,1);
  const allIds=nodes.map(n=>n.attrs.id).filter(Boolean);assert.equal(new Set(allIds).size,allIds.length,'Native control IDs stay unique');
+ const alert=nodes.find(n=>n.attrs.id==='waz-workloads-alert'||n.attrs.id==='waz-storage-alert');
+ for(let parent=alert?.parent;parent;parent=parent.parent)assert.notEqual(parent.tag,'details','Health alerts must stay outside collapsed details');
 });
