@@ -2,16 +2,17 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name "waz.dashboard">
   <!ENTITY author "TheIlluminate92">
-  <!ENTITY version "2026.10.24.01">
+  <!ENTITY version "2026.10.24.02">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/TheIlluminate92/unraid-dashboard/main/releases/waz.dashboard.plg">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
-### 0.8.5 - Build 2026.10.24.01
+### 0.8.5 - Build 2026.10.24.02
 - Hostname-based banner names, movable and resizable Server Status sections and summary tiles, keyboard layout controls, reset and per-browser saved layouts.
 - Hides absent hardware, shares local/network UPS telemetry between health and power, and preserves communication fault reporting. Does not change UPS shutdown settings.
 - Corrects retained healthcheck results on stopped or paused containers.
+- Reads Disk Location group names, shapes and numbering directions with zero-based labels and drive-identity validation. Does not change plugin-owned mappings.
 
 ### 0.8.5 - Build 2026.10.22.04
 - Keeps the wrench, time and uptime anchored to the right independently of optional fan controls.
@@ -887,6 +888,8 @@ mkdir -p "/usr/local/emhttp/plugins/.waz.dashboard.staged" "$CONFIG_DIR"
   grid-template-columns: repeat(var(--columns, 5), minmax(0, 1fr));
   gap: 3px;
 }
+
+.waz-location-grid[data-tray-direction="v"] .waz-bay { min-height: 64px; }
 
 .waz-bay {
   position: relative;
@@ -3256,6 +3259,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
       title.textContent = group.name;
       var grid = document.createElement('div');
       grid.className = 'waz-location-grid';
+      grid.dataset.trayDirection = group.trayDirection || 'h';
       grid.style.setProperty('--columns', Number(group.columns) || 1);
       (group.cells || []).forEach(function (cell) {
         var bay = document.createElement('div');
@@ -3269,7 +3273,7 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
         label.textContent = String(cell.tray);
         var detail = document.createElement('small');
         if (cell.disk) {
-          occupied += 1;
+          if (!cell.hidden) occupied += 1;
           bay.dataset.disk = cell.disk.name;
           bay.dataset.pool = cell.disk.poolName || '';
           bay.className += stateClass(cell.disk.state) + (selectedDisk === cell.disk.name ? ' waz-is-selected' : '');
@@ -3278,8 +3282,9 @@ details[open] > .waz-cpu-summary::before { content: '▾'; }
           bay.title = group.name + ' bay ' + cell.tray + ' · ' + cell.disk.name + ' · ' + cell.disk.mediaType;
         } else if (!cell.hidden) {
           bay.className += ' waz-empty';
-          detail.textContent = 'EMPTY';
-          bay.title = group.name + ' bay ' + cell.tray + ' · empty';
+          if (cell.present) occupied += 1;
+          detail.textContent = cell.present ? 'UNASSIGNED' : 'EMPTY';
+          bay.title = group.name + ' bay ' + cell.tray + (cell.present ? ' · unassigned drive' : ' · empty');
         }
         bay.appendChild(label);
         bay.appendChild(detail);
@@ -5598,7 +5603,7 @@ function waz_health_snapshot(): array
     return [
         'schemaVersion' => 3,
         'version' => '0.8.5',
-        'pluginVersion' => '2026.10.24.01',
+        'pluginVersion' => '2026.10.24.02',
         'server' => [
             'label' => waz_health_display_name($config),
             'uptimeSeconds' => waz_health_uptime_seconds(),
@@ -5624,7 +5629,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_DASHBOARD_VERSION = '0.8.5';
-const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.01';
+const WAZ_DASHBOARD_PLUGIN_VERSION = '2026.10.24.02';
 const WAZ_DASHBOARD_CONFIG = '/boot/config/plugins/waz.dashboard/waz.dashboard.cfg';
 const WAZ_DASHBOARD_STATE = '/var/run/waz.dashboard';
 
@@ -6103,7 +6108,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_STORAGE_VERSION = '0.8.5';
-const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.01';
+const WAZ_STORAGE_PLUGIN_VERSION = '2026.10.24.02';
 const WAZ_STORAGE_WARN_PERCENT = 95.0;
 const WAZ_STORAGE_FAULT_PERCENT = 98.0;
 const WAZ_DISKS_INI = '/var/local/emhttp/disks.ini';
@@ -6319,34 +6324,48 @@ function waz_storage_disk_records(): array
 
 function waz_storage_group_layout(array $group): array
 {
-    $columns = max(1, (int) ($group['grid_columns'] ?? 1));
-    $rows = max(1, (int) ($group['grid_rows'] ?? 1));
+    $columns = max(1, min(100, (int) ($group['grid_columns'] ?? 1)));
+    $rows = max(1, min(100, (int) ($group['grid_rows'] ?? 1)));
     $count = $columns * $rows;
     $start = (int) ($group['tray_start_num'] ?? 1);
     $countByColumn = strcasecmp((string) ($group['grid_count'] ?? 'row'), 'column') === 0;
-    $reverse = (string) ($group['tray_direction'] ?? '1') === '-1';
+    $direction = (int) ($group['tray_direction'] ?? 1);
     $hidden = is_array($group['hide_tray'] ?? null) ? $group['hide_tray'] : [];
-    $visibleNumber = 0;
+    // Disk Location stores one-based source keys even when the displayed
+    // labels begin at zero. Numbering direction changes labels, not bay keys.
+    $runs = array_chunk(range(1, $count), $countByColumn ? $rows : $columns);
+    if (($direction === 2 && !$countByColumn) || ($direction === 3 && $countByColumn) || $direction === 4) {
+        $runs = array_reverse($runs);
+    }
+    if (($direction === 2 && $countByColumn) || ($direction === 3 && !$countByColumn) || $direction === 4) {
+        $runs = array_map('array_reverse', $runs);
+    }
+    $labels = [];
+    $number = $start;
+    foreach ($runs as $run) foreach ($run as $key) {
+        if (empty($hidden[$key]) || !empty($group['count_bypass_tray'])) $labels[$key] = $number++;
+    }
     $cells = [];
     for ($position = 0; $position < $count; $position++) {
         $row = intdiv($position, $columns);
         $column = $position % $columns;
         $ordinal = $countByColumn ? $column * $rows + $row : $position;
-        if ($reverse) {
-            $ordinal = $count - 1 - $ordinal;
-        }
-        $sourceTray = $start + $ordinal;
-        $isHidden = array_key_exists((string) $sourceTray, $hidden);
-        if (!$isHidden) {
-            $visibleNumber++;
-        }
+        $sourceTray = 1 + $ordinal;
+        $isHidden = !empty($hidden[$sourceTray]);
         $cells[] = [
             'sourceTray' => $sourceTray,
-            'tray' => $isHidden ? null : $visibleNumber,
+            'tray' => $isHidden ? null : ($labels[$sourceTray] ?? null),
             'hidden' => $isHidden,
         ];
     }
     return ['columns' => $columns, 'rows' => $rows, 'cells' => $cells];
+}
+
+function waz_storage_location_identity_matches(array $device, array $raw): bool
+{
+    $serial = trim((string) ($device['smart_serialnumber'] ?? ''));
+    $id = trim((string) ($raw['id'] ?? ''));
+    return $serial !== '' && ($id === $serial || str_ends_with($id, '_' . $serial));
 }
 
 function waz_storage_location_data(array &$disks): array
@@ -6354,6 +6373,11 @@ function waz_storage_location_data(array &$disks): array
     $groupsRaw = waz_storage_json(WAZ_LOCATION_DIR . '/groups.json');
     $locationsRaw = waz_storage_json(WAZ_LOCATION_DIR . '/locations.json');
     $devicesRaw = waz_storage_json(WAZ_LOCATION_DIR . '/devices.json');
+    $settings = waz_storage_json(WAZ_LOCATION_DIR . '/settings.json');
+    foreach ($groupsRaw as &$group) if (is_array($group)) $group['count_bypass_tray'] = $settings['count_bypass_tray'] ?? false;
+    unset($group);
+    $currentByNode = [];
+    foreach (waz_storage_ini(WAZ_DISKS_INI, true) as $raw) if (is_array($raw)) $currentByNode[(string) ($raw['device'] ?? '')] = $raw;
     $locationByDevice = [];
     $displayTrayByGroup = [];
 
@@ -6377,7 +6401,7 @@ function waz_storage_location_data(array &$disks): array
             continue;
         }
         $node = basename(trim((string) ($device['devicenode'] ?? '')));
-        if ($node === '') {
+        if ($node === '' || !waz_storage_location_identity_matches($device, $currentByNode[$node] ?? [])) {
             continue;
         }
         $locationByDevice[$node] = [
@@ -6395,10 +6419,9 @@ function waz_storage_location_data(array &$disks): array
         $device = (string) $disk['device'];
         if (isset($locationByDevice[$device])) {
             $meta = $locationByDevice[$device];
+            if (!isset($displayTrayByGroup[$meta['groupId']][$meta['tray']])) continue;
             $groupName = (string) (($groupsRaw[$meta['groupId']]['group_name'] ?? 'Shelf'));
-            $displayGroup = strcasecmp($groupName, 'Top') === 0
-                ? 'MD1200 Top'
-                : (strcasecmp($groupName, 'Bottom') === 0 ? 'MD1200 Bottom' : $groupName);
+            $displayGroup = $groupName;
             $disk['location'] = [
                 'groupId' => $meta['groupId'],
                 'groupName' => $displayGroup,
@@ -6432,13 +6455,15 @@ function waz_storage_location_data(array &$disks): array
             $key = $locationKeys[$sourceTray] ?? null;
             $deviceMeta = $key !== null && isset($devicesRaw[$key]) && is_array($devicesRaw[$key]) ? $devicesRaw[$key] : null;
             $deviceNode = $deviceMeta ? basename(trim((string) ($deviceMeta['devicenode'] ?? ''))) : '';
-            $active = $deviceMeta && trim((string) ($deviceMeta['removed'] ?? '')) === '' && isset($diskByDevice[$deviceNode])
+            $present = $deviceMeta && trim((string) ($deviceMeta['removed'] ?? '')) === '';
+            $active = $present && isset($diskByDevice[$deviceNode]) && waz_storage_location_identity_matches($deviceMeta, $currentByNode[$deviceNode] ?? [])
                 ? $diskByDevice[$deviceNode]
                 : null;
             $cells[] = [
                 'tray' => $layoutCell['tray'],
                 'sourceTray' => $sourceTray,
                 'hidden' => $layoutCell['hidden'],
+                'present' => !$layoutCell['hidden'] && $present,
                 'disk' => $active === null ? null : [
                     'name' => $active['name'],
                     'device' => $active['device'],
@@ -6452,10 +6477,11 @@ function waz_storage_location_data(array &$disks): array
                 ],
             ];
         }
-        $name = trim((string) ($group['group_name'] ?? ('Shelf ' . $groupId)));
+            $name = trim((string) ($group['group_name'] ?? ('Shelf ' . $groupId)));
         $groups[] = [
             'id' => (string) $groupId,
-            'name' => strcasecmp($name, 'Top') === 0 ? 'MD1200 Top' : (strcasecmp($name, 'Bottom') === 0 ? 'MD1200 Bottom' : $name),
+            'name' => $name,
+            'trayDirection' => ($group['disk_tray_direction'] ?? 'h') === 'v' ? 'v' : 'h',
             'columns' => $columns,
             'rows' => $rows,
             'cells' => $cells,
@@ -6877,7 +6903,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
 const WAZ_WORKLOADS_VERSION = '0.8.5';
-const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.01';
+const WAZ_WORKLOADS_PLUGIN_VERSION = '2026.10.24.02';
 const WAZ_WORKLOADS_FOLDER_CONFIGS = [
     '/boot/config/plugins/folderview.plus/docker.json',
     '/boot/config/plugins/folder.view3/docker.json',
@@ -7795,9 +7821,9 @@ EOT;
 $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file('/usr/local/emhttp/plugins/hbaviewer/export.php') ? 'yes' : 'no', $mytiles[$pluginname]['column1']);
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.01">
-<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.01"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.01"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=2026.10.24.02">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=2026.10.24.02"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/system.js?v=2026.10.24.02"></script>
 
 ]]>
 </INLINE>
@@ -7898,8 +7924,8 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.01">
-<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.01"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/storage.css?v=2026.10.24.02">
+<script defer src="/plugins/waz.dashboard/assets/js/storage.js?v=2026.10.24.02"></script>
 
 ]]>
 </INLINE>
@@ -7985,9 +8011,9 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
 EOT;
 ?>
 
-<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.01">
-<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.01"></script>
-<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.01"></script>
+<link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/workloads.css?v=2026.10.24.02">
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=2026.10.24.02"></script>
+<script defer src="/plugins/waz.dashboard/assets/js/workloads.js?v=2026.10.24.02"></script>
 
 ]]>
 </INLINE>

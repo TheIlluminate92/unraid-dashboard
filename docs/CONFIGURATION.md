@@ -45,6 +45,18 @@ GPU, coolant, flow, HBA and rack-power tiles hide until telemetry is detected.
 Previously detected GPU/cooling/HBA readings remain visible if telemetry
 later goes missing, so loss of data does not look like removal of hardware.
 
+## Disk Location
+
+Disk Location owns enclosure shape, names, bay assignments and display numbering.
+The dashboard reads its saved groups, devices and locations without modifying
+them. Stored association keys remain one-based; displayed labels follow the
+plugin's start number (including zero), numbering direction and hidden bays.
+Horizontal/vertical tray orientation is reflected in the compact map. Drive
+identity must match current Unraid inventory before an assigned disk is shown
+in a plugin-mapped bay. Active plugin records outside the assigned inventory
+are labeled UNASSIGNED rather than EMPTY. Correct physical layouts and mappings
+in Disk Location itself.
+
 ## Health thresholds
 
 ```ini

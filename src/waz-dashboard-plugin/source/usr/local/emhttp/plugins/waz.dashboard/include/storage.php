@@ -223,34 +223,48 @@ function waz_storage_disk_records(): array
 
 function waz_storage_group_layout(array $group): array
 {
-    $columns = max(1, (int) ($group['grid_columns'] ?? 1));
-    $rows = max(1, (int) ($group['grid_rows'] ?? 1));
+    $columns = max(1, min(100, (int) ($group['grid_columns'] ?? 1)));
+    $rows = max(1, min(100, (int) ($group['grid_rows'] ?? 1)));
     $count = $columns * $rows;
     $start = (int) ($group['tray_start_num'] ?? 1);
     $countByColumn = strcasecmp((string) ($group['grid_count'] ?? 'row'), 'column') === 0;
-    $reverse = (string) ($group['tray_direction'] ?? '1') === '-1';
+    $direction = (int) ($group['tray_direction'] ?? 1);
     $hidden = is_array($group['hide_tray'] ?? null) ? $group['hide_tray'] : [];
-    $visibleNumber = 0;
+    // Disk Location stores one-based source keys even when the displayed
+    // labels begin at zero. Numbering direction changes labels, not bay keys.
+    $runs = array_chunk(range(1, $count), $countByColumn ? $rows : $columns);
+    if (($direction === 2 && !$countByColumn) || ($direction === 3 && $countByColumn) || $direction === 4) {
+        $runs = array_reverse($runs);
+    }
+    if (($direction === 2 && $countByColumn) || ($direction === 3 && !$countByColumn) || $direction === 4) {
+        $runs = array_map('array_reverse', $runs);
+    }
+    $labels = [];
+    $number = $start;
+    foreach ($runs as $run) foreach ($run as $key) {
+        if (empty($hidden[$key]) || !empty($group['count_bypass_tray'])) $labels[$key] = $number++;
+    }
     $cells = [];
     for ($position = 0; $position < $count; $position++) {
         $row = intdiv($position, $columns);
         $column = $position % $columns;
         $ordinal = $countByColumn ? $column * $rows + $row : $position;
-        if ($reverse) {
-            $ordinal = $count - 1 - $ordinal;
-        }
-        $sourceTray = $start + $ordinal;
-        $isHidden = array_key_exists((string) $sourceTray, $hidden);
-        if (!$isHidden) {
-            $visibleNumber++;
-        }
+        $sourceTray = 1 + $ordinal;
+        $isHidden = !empty($hidden[$sourceTray]);
         $cells[] = [
             'sourceTray' => $sourceTray,
-            'tray' => $isHidden ? null : $visibleNumber,
+            'tray' => $isHidden ? null : ($labels[$sourceTray] ?? null),
             'hidden' => $isHidden,
         ];
     }
     return ['columns' => $columns, 'rows' => $rows, 'cells' => $cells];
+}
+
+function waz_storage_location_identity_matches(array $device, array $raw): bool
+{
+    $serial = trim((string) ($device['smart_serialnumber'] ?? ''));
+    $id = trim((string) ($raw['id'] ?? ''));
+    return $serial !== '' && ($id === $serial || str_ends_with($id, '_' . $serial));
 }
 
 function waz_storage_location_data(array &$disks): array
@@ -258,6 +272,11 @@ function waz_storage_location_data(array &$disks): array
     $groupsRaw = waz_storage_json(WAZ_LOCATION_DIR . '/groups.json');
     $locationsRaw = waz_storage_json(WAZ_LOCATION_DIR . '/locations.json');
     $devicesRaw = waz_storage_json(WAZ_LOCATION_DIR . '/devices.json');
+    $settings = waz_storage_json(WAZ_LOCATION_DIR . '/settings.json');
+    foreach ($groupsRaw as &$group) if (is_array($group)) $group['count_bypass_tray'] = $settings['count_bypass_tray'] ?? false;
+    unset($group);
+    $currentByNode = [];
+    foreach (waz_storage_ini(WAZ_DISKS_INI, true) as $raw) if (is_array($raw)) $currentByNode[(string) ($raw['device'] ?? '')] = $raw;
     $locationByDevice = [];
     $displayTrayByGroup = [];
 
@@ -281,7 +300,7 @@ function waz_storage_location_data(array &$disks): array
             continue;
         }
         $node = basename(trim((string) ($device['devicenode'] ?? '')));
-        if ($node === '') {
+        if ($node === '' || !waz_storage_location_identity_matches($device, $currentByNode[$node] ?? [])) {
             continue;
         }
         $locationByDevice[$node] = [
@@ -299,10 +318,9 @@ function waz_storage_location_data(array &$disks): array
         $device = (string) $disk['device'];
         if (isset($locationByDevice[$device])) {
             $meta = $locationByDevice[$device];
+            if (!isset($displayTrayByGroup[$meta['groupId']][$meta['tray']])) continue;
             $groupName = (string) (($groupsRaw[$meta['groupId']]['group_name'] ?? 'Shelf'));
-            $displayGroup = strcasecmp($groupName, 'Top') === 0
-                ? 'MD1200 Top'
-                : (strcasecmp($groupName, 'Bottom') === 0 ? 'MD1200 Bottom' : $groupName);
+            $displayGroup = $groupName;
             $disk['location'] = [
                 'groupId' => $meta['groupId'],
                 'groupName' => $displayGroup,
@@ -336,13 +354,15 @@ function waz_storage_location_data(array &$disks): array
             $key = $locationKeys[$sourceTray] ?? null;
             $deviceMeta = $key !== null && isset($devicesRaw[$key]) && is_array($devicesRaw[$key]) ? $devicesRaw[$key] : null;
             $deviceNode = $deviceMeta ? basename(trim((string) ($deviceMeta['devicenode'] ?? ''))) : '';
-            $active = $deviceMeta && trim((string) ($deviceMeta['removed'] ?? '')) === '' && isset($diskByDevice[$deviceNode])
+            $present = $deviceMeta && trim((string) ($deviceMeta['removed'] ?? '')) === '';
+            $active = $present && isset($diskByDevice[$deviceNode]) && waz_storage_location_identity_matches($deviceMeta, $currentByNode[$deviceNode] ?? [])
                 ? $diskByDevice[$deviceNode]
                 : null;
             $cells[] = [
                 'tray' => $layoutCell['tray'],
                 'sourceTray' => $sourceTray,
                 'hidden' => $layoutCell['hidden'],
+                'present' => !$layoutCell['hidden'] && $present,
                 'disk' => $active === null ? null : [
                     'name' => $active['name'],
                     'device' => $active['device'],
@@ -356,10 +376,11 @@ function waz_storage_location_data(array &$disks): array
                 ],
             ];
         }
-        $name = trim((string) ($group['group_name'] ?? ('Shelf ' . $groupId)));
+            $name = trim((string) ($group['group_name'] ?? ('Shelf ' . $groupId)));
         $groups[] = [
             'id' => (string) $groupId,
-            'name' => strcasecmp($name, 'Top') === 0 ? 'MD1200 Top' : (strcasecmp($name, 'Bottom') === 0 ? 'MD1200 Bottom' : $name),
+            'name' => $name,
+            'trayDirection' => ($group['disk_tray_direction'] ?? 'h') === 'v' ? 'v' : 'h',
             'columns' => $columns,
             'rows' => $rows,
             'cells' => $cells,

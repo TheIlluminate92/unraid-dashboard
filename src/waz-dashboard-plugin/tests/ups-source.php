@@ -19,7 +19,7 @@ function check(bool $condition, string $message): void { if (!$condition) throw 
 check(fixture_read()['STATUS'] === 'ONLINE', 'Local APC feed');
 $target = 'ups.example:3551'; $calls = []; $nut = true;
 check(fixture_read()['STATUS'] === 'ONLINE', 'Remote feed');
-check(count($calls) === 1 && str_contains($calls[0], "'ups.example:3551'"), 'Remote override must bypass local NUT');
+check(count($calls) === 1 && str_contains($calls[0], escapeshellarg('ups.example:3551')), 'Remote override must bypass local NUT');
 $fail = true;
 check(fixture_read()['STATUS'] === 'COMMLOST', 'Configured remote failure remains visible');
 $target = ''; $nut = false;

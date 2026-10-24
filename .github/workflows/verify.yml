@@ -47,6 +47,7 @@ jobs:
           php src/waz-dashboard-plugin/tests/audit.php
           php src/waz-dashboard-plugin/tests/identity-health.php
           php src/waz-dashboard-plugin/tests/ups-source.php
+          php src/waz-dashboard-plugin/tests/disk-location.php
           php src/waz-dashboard-plugin/tests/pool-only.php
           php src/waz-dashboard-plugin/tests/gpu-lifecycle.php
           php src/waz-dashboard-plugin/tests/activation.php src/waz-dashboard-plugin/dist/waz.dashboard.plg

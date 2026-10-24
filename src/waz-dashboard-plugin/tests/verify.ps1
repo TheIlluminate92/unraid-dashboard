@@ -246,6 +246,8 @@ if ($php) {
     if ($LASTEXITCODE -ne 0) { throw 'Host identity and lifecycle health regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/ups-source.php')
     if ($LASTEXITCODE -ne 0) { throw 'UPS source regressions failed.' }
+    & $php.Source (Join-Path $projectRoot 'tests/disk-location.php')
+    if ($LASTEXITCODE -ne 0) { throw 'Disk Location compatibility regressions failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/pool-only.php')
     if ($LASTEXITCODE -ne 0) { throw 'Pool-only parity regression failed.' }
     & $php.Source (Join-Path $projectRoot 'tests/registration.php') $manifest
