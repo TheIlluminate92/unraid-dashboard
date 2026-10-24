@@ -93,6 +93,27 @@ function waz_storage_identity_color(string $key): string
     return $palette[$index];
 }
 
+function waz_storage_pool_colors(array $names): array
+{
+    $fixed = ['cache' => '#a78bfa', 'mnemosyne' => '#2dd4bf', 'aegis' => '#f2a900', 'elysium' => '#e879f9', 'akashic' => '#60a5fa', 'downloads' => '#f97316', 'avalon' => '#34d399'];
+    $palette = ['#22b8f0', '#fb7185', '#c4b454', '#818cf8', '#d4a373', '#a3e635', '#f472b6', '#38bdf8'];
+    sort($names, SORT_STRING);
+    $colors = [];
+    $used = array_values($fixed);
+    foreach ($names as $name) {
+        if (isset($fixed[strtolower($name)])) { $colors[$name] = $fixed[strtolower($name)]; continue; }
+        $start = (int) sprintf('%u', crc32($name)) % count($palette);
+        $color = null;
+        for ($i = 0; $i < count($palette); $i++) {
+            $candidate = $palette[($start + $i) % count($palette)];
+            if (!in_array($candidate, $used, true)) { $color = $candidate; break; }
+        }
+        $colors[$name] = $color ?? ('hsl(' . ((int) sprintf('%u', crc32($name)) % 360) . ' 65% 65%)');
+        $used[] = $colors[$name];
+    }
+    return $colors;
+}
+
 function waz_storage_media(array $disk): string
 {
     if (strtolower((string) ($disk['transport'] ?? '')) === 'nvme') {
@@ -147,6 +168,30 @@ function waz_storage_unassigned_slot(array $disk): bool
         && trim((string) ($disk['device'] ?? '')) === ''
         && trim((string) ($disk['id'] ?? '')) === ''
         && (waz_storage_number($disk['size'] ?? null) ?? 0) <= 0;
+}
+
+
+function waz_storage_parse_smart_cache(string $text, int $modified): array
+{
+    $attributes = [];
+    $names = [5 => 'Reallocated sectors', 9 => 'Power-on hours', 187 => 'Reported uncorrectable', 197 => 'Pending sectors', 198 => 'Offline uncorrectable', 199 => 'Interface CRC errors'];
+    foreach (preg_split('/\r?\n/', $text) as $line) {
+        if (preg_match('/^\s*(\d+)\s+\S+\s+0x[0-9a-f]+\s+\d+\s+\d+\s+\d+\s+\S+\s+\S+\s+\S+\s+(.+)$/i', $line, $m) && isset($names[(int) $m[1]])) {
+            $attributes[$names[(int) $m[1]]] = trim($m[2]);
+        }
+        if (preg_match('/^\s*(Power On Hours|Percentage Used|Available Spare|Media and Data Integrity Errors|Critical Warning|Elements in grown defect list):\s*(.+)$/i', $line, $m)) $attributes[$m[1]] = trim($m[2]);
+    }
+    $health = preg_match('/(?:SMART overall-health self-assessment test result|SMART Health Status):\s*([^\r\n]+)/i', $text, $m) ? trim($m[1]) : null;
+    return ['available' => $health !== null || count($attributes) > 0, 'sampledAtMs' => $modified * 1000, 'health' => $health, 'attributes' => $attributes];
+}
+
+function waz_storage_cached_smart(string $name): array
+{
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/D', $name)) return ['available' => false];
+    $path = '/var/local/emhttp/smart/' . $name;
+    if (!is_file($path) || !is_readable($path)) return ['available' => false];
+    $text = @file_get_contents($path, false, null, 0, 262144);
+    return $text === false ? ['available' => false] : waz_storage_parse_smart_cache($text, (int) @filemtime($path));
 }
 
 function waz_storage_disk_records(): array
@@ -216,6 +261,7 @@ function waz_storage_disk_records(): array
             'location' => null,
             'identityColor' => null,
             'poolName' => null,
+            'smart' => waz_storage_cached_smart($name),
         ];
     }
     return $records;
@@ -373,6 +419,7 @@ function waz_storage_location_data(array &$disks): array
                     'device' => $active['device'],
                     'type' => $active['type'],
                     'mediaType' => $active['mediaType'],
+                    'smart' => $active['smart'] ?? ['available' => false],
                     'poolName' => $active['poolName'],
                     'state' => $active['state'],
                     'spunDown' => $active['spunDown'],
@@ -402,7 +449,9 @@ function waz_storage_pool_data(array &$disks): array
 {
     $pools = [];
     $preferredOrder = ['cache' => 0, 'servers' => 1, 'downloads-cache' => 2, 'akashic' => 3];
-    foreach (glob(WAZ_POOL_CONFIG_DIR . '/*.cfg') ?: [] as $path) {
+    $paths = glob(WAZ_POOL_CONFIG_DIR . '/*.cfg') ?: [];
+    $colors = waz_storage_pool_colors(array_map(static fn(string $path): string => basename($path, '.cfg'), $paths));
+    foreach ($paths as $path) {
         $name = basename($path, '.cfg');
         $config = waz_storage_ini($path);
         $members = [];
@@ -412,9 +461,7 @@ function waz_storage_pool_data(array &$disks): array
             }
             if ($disk['name'] === $name || preg_match('/^' . preg_quote($name, '/') . '(\d+)$/', (string) $disk['name'])) {
                 $disk['poolName'] = $name;
-                if (!$disk['identityColor']) {
-                    $disk['identityColor'] = waz_storage_identity_color('pool:' . $name);
-                }
+                $disk['identityColor'] = $colors[$name];
                 $members[] = $disk;
             }
         }
@@ -736,6 +783,8 @@ function waz_storage_snapshot(): array
     $locations = waz_storage_location_data($disks);
     $pools = waz_storage_pool_data($disks);
     foreach ($disks as &$disk) {
+        if ($disk['type'] === 'Data') $disk['identityColor'] = '#60a5fa';
+        if ($disk['type'] === 'Parity') $disk['identityColor'] = '#e55454';
         if (!$disk['identityColor']) {
             if ($disk['type'] === 'Parity') {
                 $disk['identityColor'] = '#e55454';

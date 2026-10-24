@@ -128,3 +128,7 @@ cat /var/run/waz.dashboard/gpu.json | jq .
 ## Uninstall
 
 Use Unraid's Plugins page. Uninstall stops the GPU watcher and removes the plugin runtime, persistent settings, state, and manifest. Unraid core files are never replaced.
+
+### Everyday overview
+
+The health banner combines actionable issues from the existing health reader and dashboard snapshots. Panel headers retain CPU/RAM and running/unhealthy counts while collapsed. CPU charts stay visible with processors/cores behind a disclosure. Enclosures retain their physical shape and zero-based numbering; pool assignment colors match the legend and pool cards, while health uses explicit warning/fault markers. Bay details display only `/var/local/emhttp/smart/<drive-name>` reports already cached by Unraid, with the cache file timestamp. Missing reports and missing overall-health results remain unknown; these cached attributes do not assert current SMART health. Neither expanding enclosures nor selecting bays starts tests, probes a drive, wakes a disk, or requests fresh SMART data.

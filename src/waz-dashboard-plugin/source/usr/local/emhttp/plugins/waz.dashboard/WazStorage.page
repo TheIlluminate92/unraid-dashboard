@@ -18,6 +18,7 @@ $mytiles[$pluginname]['column3'] = <<<'EOT'
       <section class="waz-storage-section waz-location-section" data-layout-item="locations" data-layout-label="Drive layouts">
         <div class="waz-storage-section-head"><b>DRIVE LAYOUTS</b><span id="waz-location-count">--</span></div>
         <p class="waz-drive-hint">Select a bay for details. Expand or collapse each enclosure by its name.</p>
+        <div id="waz-drive-legend" class="waz-drive-legend" aria-label="Drive assignment colors"></div>
         <div id="waz-location-groups" class="waz-location-groups"></div>
       </section>
       <details class="waz-storage-section waz-parity-section" data-layout-item="parity" data-layout-label="Parity">

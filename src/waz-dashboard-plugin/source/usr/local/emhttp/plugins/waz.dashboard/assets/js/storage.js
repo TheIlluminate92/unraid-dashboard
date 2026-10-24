@@ -18,6 +18,14 @@
   var previousParity = null;
   var selectedPool = readSelection();
 
+
+  function publishAttention(state, messages, stale) {
+    var payload = { state: state, messages: messages || [], stale: !!stale, receivedAt: Date.now() };
+    window.WAZDashboardTelemetry = window.WAZDashboardTelemetry || {};
+    window.WAZDashboardTelemetry["storage"] = payload;
+    if (window.WAZHealth && window.WAZHealth.dashboardUpdate) window.WAZHealth.dashboardUpdate("storage", payload);
+  }
+
   function node(id) { return document.getElementById(id); }
 
   function text(id, value) {
@@ -300,6 +308,12 @@
       detailField(fields, 'Model', inventory.model); detailField(fields, 'Serial', inventory.serial);
       if (disk.usagePercent != null) detailField(fields, 'Used', percent(number(disk.usagePercent)) + ' · ' + bytes(number(disk.usedBytes)));
       if (disk.device) detailField(fields, 'Device', disk.device);
+      var smart = disk.smart || {};
+      detailField(fields, 'SMART cache', smart.available ? 'Cached ' + new Date(smart.sampledAtMs).toLocaleString() : 'No cached report available');
+      if (smart.available) {
+        detailField(fields, 'SMART health', smart.health || 'Not included in cached report');
+        Object.keys(smart.attributes || {}).forEach(function (key) { detailField(fields, key, smart.attributes[key]); });
+      }
     }
     drawer.appendChild(fields); return drawer;
   }
@@ -319,7 +333,10 @@
         enclosureOpen[group.id] = wrapper.open;
         try { window.localStorage.setItem(enclosureKey, JSON.stringify(enclosureOpen)); } catch (_) {}
       });
-      var title = document.createElement('summary'); title.textContent = group.name; title.dataset.enclosureKey = String(group.id); wrapper.appendChild(title);
+      var visible = (group.cells || []).filter(function (c) { return !c.hidden; });
+      var filled = visible.filter(function (c) { return c.disk || c.present; }).length;
+      var warnings = visible.filter(function (c) { return c.disk && c.disk.state !== 'normal'; }).length;
+      var title = document.createElement('summary'); title.textContent = group.name + ' · ' + filled + '/' + visible.length + ' occupied · ' + (warnings ? warnings + ' need attention' : 'No reported warnings'); title.dataset.enclosureKey = String(group.id); wrapper.appendChild(title);
       if (focusedEnclosure === String(group.id)) focusTarget = title;
       var scroll = document.createElement('div'); scroll.className = 'waz-enclosure-scroll';
       var grid = document.createElement('div'); grid.className = 'waz-location-grid';
@@ -417,9 +434,21 @@
     renderParity(data.parity || {}, sampledAt);
     renderPools(data.pools || []);
     renderLocations(data.locations || { groups: [] });
+    var legend = node('waz-drive-legend');
+    if (legend) {
+      legend.textContent = '';
+      var assignments = {};
+      ((data.locations || {}).groups || []).forEach(function (g) { (g.cells || []).forEach(function (c) {
+        if (!c.hidden && c.disk) assignments[c.disk.poolName ? poolLabel(c.disk.poolName) : c.disk.type === 'Parity' ? 'Parity' : 'Array'] = c.disk.identityColor;
+      }); });
+      Object.keys(assignments).forEach(function (label) {
+        var item = document.createElement('span'); item.textContent = label; identity(item, assignments[label]); legend.appendChild(item);
+      });
+    }
     renderArray(data.array || {});
     setHealth(data.state || 'normal', data.state === 'fault' ? 'FAULT' : (data.state === 'attention' ? 'ATTENTION' : 'NORMAL'));
     renderAttention(data.attention || {}, data.state || 'normal');
+    if (!localOnly) publishAttention(data.state || 'normal', (data.attention || {}).messages || []);
     text('waz-storage-subtitle', (data.array && data.array.configured === false ? 'Pool-only storage' : (data.array && data.array.mdState === 'STARTED' ? 'Array started' : 'Array ' + ((data.array && data.array.mdState) || 'unknown'))) + ' · ' + (data.pools || []).length + ' pools');
     if (!localOnly) text('waz-storage-updated', 'Updated ' + new Date(sampledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   }
@@ -460,6 +489,7 @@
       })
       .catch(function () {
         setHealth('fault', 'DATA STALE');
+        publishAttention('fault', ['Storage telemetry unavailable; showing last snapshot'], true);
         renderAttention({ messages: ['Storage telemetry is unavailable'] }, 'fault');
         text('waz-storage-updated', 'Unable to read storage snapshot');
       })

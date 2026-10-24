@@ -15,7 +15,7 @@ $mytiles[$pluginname]['column2'] = <<<'EOT'
       <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-workloads-health" class="waz-workloads-health waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
     <div id="waz-workloads-alert" class="waz-workloads-alert" hidden></div>
-    <details class="waz-secondary-panel"><summary>Workload details</summary>
+    <details class="waz-secondary-panel"><summary>Workload details <span id="waz-workloads-collapsed-summary">Connecting…</span></summary>
 
     <div class="waz-workloads-summary" aria-label="Docker summary" data-layout-group="summary" data-layout-columns="3">
       <div data-layout-item="running" data-layout-label="CONTAINERS RUNNING"><span>CONTAINERS RUNNING</span><strong id="waz-workloads-running">--</strong></div>

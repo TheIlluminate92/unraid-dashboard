@@ -17,7 +17,12 @@
   function hardwareField(id, present) {
     if (present) detectedHardware[id] = true;
     var field = document.getElementById(id);
-    if (field && field.parentElement) field.parentElement.hidden = !present && !detectedHardware[id];
+    if (field && field.parentElement) {
+      field.parentElement.hidden = !present && !detectedHardware[id];
+      field.parentElement.classList && field.parentElement.classList.toggle('waz-hardware-unavailable', !present);
+      if (!present && detectedHardware[id]) field.parentElement.title = 'Previously detected; current reading unavailable';
+      else field.parentElement.removeAttribute && field.parentElement.removeAttribute('title');
+    }
   }
   var hbaAvailable = root.getAttribute('data-hba-available') !== 'no';
   var previousCpu = null;
@@ -35,6 +40,14 @@
   var rxHistory = [];
   var txHistory = [];
   var MAX_HISTORY = 300;
+
+
+  function publishAttention(state, messages, stale) {
+    var payload = { state: state, messages: messages || [], stale: !!stale, receivedAt: Date.now() };
+    window.WAZDashboardTelemetry = window.WAZDashboardTelemetry || {};
+    window.WAZDashboardTelemetry["system"] = payload;
+    if (window.WAZHealth && window.WAZHealth.dashboardUpdate) window.WAZHealth.dashboardUpdate("system", payload);
+  }
 
   function node(id) { return document.getElementById(id); }
 
@@ -459,6 +472,11 @@
     renderNetwork(data.network || {}, sampledAt);
     renderStatusBoard(data, cpuPower, cpuLoad);
     previousRapl = { sampledAt: sampledAt, domains: (data.power || {}).raplDomains || {} };
+    text('waz-system-collapsed-summary', 'CPU ' + percent(cpuLoad) + ' · RAM ' + percent(Number((data.memory || {}).totalBytes) > 0 ? (1 - Number((data.memory || {}).availableBytes) / Number(data.memory.totalBytes)) * 100 : null) + ' · ' + temperature((data.cooling || {}).cpuTempC));
+    text('waz-cpu-overview', percent(cpuLoad) + ' · ' + temperature((data.cooling || {}).cpuTempC));
+    var log = (data.filesystems || {}).log || {};
+    var notices = finite(log.usagePercent) && log.usagePercent >= 90 ? ['Log filesystem ' + percent(log.usagePercent) + ' full'] : [];
+    publishAttention(notices.length ? 'attention' : 'normal', notices);
     lastSnapshotAt = Date.now();
     setFreshness('', 'LIVE');
     text('waz-system-updated', 'Updated ' + new Date(sampledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -560,6 +578,8 @@
       .catch(function () {
         if (!lastSnapshotAt || Date.now() - lastSnapshotAt > 4000) {
           setFreshness('waz-is-stale', 'DATA STALE');
+          text('waz-system-collapsed-summary', 'Readings unavailable · showing last snapshot');
+          publishAttention('fault', ['Server telemetry unavailable; showing last snapshot'], true);
           text('waz-system-updated', 'Unable to read live snapshot');
         }
       })

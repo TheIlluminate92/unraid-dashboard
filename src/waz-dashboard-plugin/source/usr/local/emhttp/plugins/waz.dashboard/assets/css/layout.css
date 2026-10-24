@@ -29,3 +29,14 @@ div.grid:has(#waz-storage-tile) > #tile3 { order: -1; grid-column: 1 / -1; }
 /* Flex display on details would reveal closed contents. */
 .waz-storage details.waz-storage-section { display: block; }
 .waz-workloads[data-dashboard-layout], .waz-storage[data-dashboard-layout] { min-height: 0; }
+
+.waz-secondary-panel > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.waz-secondary-panel > summary::before { content: '▸'; }
+.waz-secondary-panel[open] > summary::before { content: '▾'; }
+.waz-secondary-panel > summary > span { font-size: 14px; font-weight: 400; color: #b6c3ce; }
+.waz-cpu-detail > summary { cursor: pointer; padding: 10px 4px; }
+#waz-cpu-overview { margin-left: 12px; color: var(--waz-cyan); }
+.waz-hardware-unavailable { opacity: .65; }
+/* Detailed issues live once in the health banner; retain local fallback if it is absent. */
+body:has(#waz-health-banner) #waz-storage-alert,
+body:has(#waz-health-banner) #waz-workloads-alert { display: none; }

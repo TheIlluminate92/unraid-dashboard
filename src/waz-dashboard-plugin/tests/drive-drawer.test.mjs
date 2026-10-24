@@ -50,7 +50,17 @@ test('enclosure collapse survives refresh and unavailable browser storage',()=>{
 test('empty bays show honest details, hidden bays do not count, and text is not interpreted as HTML',()=>{
  const h=harness(),data=fixture();data.groups[0].name='<img src=x>';data.groups[0].cells.push({sourceTray:3,tray:null,hidden:true});
  h.render(data);let front=h.fields['waz-location-groups'].children[0];
- assert.equal(h.fields['waz-location-count'].textContent,'2 / 3 OCCUPIED');assert.equal(front.children[0].textContent,'<img src=x>');
+ assert.equal(h.fields['waz-location-count'].textContent,'2 / 3 OCCUPIED');assert.equal(front.children[0].textContent,'<img src=x> · 1/2 occupied · No reported warnings');
  front.children[1].children[0].children[1].click();front=h.fields['waz-location-groups'].children[0];
  assert.ok(front.children[2].textContent.includes('Empty bay'));assert.ok(!front.children[2].textContent.includes('SERIAL-A'));
+});
+
+test('bay click displays cached SMART fields without a network or drive request',()=>{
+ const h=harness(),data=fixture();
+ data.groups[0].cells[0].disk.smart={available:true,sampledAtMs:100000,health:null,attributes:{'Pending sectors':'2'}};
+ h.render(data);h.fields['waz-location-groups'].children[0].children[1].children[0].children[0].click();
+ const drawer=h.fields['waz-location-groups'].children[0].children[2];
+ assert.ok(drawer.textContent.includes('Pending sectors2'));
+ assert.ok(drawer.textContent.includes('Not included in cached report'));
+ assert.ok(!drawer.textContent.includes('PASSED'));
 });
