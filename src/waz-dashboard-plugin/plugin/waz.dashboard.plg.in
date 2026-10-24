@@ -8,6 +8,12 @@
 
 <PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="7.2.0" icon="waz.dashboard.png" launch="Dashboard">
 <CHANGES>
+### 0.8.5 - Build 2026.10.24.02
+- Hostname-based banner names, movable and resizable Server Status sections and summary tiles, keyboard layout controls, reset and per-browser saved layouts.
+- Hides absent hardware, shares local/network UPS telemetry between health and power, and preserves communication fault reporting. Does not change UPS shutdown settings.
+- Corrects retained healthcheck results on stopped or paused containers.
+- Reads Disk Location group names, shapes and numbering directions with zero-based labels and drive-identity validation. Does not change plugin-owned mappings.
+
 ### 0.8.5 - Build 2026.10.22.04
 - Keeps the wrench, time and uptime anchored to the right independently of optional fan controls.
 - Supports combined cooling status: hides the MD12xx control when no shelves are present and shows an IPMI status link only when chassis control is available. Chassis faults contribute to cooling/overall health.
@@ -220,7 +226,7 @@ mv -- "$STAGED_DIR" "$RUNTIME_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   cat > "$CONFIG_FILE" <<'WAZ_CONFIG'
-DISPLAY_NAME="WAZ-SERVER"
+DISPLAY_NAME="auto"
 PRIMARY_INTERFACE="bond0"
 GPU_CARD="auto"
 GPU_RECENT_SECONDS="5"
@@ -249,7 +255,7 @@ WAZ_CONFIG
 fi
 
 for DEFAULT in \
-  'DISPLAY_NAME="WAZ-SERVER"' \
+  'DISPLAY_NAME="auto"' \
   'PRIMARY_INTERFACE="bond0"' \
   'GPU_CARD="auto"' \
   'GPU_RECENT_SECONDS="5"' \

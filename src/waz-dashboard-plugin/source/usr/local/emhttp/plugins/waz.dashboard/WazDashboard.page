@@ -12,22 +12,23 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
   <section class="waz-system" data-version="@@APP_VERSION@@" data-hba-available="__WAZ_HBA_AVAILABLE__">
     <header class="waz-system-header">
       <span><b>SERVER STATUS</b><small>Processor, memory, graphics, network, power, and cooling</small></span>
-      <span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span>
+      <span class="waz-layout-actions"><button type="button" data-layout-edit aria-pressed="false">Edit layout</button><button type="button" data-layout-reset hidden>Reset layout</button><span id="waz-system-freshness" class="waz-freshness waz-is-loading"><i></i> CONNECTING</span></span>
     </header>
 
-    <div class="waz-summary" aria-label="System summary">
-      <div class="waz-summary-cell"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
-      <div class="waz-summary-cell waz-accent-gpu"><span>GPU</span><strong id="waz-summary-gpu">--</strong><small id="waz-summary-gpu-detail">No active processes</small></div>
-      <div class="waz-summary-cell"><span>RACK POWER</span><strong id="waz-summary-power">--</strong><small id="waz-summary-power-detail">Reading UPS load…</small></div>
-      <div class="waz-summary-cell"><span>RAM</span><strong id="waz-summary-memory">--</strong><small id="waz-summary-memory-detail">-- used</small></div>
-      <div class="waz-summary-cell waz-accent-cooling"><span>COOLANT</span><strong id="waz-summary-cooling">--</strong><small>Loop temperature</small></div>
-      <div class="waz-summary-cell waz-accent-hba"><span id="waz-hba-0-label">HBA /C0</span><strong id="waz-hba-0-temp">--</strong><small id="waz-hba-0-detail">Reading HBA Viewer…</small></div>
-      <div class="waz-summary-cell"><span>NETWORK</span><strong id="waz-summary-network" class="waz-network-pair"><em id="waz-summary-network-rx">↓ --</em><em id="waz-summary-network-tx">↑ --</em></strong><small id="waz-summary-network-detail">DOWNLOAD · UPLOAD</small></div>
-      <div class="waz-summary-cell waz-accent-cooling"><span>COOLANT FLOW</span><strong id="waz-summary-flow">--</strong><small>High Flow NEXT</small></div>
-      <div class="waz-summary-cell waz-accent-hba"><span id="waz-hba-1-label">HBA /C1</span><strong id="waz-hba-1-temp">--</strong><small id="waz-hba-1-detail">Reading HBA Viewer…</small></div>
+    <div class="waz-summary" aria-label="System summary" data-layout-group="summary">
+      <div class="waz-summary-cell" data-layout-item="cpu" data-layout-label="CPU"><span>CPU</span><strong id="waz-summary-cpu">--</strong><small id="waz-summary-cpu-detail">Package power --</small></div>
+      <div class="waz-summary-cell waz-accent-gpu" data-layout-item="gpu" data-layout-label="GPU" hidden><span>GPU</span><strong id="waz-summary-gpu">--</strong><small id="waz-summary-gpu-detail">No active processes</small></div>
+      <div class="waz-summary-cell" data-layout-item="power" data-layout-label="Rack power" hidden><span>RACK POWER</span><strong id="waz-summary-power">--</strong><small id="waz-summary-power-detail">Reading UPS load…</small></div>
+      <div class="waz-summary-cell" data-layout-item="memory" data-layout-label="RAM"><span>RAM</span><strong id="waz-summary-memory">--</strong><small id="waz-summary-memory-detail">-- used</small></div>
+      <div class="waz-summary-cell waz-accent-cooling" data-layout-item="coolant" data-layout-label="Coolant" hidden><span>COOLANT</span><strong id="waz-summary-cooling">--</strong><small>Loop temperature</small></div>
+      <div class="waz-summary-cell waz-accent-hba" data-layout-item="hba0" data-layout-label="HBA 0" hidden><span id="waz-hba-0-label">HBA /C0</span><strong id="waz-hba-0-temp">--</strong><small id="waz-hba-0-detail">Reading HBA Viewer…</small></div>
+      <div class="waz-summary-cell" data-layout-item="network" data-layout-label="Network"><span>NETWORK</span><strong id="waz-summary-network" class="waz-network-pair"><em id="waz-summary-network-rx">↓ --</em><em id="waz-summary-network-tx">↑ --</em></strong><small id="waz-summary-network-detail">DOWNLOAD · UPLOAD</small></div>
+      <div class="waz-summary-cell waz-accent-cooling" data-layout-item="flow" data-layout-label="Coolant flow" hidden><span>COOLANT FLOW</span><strong id="waz-summary-flow">--</strong><small>High Flow NEXT</small></div>
+      <div class="waz-summary-cell waz-accent-hba" data-layout-item="hba1" data-layout-label="HBA 1" hidden><span id="waz-hba-1-label">HBA /C1</span><strong id="waz-hba-1-temp">--</strong><small id="waz-hba-1-detail">Reading HBA Viewer…</small></div>
     </div>
 
-    <section class="waz-block waz-cpu-block">
+    <div class="waz-system-sections" data-layout-group="sections">
+    <section class="waz-block waz-cpu-block" data-layout-item="cpu" data-layout-label="CPU">
       <header class="waz-block-header">
         <span><b>CPU</b><small><span id="waz-system-model">Loading processor…</span> · <span id="waz-cpu-count">-- cores / -- threads</span></small></span>
       </header>
@@ -43,7 +44,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       <div id="waz-core-list" class="waz-core-list"><span class="waz-muted">Sampling CPU topology…</span></div>
     </section>
 
-    <section class="waz-block waz-memory-block">
+    <section class="waz-block waz-memory-block" data-layout-item="memory" data-layout-label="Memory">
       <header class="waz-block-header">
         <span><b>MEMORY</b><small id="waz-memory-hardware">Detecting installed memory…</small></span>
       </header>
@@ -59,7 +60,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
     </section>
 
-    <section class="waz-block waz-network-block">
+    <section class="waz-block waz-network-block" data-layout-item="network" data-layout-label="Network">
       <header class="waz-block-header">
         <span><b>NETWORK</b><small id="waz-network-link">Detecting primary interface…</small></span>
       </header>
@@ -73,6 +74,7 @@ $mytiles[$pluginname]['column1'] = <<<'EOT'
       </div>
       <div id="waz-network-members" class="waz-member-list"><span class="waz-muted">Reading network members…</span></div>
     </section>
+    </div>
     <footer class="waz-system-footer"><span id="waz-system-updated">Waiting for first snapshot</span><span>v@@APP_VERSION@@</span></footer>
   </section>
 </td></tr>
@@ -82,4 +84,5 @@ $mytiles[$pluginname]['column1'] = str_replace('__WAZ_HBA_AVAILABLE__', is_file(
 ?>
 
 <link rel="stylesheet" href="/plugins/waz.dashboard/assets/css/system.css?v=@@PLUGIN_VERSION@@">
+<script defer src="/plugins/waz.dashboard/assets/js/layout.js?v=@@PLUGIN_VERSION@@"></script>
 <script defer src="/plugins/waz.dashboard/assets/js/system.js?v=@@PLUGIN_VERSION@@"></script>

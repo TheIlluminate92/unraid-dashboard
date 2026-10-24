@@ -11,13 +11,51 @@ The installer preserves existing values during rolling updates.
 ## General
 
 ```ini
-DISPLAY_NAME="WAZ-SERVER"
+DISPLAY_NAME="auto"
 PRIMARY_INTERFACE="bond0"
 GPU_CARD="auto"
 GPU_RECENT_SECONDS="5"
 ```
 
 `PRIMARY_INTERFACE` must match the desired physical or bonded interface. `GPU_CARD=auto` selects the first Intel `i915` DRM card; set a specific `cardN` when necessary.
+
+`DISPLAY_NAME=auto` follows the local hostname. Blank values and the legacy
+`WAZ-SERVER` default also follow the host, so copied defaults do not misidentify
+another server. Other nonempty display names remain explicit overrides.
+
+UPS discovery reads the local NUT or apcupsd service, including an upstream feed
+already configured in that service. For a dashboard-only network feed, set
+`UPS_APC_TARGET="ups-host:3551"` to an existing apcupsd server. This changes
+telemetry only; it does not configure safe shutdown or the host UPS service.
+The health banner and rack-power tile use the same source. Absent UPS indicators
+and unavailable rack power are hidden; a configured source that fails still
+raises a communication fault. Rack watts require load and nominal real power.
+
+## Server Status layout
+
+Choose **Edit layout** to drag CPU, memory and network sections into a new
+order or resize them with the corner grip. The nine summary tiles have their
+own independent grid inside the summary board. Move, width, height and Auto
+buttons provide keyboard alternatives. **Done** hides editing controls;
+**Reset layout** restores defaults. Layout and CPU expansion settings are
+separate and stored in this browser for each server origin. Very narrow
+screens stack blocks without overwriting saved widths.
+
+GPU, coolant, flow, HBA and rack-power tiles hide until telemetry is detected.
+Previously detected GPU/cooling/HBA readings remain visible if telemetry
+later goes missing, so loss of data does not look like removal of hardware.
+
+## Disk Location
+
+Disk Location owns enclosure shape, names, bay assignments and display numbering.
+The dashboard reads its saved groups, devices and locations without modifying
+them. Stored association keys remain one-based; displayed labels follow the
+plugin's start number (including zero), numbering direction and hidden bays.
+Horizontal/vertical tray orientation is reflected in the compact map. Drive
+identity must match current Unraid inventory before an assigned disk is shown
+in a plugin-mapped bay. Active plugin records outside the assigned inventory
+are labeled UNASSIGNED rather than EMPTY. Correct physical layouts and mappings
+in Disk Location itself.
 
 ## Health thresholds
 

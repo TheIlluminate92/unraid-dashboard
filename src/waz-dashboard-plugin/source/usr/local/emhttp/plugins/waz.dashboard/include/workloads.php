@@ -560,11 +560,18 @@ function waz_workloads_addresses(array $container): array
     return ['addresses' => array_values(array_unique($addresses)), 'ports' => array_values(array_unique($ports))];
 }
 
+function waz_workloads_current_health(string $state, string $health): string
+{
+    return $state === 'running' && in_array($health, ['healthy', 'unhealthy', 'starting'], true)
+        ? $health : 'none';
+}
+
 function waz_workloads_container_public(array $container, array $info, array $gpu): array
 {
     $status = (string) ($container['Status'] ?? '');
     $health = stripos($status, '(unhealthy)') !== false ? 'unhealthy' : (stripos($status, '(healthy)') !== false ? 'healthy' : 'none');
     $state = !empty($container['Paused']) ? 'paused' : (!empty($container['Running']) ? 'running' : 'stopped');
+    $health = waz_workloads_current_health($state, $health);
     $updated = (string) ($info['updated'] ?? 'undef');
     $updateStatus = $updated === 'false' ? 1 : ($updated === 'true' ? 0 : 3);
     $name = (string) $container['Name'];
@@ -668,7 +675,7 @@ try {
         $selected['ports'] = $addresses['ports'];
         $selected['uptimeSeconds'] = $selected['state'] === 'running' && $startedAt > 0 ? max(0, time() - $startedAt) : null;
         $selected['restartCount'] = (int) ($details['RestartCount'] ?? 0);
-        $selected['health'] = $health !== '' ? $health : 'none';
+        $selected['health'] = waz_workloads_current_health($selected['state'], $health);
     }
 
     $running = count(array_filter($containers, static fn(array $container): bool => $container['state'] === 'running'));

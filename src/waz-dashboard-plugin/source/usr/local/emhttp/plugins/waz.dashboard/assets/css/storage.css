@@ -384,6 +384,8 @@
   gap: 3px;
 }
 
+.waz-location-grid[data-tray-direction="v"] .waz-bay { min-height: 64px; }
+
 .waz-bay {
   position: relative;
   min-width: 0;

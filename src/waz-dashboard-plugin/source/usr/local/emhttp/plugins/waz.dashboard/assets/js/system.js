@@ -13,6 +13,12 @@
   var snapshotTimer = null;
   var hbaTimer = null;
   var hbaHasData = false;
+  var detectedHardware = {};
+  function hardwareField(id, present) {
+    if (present) detectedHardware[id] = true;
+    var field = document.getElementById(id);
+    if (field && field.parentElement) field.parentElement.hidden = !present && !detectedHardware[id];
+  }
   var hbaAvailable = root.getAttribute('data-hba-available') !== 'no';
   var previousCpu = null;
   var previousRapl = null;
@@ -357,6 +363,7 @@
   function renderGpu(gpu) {
     gpu = gpu || {};
     var available = gpu.available === true && gpu.stale !== true;
+    hardwareField('waz-summary-gpu', gpu.available === true);
     text('waz-summary-gpu', available ? percent(gpu.loadPercent) : 'N/A');
     var processes = Array.isArray(gpu.processes) ? gpu.processes : [];
     text('waz-summary-gpu-detail', available
@@ -419,6 +426,10 @@
     var cooling = data.cooling || {};
     var power = data.power || {};
     var rack = power.rack || {};
+    var rackField = node('waz-summary-power');
+    if (rackField && rackField.parentElement) rackField.parentElement.hidden = !rack.available;
+    hardwareField('waz-summary-cooling', finite(cooling.coolantTempC));
+    hardwareField('waz-summary-flow', finite(cooling.flowLph));
     text('waz-summary-cpu', percent(cpuLoad) + ' · ' + temperature(cooling.cpuTempC));
     text('waz-summary-cpu-detail', 'Package power ' + watts(cpuPower));
     text('waz-summary-power', watts(rack.watts));
@@ -468,6 +479,7 @@
   }
 
   function renderHbaCell(position, controller) {
+    hardwareField('waz-hba-' + position + '-temp', !!controller);
     var label = node('waz-hba-' + position + '-label');
     var value = node('waz-hba-' + position + '-temp');
     var detail = node('waz-hba-' + position + '-detail');

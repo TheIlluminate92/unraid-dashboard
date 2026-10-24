@@ -276,6 +276,7 @@
       title.textContent = group.name;
       var grid = document.createElement('div');
       grid.className = 'waz-location-grid';
+      grid.dataset.trayDirection = group.trayDirection || 'h';
       grid.style.setProperty('--columns', Number(group.columns) || 1);
       (group.cells || []).forEach(function (cell) {
         var bay = document.createElement('div');
@@ -289,7 +290,7 @@
         label.textContent = String(cell.tray);
         var detail = document.createElement('small');
         if (cell.disk) {
-          occupied += 1;
+          if (!cell.hidden) occupied += 1;
           bay.dataset.disk = cell.disk.name;
           bay.dataset.pool = cell.disk.poolName || '';
           bay.className += stateClass(cell.disk.state) + (selectedDisk === cell.disk.name ? ' waz-is-selected' : '');
@@ -298,8 +299,9 @@
           bay.title = group.name + ' bay ' + cell.tray + ' · ' + cell.disk.name + ' · ' + cell.disk.mediaType;
         } else if (!cell.hidden) {
           bay.className += ' waz-empty';
-          detail.textContent = 'EMPTY';
-          bay.title = group.name + ' bay ' + cell.tray + ' · empty';
+          if (cell.present) occupied += 1;
+          detail.textContent = cell.present ? 'UNASSIGNED' : 'EMPTY';
+          bay.title = group.name + ' bay ' + cell.tray + (cell.present ? ' · unassigned drive' : ' · empty');
         }
         bay.appendChild(label);
         bay.appendChild(detail);

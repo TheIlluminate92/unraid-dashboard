@@ -27,16 +27,27 @@ function snapshot(cores = topology(), ticks = counters()) { return { cpu: { mode
 async function harness(initial = snapshot(), storage = new Map()) {
   const list = new Element('div');
   const chart = new Element('polyline');
+  const rack = { parentElement: { hidden: false }, textContent: '' };
   let current = initial;
   const window = { localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) }, setTimeout: () => 1, clearTimeout() {} };
   const root = new Element('section');
-  const document = { querySelector: () => root, getElementById: id => ({ 'waz-core-list': list, 'waz-cpu-chart-line': chart })[id], createElement: tag => new Element(tag), createTextNode: value => { const e = new Element('#text'); e.textContent = value; return e; } };
+  const document = { querySelector: () => root, getElementById: id => ({ 'waz-core-list': list, 'waz-cpu-chart-line': chart, 'waz-summary-power': rack })[id], createElement: tag => new Element(tag), createTextNode: value => { const e = new Element('#text'); e.textContent = value; return e; } };
   const fetch = async url => ({ ok: !url.includes('hbaviewer'), status: url.includes('hbaviewer') ? 404 : 200, json: async () => current });
   vm.runInNewContext(source, { window, document, fetch, console });
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
-  return { list, chart, storage, window, async sample(next) { current = next; window.WAZSystem.refresh(); await flush(); } };
+  return { list, chart, rack, storage, window, async sample(next) { current = next; window.WAZSystem.refresh(); await flush(); } };
 }
+
+test('rack power disappears without telemetry and returns when the UPS source becomes available', async () => {
+  const h = await harness();
+  assert.equal(h.rack.parentElement.hidden, true);
+  await h.sample({ ...snapshot(), power: { rack: { available: true, watts: 270 } } });
+  assert.equal(h.rack.parentElement.hidden, false);
+  assert.equal(h.rack.textContent, '270 W');
+  await h.sample(snapshot());
+  assert.equal(h.rack.parentElement.hidden, true);
+});
 
 function descendants(element, tag) { return element.children.flatMap(c => [ ...(c.tagName === tag ? [c] : []), ...descendants(c, tag) ]); }
 function visibleThreads(element, visible = true) {
