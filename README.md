@@ -1,5 +1,20 @@
 # Unraid Dashboard
 
+<!-- historian-overview:start -->
+## Project overview
+
+| Field | Project |
+|---|---|
+| Purpose | Local Unraid dashboard and WebUI enhancements. |
+| Status | Maintained plugin; source, release and installed-host acceptance are separate. |
+| Owner | Repository: TheIlluminate92. Worker: Unassigned; project worker not recorded. |
+| Continue here | [Current work / guidance](CONTRIBUTING.md) · [Checks / context](docs/INSTALL.md) |
+| Related projects | [Cooling control plugin](https://github.com/TheIlluminate92/unraid-md12xx-fan-control) |
+
+Documentation reviewed October 27, 2026. Existing evidence dates below still apply;
+this overview is not a new release, deployment or live-system verification.
+<!-- historian-overview:end -->
+
 <img src="src/waz-dashboard-plugin/source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png" width="96" height="96" alt="WAZ Dashboard icon">
 
 Current maintenance build: **0.8.5 / 2026.10.24.09**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
