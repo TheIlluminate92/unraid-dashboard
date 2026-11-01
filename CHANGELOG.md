@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — selected-container identity correction
+
+- Match native 12-character inventory IDs with full Docker statistics IDs only when the exact container name and one unambiguous inventory identity agree.
+- Normalize accepted samples to the inventory ID so CPU deltas, network/disk rates and the slower overview share their existing cache keys. Reject missing, malformed, ambiguous, stale and wrong-container samples.
+- Preserve polling cadence, selection, collectors and controls. This source correction is not yet a rolling installer release; see maintenance guidance for the verified pilot hotfix and its limits.
+
 ## 2026.10.24.09
 
 - Reserve red for parity and four distinct blue array identity groups: 24 TB H, 24 TB C, 14 TB, and other sizes/models.

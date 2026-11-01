@@ -1,5 +1,13 @@
 # Maintenance and migration
 
+## 2026-11-01 — selected-container telemetry identity hotfix
+
+The native container inventory can expose a 12-character ID while Docker inspect/statistics returns the corresponding full 64-character ID. Exact string comparison discarded valid samples, leaving the selected inspector blank despite working collectors. The source now requires valid short/full IDs, the same exact container name and a unique matching inventory identity; only then is the sample keyed to the inventory ID. Arbitrary prefixes, ambiguous rows, stale selections and recreated-container mismatches remain rejected.
+
+Validation: all 42 JavaScript regressions passed, including eight selected-workload tests and explicit full/short/missing/ambiguous cases. The repository verification workflow passed with package/XML and Git Bash syntax checks; optional PHP regression suites were not run locally because PHP was unavailable. On one authorized Unraid 7.3.4 pilot, actual browser values and advancing CPU/network/disk charts were verified after a page reload. Other containers retained their states and start times. No worker, daemon, container, array or host restart was performed. GPU support was not added; missing/unsupported GPU telemetry and unrelated GPU Statistics console errors are separate concerns.
+
+The pilot received a narrow JavaScript hotfix plus the identical embedded asset in its registered boot installer. Its build label remains 2026.10.24.09. Independent originals and hashes were retained privately. This is a verified local hotfix, **not a new rolling installer release**: the canonical release artifact remains unchanged, and reinstalling that older unpatched artifact can remove the hotfix. Apply/review the source correction in the next normal package before reinstalling. No second-host deployment is claimed or authorized by this record.
+
 ## 0.8.5 / build 2026.10.22.04
 
 The CPU section defaults to one summary per detected socket. Expand a socket to show physical cores, then a core to show logical threads. Choices are stored per browser origin and safely fall back when storage is blocked. A socket temperature is the hottest available core reading; no new sensor collection is added. Combined utilization uses valid busy/total counter deltas, excluding missing or reset samples. Existing configuration, polling cadence, and unrelated panels are retained.

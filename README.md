@@ -19,6 +19,8 @@ this overview is not a new release, deployment or live-system verification.
 
 Current maintenance build: **0.8.5 / 2026.10.24.09**. Read [safety, updates and R730xd/R360 migration guidance](docs/MAINTENANCE_AND_MIGRATION.md) before deployment.
 
+The source includes an unreleased selected-container ID matching correction, verified as a local pilot hotfix on November 1. The rolling installer has not changed; see the maintenance record before reinstalling or applying it to another host.
+
 Unraid Dashboard (formerly WAZ Control) is a custom Unraid dashboard and WebUI project built around one heavily customized server. The current unified build is **v0.8.5**.
 
 > [!WARNING]

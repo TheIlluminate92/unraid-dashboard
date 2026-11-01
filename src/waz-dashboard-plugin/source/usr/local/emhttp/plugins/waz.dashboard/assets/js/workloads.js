@@ -509,6 +509,18 @@
     if (statsTimer) window.clearTimeout(statsTimer);
     statsTimer = window.setTimeout(statsLoop, delay);
   }
+  // Native inventory uses short IDs; Docker inspect/stats uses full IDs.
+  // Require the exact selected name and a unique inventory identity, never an
+  // arbitrary prefix fallback or a sample from a recreated container.
+  function sameContainerStatsIdentity(expected, sample, inventory) {
+    var valid = function (id) { return typeof id === 'string' && /^(?:[a-f0-9]{12}|[a-f0-9]{64})$/i.test(id); };
+    var compatible = function (a, b) { return a === b || (a.length !== b.length && (a.length > b.length ? a.indexOf(b) === 0 : b.indexOf(a) === 0)); };
+    if (!expected || !sample || typeof expected.name !== 'string' || !expected.name || sample.name !== expected.name || !valid(expected.id) || !valid(sample.id) || !Array.isArray(inventory)) return false;
+    var expectedId = expected.id.toLowerCase(), sampleId = sample.id.toLowerCase();
+    if (!compatible(expectedId, sampleId)) return false;
+    var matches = inventory.filter(function (container) { return container && valid(container.id) && compatible(container.id.toLowerCase(), sampleId); });
+    return matches.length === 1 && matches[0].name === expected.name && matches[0].id.toLowerCase() === expectedId;
+  }
   function statsLoop() {
     if (stopped || statsInFlight) return;
     var selected = activeSelection();
@@ -521,7 +533,9 @@
         if (data.error) throw new Error(data.error);
         var current = activeSelection(), sample = data.selected;
         if (!current || current.name !== name || current.id !== id) return;
-        if (!sample || sample.id !== id) { liveStats = null; delete cpuCounters[id]; schedule(0); return; }
+        if (!sameContainerStatsIdentity(current, sample, lastData && lastData.containers)) { liveStats = null; delete cpuCounters[id]; schedule(0); return; }
+        // Keep rates, history and the slower overview keyed to the inventory ID.
+        sample.id = id;
         var stats = sample.stats || {}, counters = stats.cpuCounters, previous = cpuCounters[id];
         if (counters) {
           var cpuDelta = previous ? counters.usage - previous.usage : -1;
