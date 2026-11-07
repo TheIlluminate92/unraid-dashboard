@@ -6,6 +6,7 @@
 }(typeof window !== 'undefined' ? window : this, function () {
   'use strict';
   function number(value) { return value !== null && value !== undefined && value !== '' && typeof value !== 'boolean' && typeof value !== 'object' && Number.isFinite(Number(value)) ? Number(value) : null; }
+  function object(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
   function list(value) { return Array.isArray(value) ? value : []; }
   function deltaRate(current, previous, seconds, maxGap) {
     current=number(current); previous=number(previous); seconds=number(seconds);
@@ -70,25 +71,31 @@
   }
   function containerMetrics(sample,previous){
     var stats=sample&&sample.stats||{},prior=previous&&previous.stats||{},elapsed=(number(stats.sampledAtMs)-number(prior.sampledAtMs))/1000;
-    if(!stats.available)return {cpu:null,memory:null,rx:null,tx:null,read:null,write:null};
+    if(!validStats(stats))return {cpu:null,memory:null,rx:null,tx:null,read:null,write:null};
     var a=stats.cpuCounters,b=prior.cpuCounters,cpu=null;
     if(a&&b&&elapsed>0&&elapsed<=6){var usage=number(a.usage),system=number(a.system),oldUsage=number(b.usage),oldSystem=number(b.system),online=number(a.online);if([usage,system,oldUsage,oldSystem,online].every(function(v){return v!==null;})&&usage>=oldUsage&&system>oldSystem&&online>0)cpu=(usage-oldUsage)/(system-oldSystem)*online*100;}
     // Legacy collector may coerce unsupported network/block counters to zero.
     // Until capability metadata exists, mark these as reported accounting, not complete host-network traffic.
     return {cpu:cpu,memory:number(stats.memoryBytes),rx:deltaRate(stats.networkRxBytes,prior.networkRxBytes,elapsed,6),tx:deltaRate(stats.networkTxBytes,prior.networkTxBytes,elapsed,6),read:deltaRate(stats.blockReadBytes,prior.blockReadBytes,elapsed,6),write:deltaRate(stats.blockWriteBytes,prior.blockWriteBytes,elapsed,6)};
   }
+  function validStats(stats){
+    // Legacy WAZ normalizes a Docker error object into available=true/all-zero stats.
+    // A running Linux Docker stats sample must have a positive system CPU counter.
+    return object(stats)&&stats.available===true&&number(stats.sampledAtMs)>0&&object(stats.cpuCounters)&&number(stats.cpuCounters.system)>0&&number(stats.cpuCounters.usage)!==null&&number(stats.cpuCounters.usage)>=0&&number(stats.cpuCounters.online)>0&&number(stats.memoryBytes)!==null&&number(stats.memoryBytes)>=0;
+  }
   function validPayload(key,data){
-    var object=function(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);};
+    var records=function(v,check){return Array.isArray(v)&&v.every(function(x){return object(x)&&(!check||check(x));});};
+    var drive=function(d){return typeof d.name==='string'&&typeof d.device==='string';};
     if(!object(data)||data.error)return false;
-    if(key==='fan')return data.md12xxAvailable===false&&object(data.ipmi)||typeof data.enabled==='boolean'&&typeof data.mode==='string'&&object(data.controller)&&Array.isArray(data.shelves);
-    if(key==='selected')return number(data.sampledAtMs)!==null&&object(data.selected)&&object(data.selected.stats);
-    if(data.schemaVersion!==1||number(data.sampledAtMs)===null)return false;
-    if(key==='system')return object(data.cpu)&&object(data.cpu.counters)&&Array.isArray(data.cpu.cores)&&object(data.memory)&&object(data.network);
-    if(key==='storage')return object(data.array)&&Array.isArray(data.array.disks)&&object(data.parity)&&Array.isArray(data.parity.disks)&&Array.isArray(data.pools);
-    if(key==='docker')return typeof data.dockerAvailable==='boolean'&&Array.isArray(data.containers)&&Array.isArray(data.folders)&&object(data.summary);
-    if(key==='io')return data.status==='ok'&&number(data.monotonicSeconds)!==null&&object(data.devices);
+    if(key==='fan')return data.md12xxAvailable===false&&object(data.ipmi)||typeof data.enabled==='boolean'&&typeof data.mode==='string'&&object(data.controller)&&records(data.shelves);
+    if(key==='selected')return number(data.sampledAtMs)>0&&object(data.selected)&&object(data.selected.stats)&&(data.selected.stats.available===false||validStats(data.selected.stats));
+    if(data.schemaVersion!==1||!(number(data.sampledAtMs)>0))return false;
+    if(key==='system')return object(data.cpu)&&object(data.cpu.counters)&&records(data.cpu.cores,function(c){return records(c.threads,function(t){return Number.isInteger(number(t.cpuId))&&number(t.cpuId)>=0;});})&&object(data.memory)&&object(data.network);
+    if(key==='storage')return object(data.array)&&records(data.array.disks,drive)&&object(data.parity)&&records(data.parity.disks,drive)&&records(data.pools,function(p){return records(p.members,drive);})&&(!data.locations||object(data.locations)&&records(data.locations.groups,function(g){return records(g.cells,function(c){return !c.disk||object(c.disk)&&drive(c.disk);});}));
+    if(key==='docker')return typeof data.dockerAvailable==='boolean'&&records(data.containers,function(c){return typeof c.name==='string'&&typeof c.id==='string'&&(!c.menu||object(c.menu));})&&records(data.folders,function(f){return typeof f.id==='string'&&Array.isArray(f.containers)&&f.containers.every(function(n){return typeof n==='string';});})&&object(data.summary)&&(!data.topProcesses||records(data.topProcesses));
+    if(key==='io')return data.status==='ok'&&number(data.monotonicSeconds)!==null&&object(data.devices)&&Object.values(data.devices).every(object);
     return false;
   }
   function nativeArgs(c){var m=c.menu||{};return [c.name,c.imageId,m.template||'',c.state==='stopped'?0:1,c.state==='paused'?1:0,number(c.updateStatus)===null?3:Number(c.updateStatus),c.autostart?1:0,m.webUi||'',m.tailscaleWebUi||'',m.shell||'',c.id,m.support||'',m.project||'',m.registry||'',m.donate||'',m.readme||''];}
-  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload};
+  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload,validStats:validStats};
 }));

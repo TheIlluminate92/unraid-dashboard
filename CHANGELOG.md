@@ -5,6 +5,7 @@
 - Add an independent `rackline.dashboard` host-local workspace and additive Dashboard launcher without replacing WAZ.
 - Include responsive Drives, Docker-folder and Cooling tabs, per-core/system readings, native Docker configuration/control handoff, cached bay/SMART views and existing fan-controller status.
 - Add a GET-only kernel I/O collector and guarded counter/identity adapters; preserve missing/stale readings and template-less ownership.
+- Harden nested payloads, stale/replayed sample detection, Docker error-to-zero normalization, keyboard focus and obsolete native menu cleanup with an additional adversarial regression suite.
 - Add deterministic review packaging with retained rollback, source/fixture tests and PHP CI. No deployment or rolling-release change; see [Rackline validation and pilot limits](docs/RACKLINE.md).
 
 ## Unreleased — selected-container identity correction
