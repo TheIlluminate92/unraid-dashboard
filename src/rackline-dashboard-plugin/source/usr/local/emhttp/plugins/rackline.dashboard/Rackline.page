@@ -1,0 +1,9 @@
+Menu="Tasks:2"
+Title="Rackline"
+Icon="icon-dashboard"
+---
+<?php
+// Native authenticated Unraid page. No standalone HTTP server or credentials.
+$racklineRoot = '/usr/local/emhttp/plugins/rackline.dashboard';
+require $racklineRoot . '/include/view.php';
+?>

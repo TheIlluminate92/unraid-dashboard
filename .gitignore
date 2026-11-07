@@ -15,3 +15,7 @@ src/waz-health-plugin/dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Independent Rackline review builds
+src/rackline-dashboard-plugin/dist/
+src/rackline-dashboard-plugin/**/__pycache__/

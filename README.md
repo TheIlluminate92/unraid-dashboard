@@ -1,5 +1,7 @@
 # Unraid Dashboard
 
+> Separate experimental workspace: [Rackline implementation and review/pilot plan](docs/RACKLINE.md). Its own plugin identity and `/Rackline` page leave the existing WAZ dashboard and release unchanged. Not yet an installed-host release.
+
 <!-- historian-overview:start -->
 ## Project overview
 

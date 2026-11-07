@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Rackline source implementation (2026-11-07)
+
+- Add an independent `rackline.dashboard` host-local workspace and additive Dashboard launcher without replacing WAZ.
+- Include responsive Drives, Docker-folder and Cooling tabs, per-core/system readings, native Docker configuration/control handoff, cached bay/SMART views and existing fan-controller status.
+- Add a GET-only kernel I/O collector and guarded counter/identity adapters; preserve missing/stale readings and template-less ownership.
+- Add deterministic review packaging with retained rollback, source/fixture tests and PHP CI. No deployment or rolling-release change; see [Rackline validation and pilot limits](docs/RACKLINE.md).
+
 ## Unreleased — selected-container identity correction
 
 - Match native 12-character inventory IDs with full Docker statistics IDs only when the exact container name and one unambiguous inventory identity agree.

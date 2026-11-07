@@ -1,0 +1,60 @@
+set -euo pipefail
+case "${0##*/}" in
+    inline1-rackline.dashboard.sh) ;;
+    *) echo 'Save/install this review artifact as rackline.dashboard.plg'; exit 1 ;;
+esac
+exec 9>/var/lock/rackline.dashboard.lock
+flock -n 9 || { echo 'Rackline operation already in progress'; exit 1; }
+# Check dependencies before touching any existing Rackline runtime.
+for endpoint in metrics storage workloads; do
+    test -r "/usr/local/emhttp/plugins/waz.dashboard/include/$endpoint.php" || {
+        echo "Rackline requires installed WAZ telemetry: missing $endpoint.php. Existing runtime unchanged."
+        exit 1
+    }
+done
+command -v php >/dev/null || { echo 'Rackline requires PHP'; exit 1; }
+runtime=/usr/local/emhttp/plugins/rackline.dashboard
+[ ! -L "$runtime" ] || { echo 'Unsafe Rackline runtime symlink'; exit 1; }
+if [ -e "$runtime" ]; then
+    [ -d "$runtime" ] || { echo 'Unsafe Rackline runtime path'; exit 1; }
+fi
+stage=$(mktemp -d /usr/local/emhttp/plugins/.rackline.dashboard.stage.XXXXXXXX)
+# Stage is retained on failure for inspection; no active runtime has been removed.
+base64 -d > "$stage/payload.tgz" <<'RACKLINE_PAYLOAD'
+@PAYLOAD@
+RACKLINE_PAYLOAD
+printf '%s  %s\n' '@SHA256@' "$stage/payload.tgz" | sha256sum -c -
+cat > "$stage/expected" <<'RACKLINE_MANIFEST'
+@MANIFEST@
+RACKLINE_MANIFEST
+tar -tzf "$stage/payload.tgz" > "$stage/actual"
+cmp "$stage/expected" "$stage/actual" || { echo 'Unexpected Rackline archive paths'; exit 1; }
+# The build accepts regular files only. Independently reject links and special files.
+tar -tvzf "$stage/payload.tgz" | awk 'substr($0,1,1) != "-" { bad=1 } END { exit bad }'
+mkdir "$stage/extracted"
+tar -xzf "$stage/payload.tgz" -C "$stage/extracted" --no-same-owner --no-same-permissions
+candidate="$stage/extracted/rackline.dashboard"
+for required in Rackline.page RacklineDashboard.page include/view.php include/io.php images/rackline.dashboard.svg assets/js/model.js assets/js/app.js assets/css/rackline.css; do
+    test -s "$candidate/$required" || { echo "Incomplete Rackline runtime: $required"; exit 1; }
+done
+while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find "$candidate" -type f \( -name '*.php' -o -name '*.page' \) -print0)
+# Recover the predecessor on an interrupted/failed activation when possible.
+restore_previous() {
+    if [ ! -e "$runtime" ] && [ -d "$stage/previous-runtime" ]; then
+        mv -- "$stage/previous-runtime" "$runtime"
+    fi
+}
+trap 'restore_previous' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# The retained predecessor is never overwritten, even across repeated installs.
+if [ -d "$runtime" ]; then
+    mv -- "$runtime" "$stage/previous-runtime"
+fi
+if ! mv -- "$candidate" "$runtime"; then
+    if [ -d "$stage/previous-runtime" ]; then mv -- "$stage/previous-runtime" "$runtime"; fi
+    echo 'Rackline activation failed; predecessor restored when present.'
+    exit 1
+fi
+echo "Rackline @VERSION@ installed. Prior runtime (if present): $stage/previous-runtime"
+echo 'Review build only. Open /Rackline. No service restart or WAZ/configuration change.'

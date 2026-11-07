@@ -1,0 +1,29 @@
+name: Verify Rackline review plugin
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/rackline-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.4']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Check source and contracts
+        run: |
+          node --check src/rackline-dashboard-plugin/source/usr/local/emhttp/plugins/rackline.dashboard/assets/js/app.js
+          node --test src/rackline-dashboard-plugin/tests/*.test.mjs
+          node --test src/waz-dashboard-plugin/tests/*.test.mjs
+          find src/rackline-dashboard-plugin/source -type f \( -name '*.php' -o -name '*.page' \) -print0 | xargs -0 -n1 php -l
+          php src/rackline-dashboard-plugin/tests/io-parser.php
+          python3 src/rackline-dashboard-plugin/tests/package-safety.py
+          bash src/rackline-dashboard-plugin/scripts/build.sh
+          cd src/rackline-dashboard-plugin/dist && sha256sum -c SHA256SUMS
