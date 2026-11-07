@@ -10,3 +10,7 @@
 
 /* Charcoal/orange treatment follows the approved render without styling native pages. */
 #rackline-root .rl-heading h1{color:var(--rl-accent)}#rackline-root .rl-pulse article,#rackline-root .rl-box,#rackline-root .rl-inspector,#rackline-root .rl-scroll{border-radius:5px}
+
+/* Keep expanded Docker metrics readable; native controls remain reachable by local scroll. */
+#rackline-root #rl-docker td,#rackline-root #rl-docker th{padding-left:9px;padding-right:9px}#rackline-root #rl-docker .rl-app b,#rackline-root #rl-docker .rl-app small{max-width:150px;overflow:hidden;text-overflow:ellipsis}#rackline-root #rl-docker td[data-metric=network] small,#rackline-root #rl-docker td[data-metric=block] small{color:var(--rl-text);font-size:12px}
+@media(min-width:701px) and (max-width:1599px){#rackline-root #rl-docker .rl-layout{grid-template-columns:145px minmax(0,1fr)}#rackline-root #rl-docker .rl-inspector{grid-column:2}#rackline-root #rl-docker .rl-inspector-data{columns:2;column-gap:28px}#rackline-root #rl-docker .rl-inspector-data dl,#rackline-root #rl-docker .rl-trend{break-inside:avoid}}

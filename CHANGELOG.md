@@ -7,6 +7,7 @@
 - Add a GET-only kernel I/O collector and guarded counter/identity adapters; preserve missing/stale readings and template-less ownership.
 - Accommodate installed native query double decoding, optional empty fan-status arrays, watchdog transition-time semantics and DOM-ready task initialization without changing native controllers.
 - Harden nested payloads, stale/replayed sample detection, Docker error-to-zero normalization, keyboard focus and obsolete native menu cleanup with an additional adversarial regression suite.
+- Add bounded all-container CPU/RAM/network/block accounting with immutable-ID/restart guards, per-row freshness, fair batches, truthful cached GPU attribution and independent adversarial tests.
 - Add deterministic review packaging with retained rollback, source/fixture tests and PHP CI. No deployment or rolling-release change; see [Rackline validation and pilot limits](docs/RACKLINE.md).
 
 ## Unreleased — selected-container identity correction

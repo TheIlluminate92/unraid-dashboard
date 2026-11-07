@@ -17,6 +17,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php }}
+          extensions: curl
       - name: Check source and contracts
         run: |
           node --check src/rackline-dashboard-plugin/source/usr/local/emhttp/plugins/rackline.dashboard/assets/js/app.js
@@ -24,6 +25,8 @@ jobs:
           node --test src/waz-dashboard-plugin/tests/*.test.mjs
           find src/rackline-dashboard-plugin/source -type f \( -name '*.php' -o -name '*.page' \) -print0 | xargs -0 -n1 php -l
           php src/rackline-dashboard-plugin/tests/io-parser.php
+          php src/rackline-dashboard-plugin/tests/container-parser.php
+          python3 src/rackline-dashboard-plugin/tests/container-transport.py
           node src/rackline-dashboard-plugin/tests/edit-url-fixtures.cjs | php src/rackline-dashboard-plugin/tests/native-edit-url.php
           python3 src/rackline-dashboard-plugin/tests/package-safety.py
           bash src/rackline-dashboard-plugin/scripts/build.sh

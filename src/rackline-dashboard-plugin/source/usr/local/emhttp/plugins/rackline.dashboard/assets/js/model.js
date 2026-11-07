@@ -83,6 +83,30 @@
     // A running Linux Docker stats sample must have a positive system CPU counter.
     return object(stats)&&stats.available===true&&number(stats.sampledAtMs)>0&&object(stats.cpuCounters)&&number(stats.cpuCounters.system)>0&&number(stats.cpuCounters.usage)!==null&&number(stats.cpuCounters.usage)>=0&&number(stats.cpuCounters.online)>0&&number(stats.memoryBytes)!==null&&number(stats.memoryBytes)>=0;
   }
+  function batchPlan(containers,cursor,selected,limit){
+    limit=Math.max(1,Math.min(12,Math.floor(number(limit)||12)));
+    var candidates=list(containers).filter(function(c){return c&&c.state==='running'&&typeof c.name==='string'&&/^(?:[a-f0-9]{12}|[a-f0-9]{64})$/i.test(c.id||'');});
+    var running=candidates.filter(function(c){return candidates.filter(function(p){return c.name===p.name||c.id.toLowerCase().startsWith(p.id.toLowerCase())||p.id.toLowerCase().startsWith(c.id.toLowerCase());}).length===1;});
+    var priority=running.find(function(c){return c.name===selected;}),peers=running.filter(function(c){return c!==priority;}),start=peers.length?Math.max(0,Math.floor(number(cursor)||0))%peers.length:0,chosen=priority?[priority]:[],slots=limit-chosen.length;
+    for(var i=0;i<Math.min(slots,peers.length);i++)chosen.push(peers[(start+i)%peers.length]);
+    return {containers:chosen,next:peers.length?(start+Math.min(slots,peers.length))%peers.length:0,total:running.length};
+  }
+  function validBatchStats(stats){
+    if(!object(stats)||typeof stats.available!=='boolean')return false;
+    if(!stats.available)return true;
+    var nullable=function(v){return v===null||number(v)!==null&&number(v)>=0;};
+    return number(stats.sampledAtMs)>0&&number(stats.monotonicSeconds)!==null&&number(stats.monotonicSeconds)>=0&&
+      (stats.cpuCounters===null||object(stats.cpuCounters)&&['usage','system','online'].every(function(k){return number(stats.cpuCounters[k])!==null&&number(stats.cpuCounters[k])>=0;}))&&
+      ['memoryBytes','networkRxBytes','networkTxBytes','blockReadBytes','blockWriteBytes'].every(function(k){return nullable(stats[k]);});
+  }
+  function batchMetrics(sample,previous,maxGap){
+    var unknown={cpu:null,memory:null,rx:null,tx:null,read:null,write:null},stats=sample&&sample.stats,prior=previous&&previous.stats;
+    if(!validBatchStats(stats)||!stats.available)return unknown;
+    var elapsed=prior&&stats.sampledAtMs>prior.sampledAtMs?number(stats.monotonicSeconds)-number(prior.monotonicSeconds):null,valid=validBatchStats(prior)&&prior.available&&typeof sample.generation==='string'&&sample.generation&&sample.generation===previous.generation&&elapsed>0&&elapsed<=Math.min(120,maxGap||120),a=stats.cpuCounters,b=prior&&prior.cpuCounters,cpu=null;
+    if(valid&&a&&b&&a.usage>=b.usage&&a.system>b.system&&a.online>0&&a.online===b.online)cpu=(a.usage-b.usage)/(a.system-b.system)*a.online*100;
+    var rate=function(key,identity){return valid&&typeof stats[identity]==='string'&&stats[identity]&&stats[identity]===prior[identity]?deltaRate(stats[key],prior[key],elapsed,120):null;};
+    return {cpu:cpu,memory:number(stats.memoryBytes),rx:rate('networkRxBytes','networkIdentity'),tx:rate('networkTxBytes','networkIdentity'),read:rate('blockReadBytes','blockIdentity'),write:rate('blockWriteBytes','blockIdentity')};
+  }
   function emptyStatus(value){return object(value)||Array.isArray(value)&&value.length===0;}
   function fanHealth(payload){
     var controller=object(payload.controller)?payload.controller:{},watchdog=object(payload.watchdog)?payload.watchdog:{},changed=number(watchdog.generatedAt),state='Unknown';
@@ -103,6 +127,7 @@
     if(key==='system')return object(data.cpu)&&object(data.cpu.counters)&&records(data.cpu.cores,function(c){return records(c.threads,function(t){return Number.isInteger(number(t.cpuId))&&number(t.cpuId)>=0;});})&&object(data.memory)&&object(data.network);
     if(key==='storage')return object(data.array)&&records(data.array.disks,drive)&&object(data.parity)&&records(data.parity.disks,drive)&&records(data.pools,function(p){return records(p.members,drive);})&&(!data.locations||object(data.locations)&&records(data.locations.groups,function(g){return records(g.cells,function(c){return !c.disk||object(c.disk)&&drive(c.disk);});}));
     if(key==='docker')return typeof data.dockerAvailable==='boolean'&&records(data.containers,function(c){return typeof c.name==='string'&&typeof c.id==='string'&&(!c.menu||object(c.menu));})&&records(data.folders,function(f){return typeof f.id==='string'&&Array.isArray(f.containers)&&f.containers.every(function(n){return typeof n==='string';});})&&object(data.summary)&&(!data.topProcesses||records(data.topProcesses));
+    if(key==='batch')return data.status==='ok'&&records(data.containers,function(c){return (typeof c.id==='string'||c.id===null)&&(typeof c.name==='string'||c.name===null)&&typeof c.requestedId==='string'&&typeof c.state==='string'&&typeof c.status==='string'&&validBatchStats(c.stats);})&&data.containers.length<=12&&number(data.requestedCount)>=0&&number(data.requestedCount)<=12&&(!data.gpu||object(data.gpu));
     if(key==='io')return data.status==='ok'&&number(data.monotonicSeconds)!==null&&object(data.devices)&&Object.values(data.devices).every(object);
     return false;
   }
@@ -113,5 +138,5 @@
     return '/Docker/UpdateContainer?xmlTemplate=edit:'+encodeURIComponent(protectedPath);
   }
   function nativeArgs(c){var m=c.menu||{};return [c.name,c.imageId,m.template||'',c.state==='stopped'?0:1,c.state==='paused'?1:0,number(c.updateStatus)===null?3:Number(c.updateStatus),c.autostart?1:0,m.webUi||'',m.tailscaleWebUi||'',m.shell||'',c.id,m.support||'',m.project||'',m.registry||'',m.donate||'',m.readme||''];}
-  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl};
+  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl,batchPlan:batchPlan,validBatchStats:validBatchStats,batchMetrics:batchMetrics};
 }));

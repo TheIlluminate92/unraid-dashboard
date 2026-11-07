@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / 'source/usr/local/emhttp/plugins/rackline.dashboard'
-REQUIRED = ('Rackline.page', 'RacklineDashboard.page', 'include/view.php', 'include/io.php',
+REQUIRED = ('Rackline.page', 'RacklineDashboard.page', 'include/view.php', 'include/io.php', 'include/containers.php',
             'images/rackline.dashboard.svg', 'assets/js/model.js', 'assets/js/app.js', 'assets/css/rackline.css')
 
 
