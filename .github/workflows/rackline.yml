@@ -24,6 +24,7 @@ jobs:
           node --test src/waz-dashboard-plugin/tests/*.test.mjs
           find src/rackline-dashboard-plugin/source -type f \( -name '*.php' -o -name '*.page' \) -print0 | xargs -0 -n1 php -l
           php src/rackline-dashboard-plugin/tests/io-parser.php
+          node src/rackline-dashboard-plugin/tests/edit-url-fixtures.cjs | php src/rackline-dashboard-plugin/tests/native-edit-url.php
           python3 src/rackline-dashboard-plugin/tests/package-safety.py
           bash src/rackline-dashboard-plugin/scripts/build.sh
           cd src/rackline-dashboard-plugin/dist && sha256sum -c SHA256SUMS

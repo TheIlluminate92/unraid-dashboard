@@ -83,11 +83,21 @@
     // A running Linux Docker stats sample must have a positive system CPU counter.
     return object(stats)&&stats.available===true&&number(stats.sampledAtMs)>0&&object(stats.cpuCounters)&&number(stats.cpuCounters.system)>0&&number(stats.cpuCounters.usage)!==null&&number(stats.cpuCounters.usage)>=0&&number(stats.cpuCounters.online)>0&&number(stats.memoryBytes)!==null&&number(stats.memoryBytes)>=0;
   }
+  function emptyStatus(value){return object(value)||Array.isArray(value)&&value.length===0;}
+  function fanHealth(payload){
+    var controller=object(payload.controller)?payload.controller:{},watchdog=object(payload.watchdog)?payload.watchdog:{},changed=number(watchdog.generatedAt),state='Unknown';
+    // Watchdog generatedAt is the last transition, not a periodic heartbeat.
+    // Freshness belongs to the controller-derived root stale flag and IPMI's own flag.
+    if(payload.enabled===false)state='Disabled';
+    else if(payload.stale===true)state='Stale';
+    else if(payload.stale===false&&typeof controller.state==='string')state=['restarting','recovering','fault'].includes(watchdog.state)?watchdog.state:controller.state;
+    return {state:state,watchdogChangedAt:changed>0?changed*1000:null};
+  }
   function validPayload(key,data){
     var records=function(v,check){return Array.isArray(v)&&v.every(function(x){return object(x)&&(!check||check(x));});};
     var drive=function(d){return typeof d.name==='string'&&typeof d.device==='string';};
     if(!object(data)||data.error)return false;
-    if(key==='fan')return data.md12xxAvailable===false&&object(data.ipmi)||typeof data.enabled==='boolean'&&typeof data.mode==='string'&&object(data.controller)&&records(data.shelves);
+    if(key==='fan')return data.md12xxAvailable===false&&object(data.ipmi)||typeof data.enabled==='boolean'&&typeof data.mode==='string'&&emptyStatus(data.controller)&&records(data.shelves);
     if(key==='selected')return number(data.sampledAtMs)>0&&object(data.selected)&&object(data.selected.stats)&&(data.selected.stats.available===false||validStats(data.selected.stats));
     if(data.schemaVersion!==1||!(number(data.sampledAtMs)>0))return false;
     if(key==='system')return object(data.cpu)&&object(data.cpu.counters)&&records(data.cpu.cores,function(c){return records(c.threads,function(t){return Number.isInteger(number(t.cpuId))&&number(t.cpuId)>=0;});})&&object(data.memory)&&object(data.network);
@@ -96,6 +106,12 @@
     if(key==='io')return data.status==='ok'&&number(data.monotonicSeconds)!==null&&object(data.devices)&&Object.values(data.devices).every(object);
     return false;
   }
+  function editUrl(template){
+    // Installed Unraid explicitly urldecodes $_GET after PHP has decoded the query.
+    // Protect literal percent/plus for that second pass; ordinary paths keep their route.
+    var protectedPath=String(template).replace(/%/g,'%25').replace(/\+/g,'%2B');
+    return '/Docker/UpdateContainer?xmlTemplate=edit:'+encodeURIComponent(protectedPath);
+  }
   function nativeArgs(c){var m=c.menu||{};return [c.name,c.imageId,m.template||'',c.state==='stopped'?0:1,c.state==='paused'?1:0,number(c.updateStatus)===null?3:Number(c.updateStatus),c.autostart?1:0,m.webUi||'',m.tailscaleWebUi||'',m.shell||'',c.id,m.support||'',m.project||'',m.registry||'',m.donate||'',m.readme||''];}
-  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload,validStats:validStats};
+  return {number:number,list:list,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl};
 }));
