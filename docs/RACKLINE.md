@@ -1,6 +1,101 @@
 # Rackline: independent host workspace
 
-## Current state — 2026-11-08
+## What runs now — November 8, 2026
+
+Maintainer: Rackline implementation worker for source; existing host owners for installations; Historian for this documentation reconciliation.
+Reviewed: 2026-11-08 (America/Chicago).
+Status: **0.2.3 is published and installed on the owner's Unraid pilot; bounded passive acceptance passed, active/browser acceptance incomplete.** PR 41 is still draft/unmerged. No main merge, GitHub Release or tag is implied.
+
+Rackline is a standalone **host-local Unraid WebUI** workspace at `/Rackline`, opened by its native Dashboard launcher. It supplies its own collectors and does not require WAZ. It is not a generic Linux app or combined cross-host dashboard. Other Unraid installations need their own prerequisite and acceptance checks.
+
+### Current version, files and checks
+
+| Item | Exact evidence |
+|---|---|
+| Installed version | **0.2.3 / 2026.11.08.05**, host-owner receipt November 8 **15:43–15:46 UTC / 09:43–09:46 CST**. Native install exit 0; all 17 runtime files/exact file set, boot PLG and registration matched. |
+| Source/artifact commit | `398704b405d9d23e91eab9ea4d7321670d754c38`; all 17 runtime members match frozen source after the published build's version-token substitutions. |
+| Exact-head source/CI | [Push artifact checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42495750903), [Rackline PHP and 50 synthetic Chromium cases](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42495755170), and [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42495755185) passed for exact `398704b`. |
+| Pinned distribution | `398704b405d9d23e91eab9ea4d7321670d754c38`, `releases/rackline/0.2.3-2026.11.08.05/`. Repository distribution, **not a GitHub Release/tag or main merge**. |
+| Test boundary | PHP 8.2/8.4 CI artifacts match published package bytes. Unix-socket/endpoint synthetic tests and 50 Chromium scenarios passed. Node: 203 Rackline + 42 WAZ; SMART: 298 assertions + 332 stress + 180 HTTP; host stress: 2,684; workloads: 366. These are source/synthetic tests, not live authenticated controls. |
+
+The published and installed 0.2.3 includes the Ember palette, banner cleanup and native-default-color repair. They are **no longer local-only or pending installation**. Preserve 0.2.2 as the previous accepted version and recovery generation. Routine update timestamps were removed while polling, fault/staleness warnings and individual sample ages remain. No local dirty implementation checkout was used to prepare these docs.
+
+### What each control does
+
+| Control or display | Behavior | Side effects and limits |
+|---|---|---|
+| Drives, Docker, Cooling and folder/pool filters | Navigate local views and preserve focus/viewport; optional Cooling is hidden only for confirmed controller absence. | No device or container action from selecting a view. Genuine controller errors/unknown states remain visible. Installed rendered behavior still needs authenticated visual acceptance. |
+| System and container activity | Local counters plus bounded rotating CPU/RAM/network/block samples, with age/coverage/error states. | Not simultaneous full-inventory measurement. GPU attribution and host/per-container process sampling remain unavailable. No hardware sampler or fan writer is added. |
+| View cached SMART report | Passive GET of a meaningful report only when selected-device identity is verified. | Native attribute-only cache may be **present but identity-unverified**, not absent or a verified full report. Old means **over 24 hours**. A page refresh is not a new SMART read or self-test. |
+| Explicit SMART read/refresh | A separate confirmed, authenticated and CSRF-protected action for qualified current whole-disk ATA/SCSI targets with supported default controller options. Revalidates assignment identity and records separate report provenance. | May wake a disk; do not remove/reassign it during the disclosed check-to-open hotplug window. Unsupported paths fail closed. No automatic retry, self-test or daily full-report scheduler. **Authenticated capture is unrun: zero attempts.** Native report download does not guarantee Rackline cache refresh. |
+| Check Docker registries | Explicit native update-check handoff. | May contact registries; not a background update or proof that an image is safe. Native authenticated action acceptance is unrun. |
+| Update selected / native menu / editor | Confirmed native handoff, validating current container/template identity and showing interruption/uncertain-outcome handling. | Can pull/recreate/restart the selected container. Native Unraid owns mutation/authorization. No live update/menu/editor action was used as acceptance. |
+| Fan-control link | Opens the existing native controller page when detected. | That controller owns fan settings; Rackline adds no fan policy/writer. No fan action in this rollout. |
+
+Native SMART polling intervals are host settings, not Rackline guarantees: inspected configurations differed between 24 hours and 30 seconds for active disks. Sleeping disks may retain older native cache. Keep cache mtime, saved-read age, page receipt and self-test result separate. No daily full-report success is promised.
+
+### Repeat an authorized install or update
+
+This procedure documents the host owner's workflow; it does not authorize another installation or native control test.
+
+1. Confirm the intended compatible Unraid host, task scope and exact version. Review the [pinned distribution README](https://github.com/TheIlluminate92/unraid-dashboard/blob/398704b405d9d23e91eab9ea4d7321670d754c38/releases/rackline/0.2.3-2026.11.08.05/README.md) and capability contracts below. Check native authenticated PHP/WebUI, local proc/sysfs data, required PHP/cURL-multi Unix-socket support and native Docker compatibility; optional integrations may be absent. No arbitrary OS/hardware guarantee or automatic dependency installation.
+2. Obtain the exact pinned [Rackline installer](https://github.com/TheIlluminate92/unraid-dashboard/blob/398704b405d9d23e91eab9ea4d7321670d754c38/releases/rackline/0.2.3-2026.11.08.05/rackline.dashboard.plg), [payload](https://github.com/TheIlluminate92/unraid-dashboard/blob/398704b405d9d23e91eab9ea4d7321670d754c38/releases/rackline/0.2.3-2026.11.08.05/rackline.dashboard.tgz) and [SHA 256 SUMS](https://github.com/TheIlluminate92/unraid-dashboard/blob/398704b405d9d23e91eab9ea4d7321670d754c38/releases/rackline/0.2.3-2026.11.08.05/SHA256SUMS). Compare local SHA256 values before installation; stop on a mismatch. The PLG embeds its payload, so a separate TGZ transfer is not needed for native installation. Keep the filename `rackline.dashboard.plg`; the rolling WAZ installer is a different product.
+
+   | File | Expected SHA256 |
+   |---|---|
+   | `rackline.dashboard.plg` | `f4fd8d91f23f01c3ce122405abac8c5daed67ef480d9265b696f856470819ad8` |
+   | `rackline.dashboard.tgz` | `996f03fcd7d37c95f2ae6dd5e2faf522d06fbf08db3e0d320186f7be44ced49d` |
+
+3. Preserve the matching current runtime, installer/payload, boot registration and any configuration, plus before-state for unrelated containers/services. Verify retained predecessors are readable and exactly identified. Keep private host evidence/configuration outside this public repository; a source test does not create a recovery copy.
+4. The authorized host owner uses Unraid's native plugin install/update workflow with that exact verified installer. It stages/lints/verifies before replacing only Rackline. No core/container restart, WAZ removal, hardware probe or fan change is part of installation. Retain preflight and install results without claiming completion from a submitted request alone.
+5. Compare all 17 runtime files and boot registration to the accepted package, then perform the scoped checks below. Record actual times, outcome and limits. Do not use raw CLI SMART capture, fake sessions or another route to bypass an authenticated-browser gate. No active/control test follows automatically from passive success.
+6. Preserve recovery until the agreed acceptance is complete. No automatic update URL, main merge, release tag, second-host rollout or rollback cleanup is implied by this guide.
+
+### Acceptance record: passed is not the same as unrun
+
+| Check | Supplied pilot outcome | Boundary |
+|---|---|---|
+| Exact distribution / runtime / boot | Passed: package hashes, 17 runtime files and boot registration matched. | Another host/version needs its own readback. |
+| Discovery / identity / grouping | Passed: native CPU sibling topology, occupied bay targets/labels/order and configured Docker folder memberships matched. | Generic discovery code plus one host's bounded evidence, not a public host inventory or universal compatibility claim. |
+| All running-container sampling | Passed for all nine running containers in the bounded checks. | Rotating age/coverage remains explicit; no GPU/process attribution. |
+| Installed passive collector pass | **35.06 seconds, 85 calls, maximum two concurrent processes, no same-feed overlap, zero errors/timeouts; 10.62–18.18 ms CLI calls.** | CLI collector wall times, not authenticated HTTP/browser latency, saturation capacity or long-term overhead. |
+| Unrelated state preservation | Container identity/start times, selected mounts and core service identities unchanged over measured intervals. | No causal/long-term load claim. No container/core service restart. |
+| SMART authentication boundary / eligibility | Native unauthenticated requests redirected to login; current-device metadata eligibility checked. | A redirect or eligible locator is **not capture success**. |
+| Authenticated SMART capture | **UNRUN/BLOCKED; zero attempts.** | Reliable authorized browser path/explicit action and matching current identity needed; allowance unused, not failed or uncertain. |
+| Native menus/editor/control actions | **UNRUN.** | No authenticated native control or real update/action acceptance. |
+| Installed layout/focus/browser behavior | **UNRUN.** | 50 real Chromium cases are synthetic fixtures, not authenticated installed layout. |
+| Reboot and actual rollback | **UNRUN; recovery copies retained, cleanup held.** | Passive install success does not qualify cold boot, rollback execution or deletion of recovery generations. |
+
+Installed payloads now resolve native Boot defaults to **`#335c9e`** with verified assigned action targets. That verifies data/color resolution, **not rendered color, layout or focus**. Current persisted native geometry/hidden positions and all occupied mappings were checked against installed output. There was **no immediate pre-install geometry snapshot**, so historical before/after geometry equality is not established. The native cache write at **14:53:38 UTC** predates the **15:43:04 UTC** rollout; its writer was not established. Do not attribute the difference from older geometry to this installer.
+
+Native CPU sibling topology and all configured Docker folder memberships/order matched at the current check; optional Cooling absence/bootstrap gating passed. Native attribute-only SMART cache remained correctly **present but identity-unverified**. Strict TLS unauthenticated Rackline/Docker/four SMART requests redirected to native login; checked bounded logs contained no Rackline warnings/errors. Authentication redirects and locator eligibility are still **not a successful report capture**. No R730 installation or active/native control test occurred.
+
+Use this small record for a future authorized acceptance handoff; preserve explicit PASSED / UNRUN / BLOCKED / FAILED / UNCERTAIN states instead of copying a green fixture result:
+
+```text
+Version / build / runtime source / pinned distribution commit:
+Artifact names and locally verified SHA256 values:
+Operator / evidence time and zone:
+Before-state and protected predecessor references (private):
+Runtime/boot match: status, evidence, limits
+Passive discovery/grouping/telemetry: status, evidence, limits
+Bounded load: duration, requests, concurrency, failures, stop gates
+Authenticated rendering/focus/native controls: status and exact unrun gaps
+SMART read: explicit scope, qualified identity, attempts, result/uncertainty
+Unrelated container/service/mount preservation: evidence interval
+Rollback prerequisites / retained generations / cleanup gate:
+Remaining owner and next safe step:
+```
+
+### Recovery and current handoff
+
+Keep the saved exact **0.2.2 predecessor**, verified PLG/TGZ/runtime/boot/configuration copies, all earlier Rackline rollbacks and original WAZ/settings/hotfix recovery. The private host receipt retains their exact paths/hashes. A separately authorized rollback uses the matching native installer/current recovery data; none was executed. No cleanup is authorized while the remaining authenticated/active acceptance is incomplete. Preserve unique evidence and unrelated history; no R730 rollout is established.
+
+The implementation worker owns source; existing host owners own native actions; Historian reconciles docs. Ember/banner/default-color work is installed in 0.2.3. The remaining gaps are authenticated/rendered UI, native controls, SMART capture and cold boot/actual rollback. Zero captures were attempted. The browser restriction remains unresolved; do not borrow credentials, simulate sessions, issue a direct CLI capture or retry a denied route to close a checklist. No new rollout, source publication or runtime action is implied by documentation preparation.
+
+November 8 preparation: the already published 398704b source/package and the existing 15:43–15:46 UTC host receipt were read without a new live audit. Artifact SHA256 values and all 17 package-member/source hashes are checked locally; exact-head CI results are existing remote evidence. Earlier 0.2.1/0.2.2, local-candidate and failed-then-fixed CI phases remain history. Source-state paragraphs below retain their original phase meaning; **this operating/acceptance record is the current summary**. Only the README lead and guide are proposed changes. This turn is local preparation only: no push, PR metadata update, readiness change, publication, merge or runtime operation.
+
+## Historical source-state snapshot — 2026-11-08
 
 The installed pilot baseline is **0.2.2 / 2026.11.08.04**, runtime source `e4142e73242d59e035d9f357bdcd5545f0d94cc1`, permanent distribution `1295357586d61252c691bea59684205a0c0f855f`. The host owner confirmed all 17 runtime files and boot registration match that distribution. Published-release CI is green. Live passive data, folder/topology checks and a 35-second, 85-request collector stress pass succeeded. This is not acceptance of an actual SMART capture, native-browser rendering, Docker menus/editor or fan-control actions. The second planned host has not been deployed.
 
