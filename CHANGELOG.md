@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.3 candidate / 2026.11.08.05 — awaiting CI and pilot acceptance
+
+- Prepare the reviewed healthy-status cleanup, tokenizer-independent native defaults and Ember palette under new release identifiers. Preserve published 0.2.2 artifacts and unchanged physical mapping/identity semantics.
+- Add synthetic browser CI checks for repeated healthy/outage/recovery status, computed Ember contrast/focus/mobile behavior and defaults-derived native bay colors from the actual PHP parser. Exact-head CI and live acceptance remain pending.
+- Candidate local checks pass 203 Rackline and 42 WAZ Node tests plus supported PHP/HTTP/stress/isolated-package suites. Two builds reproduce identical package bytes. Previously blocked local browser/socket tests were not retried; their exact-head CI results remain required.
+
+
+## Unreleased — Rackline native colors and Ember (2026-11-08, local only)
+
+- Read bounded inert scalar/static-array native defaults without depending on the optional PHP tokenizer. Reject executable, dynamic, interpolated, ambiguous or oversized input; preserve saved-setting precedence, unknown states, geometry and assigned-drive identity. No native PHP is executed and no host-specific color is embedded.
+- Apply the approved root-scoped Ember palette with readable CPU fills, essential control boundaries and distinct semantic colors. Preserve native Disk Location bay colors and existing responsive geometry/touch targets; replace stale-card opacity with warning borders and status text.
+- Add adversarial parser and deterministic contrast regressions. Full local source/fixture validation passes where supported; two Unix-socket fixtures are blocked and browser/rendered accessibility remains unverified. The actual DOM-absence fallback passed independently. No push, release or deployment is included.
+- Correct the leading pilot status to installed 0.2.2 while retaining historical candidate records and outstanding native-action/second-host acceptance limits.
+- Independent parser review passed 4,106 additional assertions and 25 focused status/theme tests. Future authorized publication must use new version/build identifiers rather than overwrite the frozen 0.2.2 release.
+
+## Unreleased — Rackline next-batch status cleanup (2026-11-08, local only)
+
+- Remove only successful local-telemetry boilerplate and its empty space. Preserve initial/partial connection, outage and incomplete-install feedback, accessibility status semantics and polling thresholds.
+- Add repeated recovery, partial startup and stale-threshold regressions. The full 195-test Rackline Node suite, both tokenizer variants of the storage fixtures, 2,684 host-stress assertions and 366 workload checks pass locally. Browser paint/accessibility and installed-host acceptance remain unverified; no release, push or deployment is included. Disk Location color repair awaits current source evidence.
+
 ## Unreleased — Rackline running-list refinements (2026-11-08, release candidate)
 
 - Remove routine update timestamps and redundant Docker explanations while preserving faults, stale/error states, real data, per-row ages and native-control restrictions.

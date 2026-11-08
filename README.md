@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> [Rackline operating guide, pinned install/update checklist and acceptance limits](docs/RACKLINE.md): the standalone host-local Unraid pilot is now 0.2.2 / 2026.11.08.04, with passive acceptance and bounded collector checks. Authenticated SMART/native controls and live rendered acceptance remain unrun. Ember/default-color refinements remain local-only. Rackline distribution is pinned repository content; PR #41 remains draft/unmerged, with no main merge or Release/tag implied. WAZ release/history below remain separate.
+> [Rackline operating guide, pinned install/update and acceptance checklist](docs/RACKLINE.md): **0.2.3 / 2026.11.08.05 is published and installed** on the owner's host-local Unraid pilot, including Ember/banner/native-default-color work. Exact package/runtime/boot and bounded passive checks passed. Authenticated SMART/native controls, rendered installed UI and reboot/rollback remain unrun; zero captures and all recovery retained. Repository distribution is not a main merge or GitHub Release/tag. PR #41 remains draft/unmerged; WAZ history below stays separate.
 
 <!-- historian-overview:start -->
 ## Project overview

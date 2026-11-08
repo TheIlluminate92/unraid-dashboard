@@ -491,35 +491,117 @@ function rackline_storage_location_color($value): ?string
     return is_string($value) && preg_match('/^[0-9a-f]{6}$/iD', $value) ? '#' . strtolower($value) : null;
 }
 
-/** Read known literal native defaults as data. Never include native PHP. */
+/** Parse a bounded inert subset of native defaults. Never include/eval PHP.
+ * Whole file: scalar/static-array assignments only, with no expressions, calls,
+ * interpolation, references, duplicate variables or executable statements.
+ * This reader intentionally does not depend on the optional PHP tokenizer.
+ */
 function rackline_storage_location_defaults(string $text): array
 {
-    if (!function_exists('token_get_all') || strlen($text) > 262144) return [];
-    try { $rawTokens = token_get_all($text, TOKEN_PARSE); } catch (ParseError $error) { return []; }
-    $tokens = array_values(array_filter($rawTokens, static fn($token): bool => !is_array($token) || !in_array($token[0], [T_WHITESPACE,T_COMMENT,T_DOC_COMMENT], true)));
-    if (count($tokens) > 20000 || !is_array($tokens[0] ?? null) || $tokens[0][0] !== T_OPEN_TAG) return [];
+    $length = strlen($text);
+    if ($length > 262144 || !preg_match('//u', $text) || strpos($text, "\0") !== false
+        || !preg_match('/^<\?php[ \t\r\n]/', $text)) return [];
+    $tokens = []; $i = 5;
+    while ($i < $length) {
+        if (count($tokens) >= 20000) return [];
+        $c = $text[$i];
+        if (strpos(" \t\r\n", $c) !== false) { $i++; continue; }
+        if (substr($text, $i, 2) === '//') {
+            $end = $i + 2 + strcspn($text, "\r\n", $i + 2);
+            // A PHP closing tag terminates a line comment, unlike a block comment.
+            if (strpos(substr($text, $i, $end - $i), '?>') !== false) return [];
+            $i = $end; continue;
+        }
+        if (substr($text, $i, 2) === '/*') {
+            $end = strpos($text, '*/', $i + 2);
+            if ($end === false) return [];
+            $i = $end + 2; continue;
+        }
+        if (substr($text, $i, 2) === '?>') {
+            if (trim(substr($text, $i + 2), " \t\r\n") !== '') return [];
+            $i = $length; break;
+        }
+        if ($c === "'" || $c === '"') {
+            $quote = $c; $value = ''; $closed = false; $i++;
+            while ($i < $length) {
+                $c = $text[$i++];
+                if ($c === $quote) { $closed = true; break; }
+                if ($quote === '"' && $c === '$') return [];
+                if ($c === "\\") {
+                    if ($i >= $length) return [];
+                    $escaped = $text[$i++];
+                    if ($escaped === "\\" || $escaped === $quote) $value .= $escaped;
+                    elseif ($quote === '"' && isset(['n'=>true,'r'=>true,'t'=>true][$escaped]))
+                        $value .= ['n'=>"\n",'r'=>"\r",'t'=>"\t"][$escaped];
+                    else return []; // No unknown, numeric, Unicode or dollar escapes.
+                } else {
+                    if (ord($c) < 32 && strpos("\t\r\n", $c) === false) return [];
+                    $value .= $c;
+                }
+            }
+            if (!$closed) return [];
+            $tokens[] = ['string', $value]; continue;
+        }
+        if ($c === '$') {
+            if (!preg_match('/\G\$([A-Za-z_][A-Za-z0-9_]*)/A', $text, $m, 0, $i)) return [];
+            $tokens[] = ['variable', $m[1]]; $i += strlen($m[0]); continue;
+        }
+        if (preg_match('/\G(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/A', $text, $m, 0, $i)) {
+            $tokens[] = ['number', $m[0]]; $i += strlen($m[0]); continue;
+        }
+        if (preg_match('/\G[A-Za-z_][A-Za-z0-9_]*/A', $text, $m, 0, $i)) {
+            $word = strtolower($m[0]);
+            if (!in_array($word, ['array','true','false','null'], true)) return [];
+            $tokens[] = [$word, $word]; $i += strlen($m[0]); continue;
+        }
+        if (substr($text, $i, 2) === '=>') { $tokens[] = ['=>', '=>']; $i += 2; continue; }
+        if (strpos('=;(),-', $c) !== false) { $tokens[] = [$c, $c]; $i++; continue; }
+        return [];
+    }
+    $position = 0; $count = count($tokens);
+    // Parse discarded values as strictly as exported ones. Return only kind/value,
+    // never build or evaluate native arrays; depth and total tokens bound work.
+    $value = function (int $depth) use (&$value, &$position, $tokens, $count): ?array {
+        if ($depth > 8 || $position >= $count) return null;
+        $token = $tokens[$position++];
+        if ($token[0] === '-') {
+            if (($tokens[$position][0] ?? null) !== 'number') return null;
+            return ['number', '-' . $tokens[$position++][1]];
+        }
+        if (in_array($token[0], ['string','number','true','false','null'], true)) return $token;
+        if ($token[0] !== 'array' || ($tokens[$position++][0] ?? null) !== '(') return null;
+        if (($tokens[$position][0] ?? null) === ')') { $position++; return ['array', null]; }
+        while ($position < $count) {
+            $item = $value($depth + 1);
+            if ($item === null) return null;
+            if (($tokens[$position][0] ?? null) === '=>') {
+                // Only unambiguous scalar keys; array/bool/null keys are rejected.
+                if (!in_array($item[0], ['string','number'], true)
+                    || $item[0] === 'number' && !preg_match('/^-?(?:0|[1-9][0-9]*)$/D', $item[1])) return null;
+                $position++;
+                if ($value($depth + 1) === null) return null;
+            }
+            $separator = $tokens[$position++][0] ?? null;
+            if ($separator === ')') return ['array', null];
+            if ($separator !== ',') return null;
+            if (($tokens[$position][0] ?? null) === ')') { $position++; return ['array', null]; }
+        }
+        return null;
+    };
     $keys = ['bgcolor_parity','bgcolor_unraid','bgcolor_cache','bgcolor_flash','bgcolor_others','bgcolor_empty','device_bg_color'];
-    $values = []; $seen = []; $count = count($tokens);
-    // Whole-file whitelist: PHP tag, comments, simple scalar assignments, and
-    // an optional final closing tag. Anything executable or dynamic is unknown.
-    for ($i = 1; $i < $count;) {
-        $variable = $tokens[$i++];
-        if (is_array($variable) && $variable[0] === T_CLOSE_TAG && $i === $count) break;
-        if (!is_array($variable) || $variable[0] !== T_VARIABLE || ($tokens[$i++] ?? null) !== '=') return [];
-        $literal = $tokens[$i++] ?? null;
-        $negative = $literal === '-';
-        if ($negative) $literal = $tokens[$i++] ?? null;
-        if (!is_array($literal)) return [];
-        $scalar = in_array($literal[0], [T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER], true)
-            || $literal[0] === T_STRING && in_array(strtolower($literal[1]), ['true','false','null'], true);
-        if (!$scalar || $negative && !in_array($literal[0], [T_LNUMBER,T_DNUMBER], true) || ($tokens[$i++] ?? null) !== ';') return [];
-        $key = substr($variable[1],1);
+    $values = []; $seen = [];
+    while ($position < $count) {
+        $variable = $tokens[$position++];
+        if ($variable[0] !== 'variable' || ($tokens[$position++][0] ?? null) !== '='
+            || in_array($variable[1], ['GLOBALS','this'], true)
+            || isset($seen[$variable[1]]) || count($seen) >= 2048) return [];
+        $seen[$variable[1]] = true;
+        $literal = $value(0);
+        if ($literal === null || ($tokens[$position++][0] ?? null) !== ';') return [];
+        $key = $variable[1];
         if (!in_array($key, $keys, true)) continue;
-        if (isset($seen[$key])) { unset($values[$key]); continue; }
-        $seen[$key] = true;
-        if ($negative) continue;
-        if ($key === 'device_bg_color' && $literal[0] === T_LNUMBER && in_array($literal[1], ['0','1'], true)) $values[$key] = (int) $literal[1];
-        elseif ($key !== 'device_bg_color' && $literal[0] === T_CONSTANT_ENCAPSED_STRING && preg_match('/^([\'"])([0-9a-f]{6})\\1$/iD', $literal[1], $m)) $values[$key] = $m[2];
+        if ($key === 'device_bg_color' && $literal[0] === 'number' && in_array($literal[1], ['0','1'], true)) $values[$key] = (int) $literal[1];
+        elseif ($key !== 'device_bg_color' && $literal[0] === 'string' && preg_match('/^[0-9a-f]{6}$/iD', $literal[1])) $values[$key] = $literal[1];
     }
     return $values;
 }

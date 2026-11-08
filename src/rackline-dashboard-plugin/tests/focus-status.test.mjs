@@ -153,3 +153,33 @@ test('native Docker fallback and Rackline footer keep mobile touch targets with 
  assert.match(geometry,/td button,td a,\.rl-button,\.rl-footer a/);
  assert.match(geometry,/verify_focus_visible\(page,fallback\)/);assert.match(geometry,/verify_focus_visible\(page,footer\)/);
 });
+
+// Next batch: remove successful boilerplate, retain meaningful live status.
+test('availability hides healthy boilerplate and restores outage announcements repeatedly',()=>{
+ const h=statusHarness();
+ for(let cycle=0;cycle<100;cycle++){
+  h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);assert.equal(h.$('rl-availability').textContent,'');
+  h.context.status.storage.error=true;h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,false);assert.match(h.$('rl-availability').textContent,/Some telemetry is unavailable/);
+  h.context.status.storage.error=false;
+ }
+ h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);
+ assert.doesNotMatch(app,/Local telemetry · Native controls unchanged/);
+ assert.match(css,/#rackline-root \[hidden\]\{display:none!important\}/);
+});
+test('availability preserves initial and partial connection feedback with outage precedence',()=>{
+ const h=statusHarness();h.context.status={};h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,false);assert.equal(h.$('rl-availability').textContent,'Connecting to this server…');
+ for(const key of ['system','storage','docker']){h.context.status[key]={received:100000,advancedAt:100000,error:false};h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,false);assert.match(h.$('rl-availability').textContent,/Connecting/);}
+ h.context.status.storage.error=true;h.context.refreshAge();assert.match(h.$('rl-availability').textContent,/unavailable/);
+ h.context.status.storage.error=false;h.context.status.io={received:100000,advancedAt:100000,error:false};h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);
+ assert.match(view,/id="rl-availability" class="rl-notice" role="status">Connecting to this server…/);
+ assert.match(app,/if\(bootstrap.available!==true\)\{text\('rl-availability','Rackline collectors are not installed completely\.[^']*'\);return;\}/);
+ assert(app.indexOf('if(bootstrap.available!==true)')<app.indexOf("makeLoop('system',1000"));
+});
+test('availability retains stale threshold, inactive-batch exclusion, and recovery',()=>{
+ const h=statusHarness();h.context.state={tab:'drives'};h.context.status.batch={received:0,error:true};
+ h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);
+ h.setClock(116000);h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);
+ h.setClock(116001);h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,false);assert.match(h.$('rl-availability').textContent,/unavailable/);
+ for(const key of ['system','storage','docker','io'])Object.assign(h.context.status[key],{received:116001,advancedAt:116001,sample:116001});
+ h.context.refreshAge();assert.equal(h.$('rl-availability').hidden,true);
+});
