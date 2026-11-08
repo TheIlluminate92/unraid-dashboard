@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> Separate experimental workspace: [Rackline implementation and review/pilot plan](docs/RACKLINE.md). Its own plugin identity, bundled collectors and `/Rackline` page run independently of WAZ and leave its existing release unchanged. Not yet an installed-host release.
+> [Rackline implementation and pilot status](docs/RACKLINE.md): version **0.2.2 / 2026.11.08.04** is installed on the initial pilot, with passive checks completed. Rackline runs independently of WAZ and leaves its existing release unchanged. The **0.2.3 / 2026.11.08.05** banner, native-color and Ember-theme candidate is prepared for authorized publication/testing, with exact-head CI and pilot acceptance still pending; other hosts and native actions remain separate gates.
 
 <!-- historian-overview:start -->
 ## Project overview

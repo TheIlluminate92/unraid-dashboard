@@ -196,7 +196,7 @@ $device_bg_color = 0;
 $bgcolor_cache = "112233";
 DEFAULTS;
     $defaults = rackline_storage_location_defaults($defaultsText);
-    check($defaults === (function_exists('token_get_all') ? ['bgcolor_flash'=>'123ABC', 'device_bg_color'=>0, 'bgcolor_cache'=>'112233'] : []), 'Native literal defaults use optional tokenizer or stay unknown');
+    check($defaults === ['bgcolor_flash'=>'123ABC', 'device_bg_color'=>0, 'bgcolor_cache'=>'112233'], 'Native literal defaults work identically without optional tokenizer');
     foreach (["\n\$bgcolor_flash = 'ffffff';", "\n\$bgcolor_flash =\n'ffffff';", "\n\$bgcolor_flash .= 'ff';", "\n\$bgcolor_flash = getenv('ANY');"] as $extra)
         check(!isset(rackline_storage_location_defaults($defaultsText . $extra)['bgcolor_flash']), 'Duplicate or unsupported native assignments stay unknown');
     check(rackline_storage_location_defaults("<?php\nif (false)\n\$bgcolor_flash = '123abc';") === [], 'Conditional defaults not guessed');
@@ -207,6 +207,77 @@ DEFAULTS;
     check(rackline_storage_location_defaults("<?php\n\$notes = 'literal text\n\$bgcolor_cache=\"ffffff\";\n';\n") === [], 'Multiline string bodies are never assignments');
     check(!isset(rackline_storage_location_defaults($defaultsText . "\nunset(\$bgcolor_flash);")['bgcolor_flash']), 'Unset invalidates literal default');
     check(rackline_storage_location_defaults("<?php\n\$bgcolor_flash='123abc';\n/* unterminated") === [], 'Unterminated source comment fails closed');
+
+    // Synthetic native syntax only: no vendor source or actual host inventory.
+    $arrayDefaults = <<<'DEFAULTS'
+<?php
+/* Literal array settings must not hide otherwise valid default colors. */
+$bgcolor_flash = '2468Ac';
+$device_bg_color = 1;
+$displayinfo = array(
+    'tray' => 1, // arbitrary display option
+    'status' => 0,
+    'nested' => array('enabled' => true, 'other' => null),
+);
+$description = "group,tray\r\nmodel\ncomment";
+$negative = -12;
+$decimal = 1.25e2;
+?>
+DEFAULTS;
+    $expectedDefaults = ['bgcolor_flash'=>'2468Ac','device_bg_color'=>1];
+    check(rackline_storage_location_defaults($arrayDefaults) === $expectedDefaults, 'Static array/comments/escaped display string parse without tokenizer');
+    check(rackline_storage_location_defaults(str_replace("\n", "\r\n", $arrayDefaults)) === $expectedDefaults, 'CRLF native syntax agrees');
+    check(rackline_storage_location_defaults(str_replace("\n", "\r", $arrayDefaults)) === $expectedDefaults, 'CR-only line comments end correctly');
+    foreach (["\r", "\n", "\r\n"] as $eol) {
+        check(rackline_storage_location_defaults('<?php ' . '// comment' . $eol . '$bgcolor_flash="123abc";') === ['bgcolor_flash'=>'123abc'], 'Each PHP line-ending style terminates a comment');
+        check(rackline_storage_location_defaults('<?php $bgcolor_flash="123abc"; // comment' . $eol . 'exit();') === [], 'Executable fragment after comment is never suppressed');
+    }
+    $validPrefix = '<?php $bgcolor_flash="123abc"; ';
+    $hostile = [
+        '$x = system("id");', '$x = array("key" => getenv("X"));', '$x = array(&$foo);',
+        '$x = array(...array(1));', '$x = array(true => 1);', '$x = array(array() => 1);',
+        '$x = array(1.5 => 1);', '$x = array(1 =>);', '$x = array(,);', '$x = array(1,,2);',
+        '$x = [1,2];', '$x = (1);', '$x = 1 + 2;', '$x = 1 . 2;', '$x = 0x10;', '$x = 01;',
+        '$x = 1_000;', '$x = ++1;', '$x = INF;', '$x = NAN;', '$x = new stdClass();',
+        '$x = fn()=>1;', '$x = `id`;', '$x = $other;', '$x = "value $other";',
+        '$x = "{$other}";', '$x = "${other}";', '$x = "\\$other";',
+        '$x = "\\x41";', '$x = "\\u{0041}";', '$x = "\\101";', '$x = "\\q";',
+        '$x = \'\\q\';', '$x = <<<EOT' . "\nvalue\nEOT;", '$x = true ? 1 : 0;',
+        '$x .= "123abc";', '$x[0] = 1;', '${"bgcolor_flash"}="abcdef";',
+        '$GLOBALS = array("bgcolor_flash"=>"abcdef");', '$this = 1;',
+        '$x = 1; $x = 2;', '$bgcolor_flash = "abcdef";',
+        'if (false) $x = 1;', 'return;', 'echo "x";', 'include "x";', 'unset($bgcolor_flash);',
+        '/* unterminated', '/* comment */ exit();', '// ?> executable', '?>text', '?><?php $x=1;',
+        '#[Attribute] function f() {}', '__halt_compiler();', '$x = "unterminated', '$x = array(1;',
+    ];
+    foreach ($hostile as $fragment) check(rackline_storage_location_defaults($validPrefix . $fragment) === [], 'Unsupported whole-file fragment rejected: ' . $fragment);
+    foreach (["\0", "\xff", "\x01"] as $byte) check(rackline_storage_location_defaults($validPrefix . '$x="'.$byte.'";') === [], 'Binary/invalid native string rejected');
+    $escapedLiteral = <<<'DEFAULTS'
+<?php $x='a\'b'; $bgcolor_flash='abcdef';
+DEFAULTS;
+    check(rackline_storage_location_defaults($escapedLiteral) === ['bgcolor_flash'=>'abcdef'], 'Supported escaped single quote stays inside inert string');
+    check(rackline_storage_location_defaults($validPrefix . '$x="/* ?> */";') === ['bgcolor_flash'=>'123abc'], 'Comment and tag text inside strings is inert');
+    check(rackline_storage_location_defaults($validPrefix . '/* ?> $bgcolor_flash="ffffff"; */') === ['bgcolor_flash'=>'123abc'], 'Block-comment contents are inert');
+    check(rackline_storage_location_defaults($validPrefix . '$x=array('.str_repeat('array(',9).'1'.str_repeat(')',9).');') === [], 'Excessive array depth rejected');
+    check(rackline_storage_location_defaults($validPrefix . '$x=array('.str_repeat('0,',10000).');') === [], 'Token budget enforced');
+    $assignments = ''; for ($j=0;$j<2048;$j++) $assignments .= '$synthetic_'.$j.'=0;';
+    check(rackline_storage_location_defaults($validPrefix.$assignments) === [], 'Assignment budget enforced');
+    for ($j=0;$j<512;$j++) {
+        $color = sprintf('%06x', $j * 7919 % 16777216);
+        $depth = $j % 7;
+        $source = '<?php $bgcolor_flash="'.$color.'"; $device_bg_color='.($j%2).'; $unused=array("key"=>'.str_repeat('array(',$depth).'1'.str_repeat(')',$depth).');';
+        $parsed = rackline_storage_location_defaults($source);
+        check($parsed === ['bgcolor_flash'=>$color,'device_bg_color'=>$j%2], 'Seeded bounded static grammar case '.$j);
+        check(rackline_storage_location_defaults($source.' exit();') === [], 'Seeded executable suffix rejection '.$j);
+    }
+    $mergedDefaults = array_replace(rackline_storage_location_defaults($arrayDefaults), ['device_bg_color'=>0]);
+    $syntheticBoot = ['type'=>'Boot','name'=>'synthetic-alias'];
+    check(rackline_storage_location_display([], [], $mergedDefaults, $syntheticBoot)['color'] === '#2468ac', 'Missing saved Boot color inherits parsed default with saved type-mode precedence');
+    check(rackline_storage_location_display([], [], array_replace($mergedDefaults, ['bgcolor_flash'=>'654321']), $syntheticBoot)['color'] === '#654321', 'Explicit saved color overrides parsed default');
+    check(rackline_storage_location_display([], [], array_replace($mergedDefaults, ['bgcolor_flash'=>'invalid']), $syntheticBoot)['color'] === null, 'Malformed explicit saved color stays unknown rather than falling back');
+    check(rackline_storage_location_display(['color'=>'abcdef'], ['group_color'=>'123456'], $mergedDefaults, $syntheticBoot)['color'] === '#abcdef', 'Device override precedence is unchanged');
+    check(rackline_storage_location_display([], ['group_color'=>'123456'], $mergedDefaults, $syntheticBoot)['color'] === '#123456', 'Group override precedence is unchanged');
+    check(rackline_storage_location_display([], [], $mergedDefaults, null)['color'] === null, 'Default color does not verify or label unknown identity');
 
     $styleSettings = ['device_bg_color'=>0, 'bgcolor_flash'=>'123abc','bgcolor_cache'=>'112233','bgcolor_empty'=>'222222', 'bgcolor_others'=>'333333', 'bgcolor_unraid'=>'444444','bgcolor_parity'=>'555555'];
     $styleDevice = ['devicenode'=>'/dev/sdb','model_name'=>'Synthetic model','comment'=>'<b>cached text only</b>'];

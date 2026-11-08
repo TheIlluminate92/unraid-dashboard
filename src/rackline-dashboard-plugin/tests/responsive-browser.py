@@ -6,6 +6,8 @@ startup failure is a failure, not a skip or a claim of rendered acceptance.
 """
 import argparse
 import json
+import os
+import shutil
 from pathlib import Path
 import re
 import subprocess
@@ -104,6 +106,8 @@ def verify(page, threads, phone=False, smt=2):
         assert area['right'] <= data['root']['right'] + 1
     assert data['pulsePosition'] == ('sticky' if data['viewport']>1000 and data['pulseHeight']+max(0,data['pulseTop'])<=data['viewportHeight']-240 else 'static')
     assert not page.locator('#rl-feed-status').is_visible(), 'Healthy feeds must not show routine update timers'
+    assert not page.locator('#rl-availability').is_visible(), 'Healthy availability banner must not leave boilerplate'
+    assert page.locator('#rl-availability').evaluate('e=>e.getBoundingClientRect().height')==0
     if phone:
         assert all(r['height']>=44 and r['paddingTop']=='6px' and r['paddingBottom']=='6px' and float(r['fontSize'].removesuffix('px'))>=12 for r in data['tableRows']), ('mobile table density or readability',data['tableRows'])
         assert all(c['height'] >= 44 and c['width'] >= 44 for c in data['controls']), ('small touch target', data['controls'])
@@ -236,16 +240,65 @@ PHYSICAL_GRID = r'''e => {
 }'''
 
 
+def color_contrast(foreground, background):
+    def luminance(color):
+        match=re.fullmatch(r'rgb\((\d+), (\d+), (\d+)\)',color)
+        assert match, ('Expected opaque computed color',color)
+        channels=[int(value)/255 for value in match.groups()]
+        linear=[value/12.92 if value<=0.04045 else ((value+0.055)/1.055)**2.4 for value in channels]
+        return sum(value*weight for value,weight in zip(linear,[0.2126,0.7152,0.0722]))
+    lo,hi=sorted([luminance(foreground),luminance(background)])
+    return (hi+0.05)/(lo+0.05)
+
+
+def check_ember_status(page):
+    page.wait_for_function("document.querySelector('#rl-availability').hidden")
+    status=page.locator('#rl-availability')
+    assert status.get_attribute('role')=='status' and status.inner_text()==''
+    assert status.evaluate('e=>e.getBoundingClientRect().height')==0
+    appearance=page.evaluate("""() => {
+      const style=s=>getComputedStyle(document.querySelector(s)),root=style('#rackline-root'),card=style('.rl-pulse article'),core=style('.rl-core'),fill=style('.rl-core i'),text=style('.rl-core b'),input=style('#rl-drive-search');
+      return {background:root.backgroundColor,panel:card.backgroundColor,cardOpacity:card.opacity,core:core.backgroundColor,fill:fill.backgroundColor,fillOpacity:fill.opacity,text:text.color,input:input.backgroundColor,border:input.borderTopColor};
+    }""")
+    assert appearance['background']=='rgb(12, 16, 20)' and appearance['panel']=='rgb(21, 27, 33)'
+    assert appearance['fill']=='rgb(122, 73, 45)' and appearance['text']=='rgb(234, 240, 246)'
+    assert appearance['cardOpacity']=='1' and appearance['fillOpacity']=='1'
+    assert color_contrast(appearance['text'],appearance['fill'])>=4.5
+    assert color_contrast(appearance['text'],appearance['core'])>=4.5
+    assert color_contrast(appearance['border'],appearance['input'])>=3
+    cycles=[]
+    for _ in range(3):
+        page.evaluate("document.querySelector('#qa-outage').click();document.dispatchEvent(new Event('visibilitychange'))")
+        page.wait_for_function("!document.querySelector('#rl-availability').hidden && document.querySelector('#rl-availability').textContent.includes('unavailable')",timeout=10000)
+        assert status.is_visible() and status.get_attribute('role')=='status'
+        assert page.locator('.rl-pulse article').first.evaluate('e=>getComputedStyle(e).opacity')=='1'
+        page.evaluate("document.querySelector('#qa-outage').click();document.dispatchEvent(new Event('visibilitychange'))")
+        page.wait_for_function("document.querySelector('#rl-availability').hidden",timeout=10000)
+        assert status.inner_text()=='' and status.evaluate('e=>e.getBoundingClientRect().height')==0
+        cycles.append('outage and recovery')
+    target=page.locator('#rl-tab-drives');target.focus()
+    # Keyboard navigation establishes focus-visible independently of pointer history.
+    page.keyboard.press('ArrowRight');target=page.locator('#rl-tab-docker')
+    focus=verify_focus_visible(page,target)
+    assert target.evaluate('e=>getComputedStyle(e).outlineColor')=='rgb(108, 185, 255)'
+    assert target.evaluate('e=>getComputedStyle(e).outlineWidth')=='3px'
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+    return {'appearance':appearance,'cycles':cycles,'focus':focus}
+
+
 def check_physical_locations(page):
+    php=os.environ.get('RACKLINE_PHP_BIN') or shutil.which('php')
+    assert php, 'PHP is required for actual defaults-derived browser fixtures'
+    native=json.loads(subprocess.run([php,str(HERE / 'native-defaults-browser-fixture.php')],check=True,capture_output=True,text=True).stdout)
     details=[]
     for columns,rows,width,height,start,orientation,align in [(4,2,120,48,20,'h','center'),(3,2,48,140,101,'v','right'),(65,1,44,60,700,'h','left')]:
-        page.evaluate("""([columns,rows,width,height,start,orientation,align])=>{
+        page.evaluate("""([columns,rows,width,height,start,orientation,align,nativeDisplay])=>{
           const cells=Array.from({length:columns*rows},(_,i)=>({sourceTray:i+1,tray:start+i,hidden:i===0&&rows>1,present:false,display:{source:'disklocation',identityVerified:false,color:'#303030'},disk:null}));
-          cells[1]={...cells[1],present:true,display:{source:'disklocation',identityVerified:true,name:'fixture-boot-alias',device:'sdb',type:'Boot',color:'#35609b',model:'Synthetic model',comment:'Synthetic alias'},disk:{name:'synthetic-long-drive-label',device:'sdb',selectionToken:'a'.repeat(64),poolName:'actual-fixture-pool'}};
+          cells[1]={...cells[1],present:true,display:nativeDisplay,disk:{name:'synthetic-long-drive-label',device:'sdb',selectionToken:'a'.repeat(64),poolName:'actual-fixture-pool'}};
           cells[2]={...cells[2],present:true,display:{source:'disklocation',identityVerified:false,color:'#ffff00',model:'Unverified cached fixture'}};
           window.RacklineFixture.locationGroups=[{id:'dynamic-fixture',name:'Dynamic enclosure '+start,columns,rows,trayWidth:width,trayHeight:height,trayDirection:orientation,trayAlign:align,nameAlign:align,position:'none',cells}];
           document.dispatchEvent(new Event('visibilitychange'));
-        }""",[columns,rows,width,height,start,orientation,align])
+        }""",[columns,rows,width,height,start,orientation,align,native['display']])
         page.wait_for_function("name=>document.querySelector('#rl-bays h4')?.textContent===name",arg='Dynamic enclosure '+str(start))
         grid=page.locator('#rl-bays .rl-bay-grid');bays=grid.locator('button')
         geometry=grid.evaluate(PHYSICAL_GRID)
@@ -262,7 +315,9 @@ def check_physical_locations(page):
         assert bays.nth(1).get_attribute('data-drive')=='sdb'
         assert bays.nth(2).get_attribute('data-drive') is None and bays.nth(2).is_disabled()
         assert 'identity unverified' in bays.nth(2).inner_text()
-        assert geometry['children'][1]['bg']=='rgb(53, 96, 155)'
+        assert geometry['children'][1]['bg']==native['expectedBackground'], ('defaults-derived computed bay background',geometry)
+        assert geometry['children'][1]['color']==native['expectedForeground'], ('defaults-derived computed bay foreground',geometry)
+        assert color_contrast(geometry['children'][1]['color'],geometry['children'][1]['bg'])>=4.5
         assert geometry['children'][2]['color']=='rgb(0, 0, 0)'
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
         bays.nth(1).click()
@@ -445,6 +500,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 context.close()
         extra_cases=[('filters-'+str(w),w,'filters') for w in [390,1024,1440]]
         extra_cases += [('cooling-'+mode+'-'+str(w),w,mode) for w in [390,1024] for mode in ['absent','unknown','outage']]
+        extra_cases += [('ember-status-'+str(w),w,'ember') for w in [390,1024,1440]]
         extra_cases += [('physical-'+str(w),w,'physical') for w in [390,1024,1440]]
         extra_cases += [('smart-'+mode+'-'+str(w),w,'smart:'+mode) for w in [390,1024] for mode in ['normal','cancel','failure','unsupported','old','warnings','prepareHold','captureHold']]
         for name,width,mode in extra_cases:
@@ -455,7 +511,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
             try:
                 page.set_content(document(fixture_dir,16,fan=False if mode=='absent' else None if mode=='unknown' else True,filter_stress=mode=='filters',smart_test=mode.startswith('smart:')))
                 page.wait_for_function("document.querySelector('#rl-cpu').textContent !== '—'",timeout=5000)
-                details=check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
+                details=check_ember_status(page) if mode=='ember' else check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
                 assert not errors,errors
                 capture_overview(page,args.output / f'rackline-synthetic-{name}.png')
                 results.append({'case':name,'width':width,'details':details,'passed':True});print('PASS',name)

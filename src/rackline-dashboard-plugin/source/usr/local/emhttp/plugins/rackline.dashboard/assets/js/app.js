@@ -32,8 +32,11 @@ function refreshAge(){
  var stale=s&&(Date.now()-s.received>limit||Date.now()-(s.advancedAt||s.received)>limit||s.sample&&Date.now()-(s.clockOffset||0)-s.sample>limit),problem=!!(s&&(s.error||stale));feedProblem=feedProblem||problem;el.hidden=!problem;el.classList.toggle('rl-stale',problem);var message=problem?label+': '+(s.error?'unavailable':'stale'):'';if(el.textContent!==message)el.textContent=message;
  });
  var feedStatus=$('rl-feed-status');if(feedStatus)feedStatus.hidden=!feedProblem;
- var disconnected=Object.entries(status).some(function(pair){if(pair[0]==='batch'&&state.tab!=='docker')return false;var s=pair[1];return s.error||Date.now()-s.received>16000||Date.now()-(s.advancedAt||s.received)>16000;});text('rl-availability',disconnected?'Some telemetry is unavailable. Cached readings may remain visible; native pages are still available.':'Local telemetry · Native controls unchanged.');
- $('rl-availability').classList.toggle('rl-stale',disconnected);
+ var disconnected=Object.entries(status).some(function(pair){if(pair[0]==='batch'&&state.tab!=='docker')return false;var s=pair[1];return s.error||Date.now()-s.received>16000||Date.now()-(s.advancedAt||s.received)>16000;});
+ var connecting=['system','storage','docker','io'].some(function(key){return !status[key];}),availability=$('rl-availability');
+ availability.hidden=!disconnected&&!connecting;
+ text('rl-availability',disconnected?'Some telemetry is unavailable. Cached readings may remain visible; native pages are still available.':connecting?'Connecting to this server…':'');
+ availability.classList.toggle('rl-stale',disconnected);
  // Old values are visibly stale, not a convincing live zero.
  var systemStatus=status.system;
  if(systemStatus&&(systemStatus.error||Date.now()-systemStatus.received>7000||Date.now()-(systemStatus.advancedAt||systemStatus.received)>7000||Date.now()-(systemStatus.clockOffset||0)-systemStatus.sample>7000))root.classList.add('rl-system-stale');else root.classList.remove('rl-system-stale');
