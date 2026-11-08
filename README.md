@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> Standalone Unraid workspace: [Rackline operating state, running batch and recovery boundaries](docs/RACKLINE.md). Its own plugin and collectors power the host-local `/Rackline` page independently of WAZ. One owner-operated pilot is reported installed; PR 41 remains draft/unmerged and the next running code batch is unpublished. This is not a generic Linux or cross-host dashboard. WAZ release/history below remain separate.
+> [Rackline operating guide, pinned install/update checklist and acceptance limits](docs/RACKLINE.md): the standalone host-local Unraid pilot is now 0.2.2 / 2026.11.08.04, with passive acceptance and bounded collector checks. Authenticated SMART/native controls and live rendered acceptance remain unrun. Ember/default-color refinements remain local-only. Rackline distribution is pinned repository content; PR #41 remains draft/unmerged, with no main merge or Release/tag implied. WAZ release/history below remain separate.
 
 <!-- historian-overview:start -->
 ## Project overview
