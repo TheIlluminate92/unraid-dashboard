@@ -249,3 +249,9 @@ Native default colors remain unknown when optional tokenizer support or the supp
 ### Browser QA follow-up — 2026-11-08
 
 Exact source commit `3a914477` passed the first 28 synthetic browser scenarios, including the original focused-control occlusion, mobile/text scaling, SMT/short-viewport, filter and Cooling cases. The first dynamic physical-layout scenario stopped at a test assertion that used rendered `innerText` for a deliberately hidden slot. The follow-up snapshots stored labels and geometry atomically, still compares every tray label and hidden position, and separately checks rendered labels on visible cells. Failure artifacts now also include full-page workspace pixels and geometry. This test-only correction does not alter runtime layout; the physical/SMART scenarios and complete candidate CI still require a passing rerun. The failure viewport image alone did not show the below-fold physical layout and is not evidence of a runtime placement defect.
+
+
+The diagnostic CI rerun identified the passive HTTP failure as PHP's startup warning that JIT is incompatible with a third-party execution hook, before any endpoint code. The Rackline CI job does not collect coverage or benchmark JIT, so its PHP setup disables unused coverage hooks and JIT. The endpoint warning/fatal assertion stays strict, and runtime/package bytes remain unchanged. The next exact-head run must still pass; a configuration diagnosis is not a completed CI result.
+
+
+All 47 synthetic real-browser scenarios passed on `313c35f`, including physical layouts and all SMART mock flows ([head-commit run](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454272793)). The PHP jobs in that run remained blocked by the startup JIT warning. Runtime and package bytes are unchanged by these test/CI corrections; the final head must pass its full pipeline before deployment.

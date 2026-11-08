@@ -18,6 +18,8 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: curl, ctype, dom, simplexml, xml, tokenizer
+          coverage: none
+          ini-values: opcache.jit=disable
       - name: Check source and contracts
         run: |
           node --check src/rackline-dashboard-plugin/source/usr/local/emhttp/plugins/rackline.dashboard/assets/js/app.js
