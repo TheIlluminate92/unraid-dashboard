@@ -2,9 +2,9 @@
 /* Rackline bounded, GET-only Docker accounting. No host mutations or cache writes. */
 declare(strict_types=1);
 const RACKLINE_CONTAINER_SOCKET = '/var/run/docker.sock';
-const RACKLINE_CONTAINER_GPU = '/var/run/waz.dashboard/gpu.json';
 const RACKLINE_CONTAINER_LIMIT = 12;
 const RACKLINE_CONTAINER_BYTES = 1048576;
+const RACKLINE_CONTAINER_MAX_AGE = 20;
 function rackline_container_number($value): ?float {
     return (is_int($value) || is_float($value)) && is_finite((float)$value) && $value >= 0 ? (float)$value : null;
 }
@@ -15,15 +15,39 @@ function rackline_container_ids(string $input): array {
     foreach ($ids as $id) if (!preg_match('/^(?:[a-f0-9]{12}|[a-f0-9]{64})$/D', $id)) throw new InvalidArgumentException('Invalid container ID');
     return array_values(array_unique($ids));
 }
+/** One validator for inventory and telemetry: never resolve a corrupt/ambiguous list. */
+function rackline_container_inventory(array $raw): array {
+    if (!array_is_list($raw)) throw new RuntimeException('Docker inventory unavailable');
+    $ids=[]; $names=[];
+    foreach ($raw as $item) {
+        if (!is_array($item) || !is_string($item['Id'] ?? null) || !preg_match('/^[a-f0-9]{64}$/D', $item['Id'])
+            || !is_array($item['Names'] ?? null) || !is_string($item['Names'][0] ?? null)) throw new RuntimeException('Invalid Docker identity');
+        if (!in_array($item['State'] ?? null, ['created', 'running', 'paused', 'restarting', 'removing', 'exited', 'dead'], true)) throw new RuntimeException('Invalid Docker state');
+        $name=ltrim($item['Names'][0], '/');
+        if ($name==='' || strlen($name)>255 || !preg_match('/^[a-zA-Z0-9_.-]+$/D', $name)
+            || isset($ids[$item['Id']]) || isset($names[$name])) throw new RuntimeException('Ambiguous Docker identity');
+        $ids[$item['Id']]=true; $names[$name]=true;
+    }
+    return $raw;
+}
+/** Strict RFC3339 timestamp, including Docker's nanosecond precision. */
+function rackline_container_timestamp($value): ?float {
+    if (!is_string($value) || !preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,9}))?(Z|[+-][0-9]{2}:[0-9]{2})$/D', $value, $parts)) return null;
+    if (!checkdate((int)$parts[2], (int)$parts[3], (int)$parts[1]) || (int)$parts[4]>23 || (int)$parts[5]>59 || (int)$parts[6]>59) return null;
+    $zone=$parts[8];
+    if ($zone!=='Z' && ((int)substr($zone,1,2)>23 || (int)substr($zone,4,2)>59)) return null;
+    $seconds=strtotime(substr($value,0,19).$zone);
+    return $seconds!==false && $seconds>0 ? $seconds+(float)('0.'.($parts[7]??'0')) : null;
+}
 function rackline_container_stats(array $raw, float $now, float $mono): array {
-    $out = ['available'=>false,'sampledAtMs'=>$now,'monotonicSeconds'=>$mono,'cpuCounters'=>null,'memoryBytes'=>null,'memoryMode'=>'usage','networkRxBytes'=>null,'networkTxBytes'=>null,'networkIdentity'=>null,'blockReadBytes'=>null,'blockWriteBytes'=>null,'blockIdentity'=>null];
+    $out = ['available'=>false,'sampledAtMs'=>$now,'monotonicSeconds'=>$mono,'timestampSource'=>'received','cpuCounters'=>null,'memoryBytes'=>null,'memoryMode'=>'usage','networkRxBytes'=>null,'networkTxBytes'=>null,'networkIdentity'=>null,'blockReadBytes'=>null,'blockWriteBytes'=>null,'blockIdentity'=>null];
     if (isset($raw['message']) || isset($raw['error'])) return $out;
     $cpu = is_array($raw['cpu_stats'] ?? null) ? $raw['cpu_stats'] : [];
     $usage = rackline_container_number($cpu['cpu_usage']['total_usage'] ?? null);
     $system = rackline_container_number($cpu['system_cpu_usage'] ?? null);
     $online = rackline_container_number($cpu['online_cpus'] ?? null);
     if ($online === null && is_array($cpu['cpu_usage']['percpu_usage'] ?? null)) $online = (float)count($cpu['cpu_usage']['percpu_usage']);
-    if ($usage !== null && $system !== null && $system > 0 && $online !== null && $online > 0) $out['cpuCounters'] = ['usage'=>$usage,'system'=>$system,'online'=>$online];
+    if ($usage !== null && $system !== null && $system > 0 && $online !== null && $online > 0 && floor($online) === $online) $out['cpuCounters'] = ['usage'=>$usage,'system'=>$system,'online'=>$online];
     $memory = is_array($raw['memory_stats'] ?? null) ? $raw['memory_stats'] : [];
     $out['memoryBytes'] = rackline_container_number($memory['usage'] ?? null);
     $cache = rackline_container_number($memory['stats']['total_inactive_file'] ?? $memory['stats']['inactive_file'] ?? null);
@@ -94,9 +118,12 @@ function rackline_container_transport(array $paths, float $deadline): array {
     return $result;
 }
 function rackline_container_batch(array $ids, callable $transport): array {
+    foreach ($ids as $id) if (!is_string($id)) throw new InvalidArgumentException('Invalid container ID');
+    $ids=rackline_container_ids(implode(',', $ids));
     $deadline=hrtime(true)/1e9+3.5;
     $inventory=$transport(['inventory'=>'/containers/json?all=true'],$deadline)['inventory'] ?? [];
     if(($inventory['status'] ?? '')!=='ok' || !is_array($inventory['data'] ?? null) || isset($inventory['data']['message']) || isset($inventory['data']['error'])) throw new RuntimeException('Docker inventory unavailable');
+    $inventory['data']=rackline_container_inventory($inventory['data']);
     $rows=[]; $paths=[]; $hostNetwork=[]; $inspects=[];
     foreach($ids as $requested) {
         $matches=[];
@@ -121,11 +148,11 @@ function rackline_container_batch(array $ids, callable $transport): array {
         $details=$inspection['data']??null;
         $name=is_array($details)&&is_string($details['Name']??null)?ltrim($details['Name'],'/'):null;
         $state=is_array($details)&&is_array($details['State']??null)?$details['State']:[];
-        if(!is_array($details)||($details['Id']??null)!==$rows[$key]['id']||$name!==$rows[$key]['name']||!is_bool($state['Running']??null)||!is_bool($state['Paused']??null)||!is_bool($state['Restarting']??null)) { $rows[$key]['status']='unavailable';continue; }
+        if(!is_array($details)||isset($details['message'])||isset($details['error'])||($details['Id']??null)!==$rows[$key]['id']||$name!==$rows[$key]['name']||!is_bool($state['Running']??null)||!is_bool($state['Paused']??null)||!is_bool($state['Restarting']??null)) { $rows[$key]['status']='unavailable';continue; }
         $rows[$key]['state']=$state['Paused']?'paused':($state['Restarting']?'restarting':($state['Running']?'running':'stopped'));
         if($rows[$key]['state']!=='running') { $rows[$key]['status']='not_running';continue; }
         $generation=$state['StartedAt']??null;
-        if(!is_string($generation)||!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})$/D',$generation)||str_starts_with($generation,'0001-')||strtotime(preg_replace('/\.[0-9]+(?=Z|[+-])/','',$generation))===false) { $rows[$key]['status']='unavailable';continue; }
+        if(($started=rackline_container_timestamp($generation))===null || $started>microtime(true)+1) { $rows[$key]['status']='unavailable';continue; }
         $rows[$key]['generation']=$generation;
         $hostNetwork[$key]=($details['HostConfig']['NetworkMode']??null)==='host'||($hostNetwork[$key]??false);
         $paths[$key]='/containers/'.$rows[$key]['id'].'/stats?stream=false&one-shot=true';
@@ -135,10 +162,29 @@ function rackline_container_batch(array $ids, callable $transport): array {
     foreach($samples as $key=>$sample) {
         if(!isset($rows[$key])) continue;
         $rows[$key]['status']=$sample['status'] ?? 'unavailable';
+        if($rows[$key]['status']==='ok' && !is_array($sample['data'] ?? null)) $rows[$key]['status']='unavailable';
         if($rows[$key]['status']==='ok' && is_array($sample['data'] ?? null)) {
             $raw=$sample['data'];
-            if(isset($raw['id']) && $raw['id']!==$rows[$key]['id']) { $rows[$key]['status']='unavailable'; continue; }
-            $stats=rackline_container_stats($raw,(float)($sample['sampledAtMs']??round(microtime(true)*1000)),(float)($sample['monotonicSeconds']??hrtime(true)/1e9));
+            if((isset($raw['id']) && $raw['id']!==$rows[$key]['id']) || (isset($raw['name']) && (!is_string($raw['name']) || ltrim($raw['name'],'/')!==$rows[$key]['name']))) { $rows[$key]['status']='unavailable'; continue; }
+            $sampleTime=rackline_container_number($sample['sampledAtMs']??round(microtime(true)*1000));
+            $sampleMono=rackline_container_number($sample['monotonicSeconds']??hrtime(true)/1e9);
+            if($sampleTime===null || $sampleMono===null) { $rows[$key]['status']='unavailable';continue; }
+            $timestampSource='received';
+            // A stale daemon snapshot must not become fresh merely by being received
+            // now. Preserve daemon sample age when available; older API responses
+            // without read retain explicitly labeled transport-receipt timing.
+            if (array_key_exists('read', $raw)) {
+                $read=rackline_container_timestamp($raw['read']);
+                $started=rackline_container_timestamp($rows[$key]['generation']);
+                $age=microtime(true)-($read??0);
+                if ($read===null || $read<$started || $age < -1 || $age>RACKLINE_CONTAINER_MAX_AGE) { $rows[$key]['status']='unavailable';continue; }
+                $sampleMono-=max(0, $sampleTime/1000-$read);
+                $sampleTime=$read*1000;
+                $timestampSource='daemon';
+            }
+            if ($sampleMono<0) { $rows[$key]['status']='unavailable';continue; }
+            $stats=rackline_container_stats($raw,$sampleTime,$sampleMono);
+            $stats['timestampSource']=$timestampSource;
             if($hostNetwork[$key]??false) { $stats['networkRxBytes']=null;$stats['networkTxBytes']=null;$stats['networkIdentity']=null;$stats['available']=$stats['cpuCounters']!==null||$stats['memoryBytes']!==null||$stats['blockReadBytes']!==null; }
             $rows[$key]['stats']=$stats; $rows[$key]['status']=$stats['available']?'ok':'unavailable';
             if($stats['available']) $sampled++;
@@ -161,6 +207,11 @@ function rackline_container_gpu(array $raw,float $now): array {
     }
     return $out;
 }
+/* No verified passive native GPU source is available. Never launch a worker/probe in an HTTP request. */
+function rackline_container_gpu_unavailable(): array {
+    return ['available'=>false,'status'=>'unsupported','reason'=>'No independent GPU accounting source configured',
+        'sampledAtMs'=>null,'loadPercent'=>null,'videoLoadPercent'=>null,'attributedNames'=>[],'videoAttributedNames'=>[]];
+}
 if(!defined('RACKLINE_CONTAINERS_NO_MAIN')) {
     header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
     try {
@@ -169,9 +220,7 @@ if(!defined('RACKLINE_CONTAINERS_NO_MAIN')) {
         $ids=rackline_container_ids($_GET['ids']??'');
         if(!function_exists('curl_multi_init')||!defined('CURLOPT_UNIX_SOCKET_PATH')||!is_readable(RACKLINE_CONTAINER_SOCKET)) throw new RuntimeException('Bounded Docker collector unavailable');
         $response=rackline_container_batch($ids,'rackline_container_transport');
-        $handle=@fopen(RACKLINE_CONTAINER_GPU,'rb');$gpu=[];
-        if($handle!==false) { $bytes=stream_get_contents($handle,RACKLINE_CONTAINER_BYTES+1);fclose($handle);if(is_string($bytes)&&strlen($bytes)<=RACKLINE_CONTAINER_BYTES){$decoded=json_decode($bytes,true);if(is_array($decoded))$gpu=$decoded;} }
-        $response['gpu']=rackline_container_gpu($gpu,round(microtime(true)*1000));
+        $response['gpu']=rackline_container_gpu_unavailable();
         echo json_encode($response,JSON_INVALID_UTF8_SUBSTITUTE|JSON_PARTIAL_OUTPUT_ON_ERROR);
     } catch(InvalidArgumentException $e) { if(http_response_code()!==405)http_response_code(400);echo json_encode(['schemaVersion'=>1,'status'=>'invalid_request','message'=>$e->getMessage()]);
     } catch(Throwable $e) { http_response_code(503);echo json_encode(['schemaVersion'=>1,'status'=>'unavailable','message'=>'Docker telemetry unavailable']); }

@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> Separate experimental workspace: [Rackline implementation and review/pilot plan](docs/RACKLINE.md). Its own plugin identity and `/Rackline` page leave the existing WAZ dashboard and release unchanged. Not yet an installed-host release.
+> Separate experimental workspace: [Rackline implementation and review/pilot plan](docs/RACKLINE.md). Its own plugin identity, bundled collectors and `/Rackline` page run independently of WAZ and leave its existing release unchanged. Not yet an installed-host release.
 
 <!-- historian-overview:start -->
 ## Project overview

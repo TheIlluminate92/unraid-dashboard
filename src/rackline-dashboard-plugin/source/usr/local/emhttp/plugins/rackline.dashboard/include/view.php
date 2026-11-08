@@ -1,7 +1,7 @@
 <?php
 $racklineWeb = '/plugins/rackline.dashboard';
-$racklineWaz = '/usr/local/emhttp/plugins/waz.dashboard/include/';
-$racklineReady = is_file($racklineWaz . 'metrics.php') && is_file($racklineWaz . 'storage.php') && is_file($racklineWaz . 'workloads.php');
+$racklineCollectors = __DIR__ . '/';
+$racklineReady = is_file($racklineCollectors . 'metrics.php') && is_file($racklineCollectors . 'storage.php') && is_file($racklineCollectors . 'workloads.php');
 $racklineVar = @parse_ini_file('/var/local/emhttp/var.ini', false, INI_SCANNER_RAW) ?: [];
 $racklineBoot = [
     'hostName' => (string) ($racklineVar['NAME'] ?? 'This server'),
@@ -12,7 +12,7 @@ $racklineBoot = [
 ?>
 <link rel="stylesheet" href="<?=$racklineWeb?>/assets/css/rackline.css?v=@@RELEASE_VERSION@@">
 <section id="rackline-root" aria-label="Rackline server workspace">
-  <header class="rl-heading"><div><span class="rl-eyebrow">HOST-LOCAL UNRAID WORKSPACE</span><h1>Rackline <small id="rl-host"></small></h1></div><nav aria-label="Native server pages"><a href="/Dashboard">Original dashboard</a><a href="/Main">Main</a><a href="/Docker">Docker</a><a id="rl-fan-link" href="/MD12xxFanControl" hidden>Fan control</a></nav></header>
+  <header class="rl-heading"><div><span class="rl-eyebrow">HOST-LOCAL UNRAID WORKSPACE</span><h1>Rackline <small id="rl-host"></small></h1></div><nav aria-label="Native server pages"><a href="/Dashboard">Native dashboard</a><a href="/Main">Main</a><a href="/Docker">Docker</a><a id="rl-fan-link" href="/MD12xxFanControl" hidden>Fan control</a></nav></header>
   <div id="rl-availability" class="rl-notice" role="status">Connecting to this server…</div>
   <section class="rl-pulse" aria-label="Live performance strip">
     <article><div class="rl-label">CPU <span id="rl-topology">Topology pending</span></div><div class="rl-reading"><b id="rl-cpu">—</b><span id="rl-temperature">—</span><small id="rl-model"></small></div><div id="rl-cores" class="rl-cores"></div><small class="rl-foot">Logical CPU IDs · all threads visible</small></article>
@@ -29,10 +29,10 @@ $racklineBoot = [
   </section>
   <section id="rl-docker" role="tabpanel" aria-labelledby="rl-tab-docker" hidden>
     <div class="rl-workspace-head"><div><h2>Docker workspace</h2><small id="rl-folder-source">Reading configured folders…</small></div><label>Search <input id="rl-container-search" type="search" placeholder="Container or state…"></label></div>
-    <div class="rl-layout"><aside><div id="rl-folders" class="rl-filters"></div><div id="rl-docker-summary" class="rl-note"></div></aside><div class="rl-main"><div class="rl-scroll"><table><caption class="rl-sr">Docker inventory and rotating container telemetry</caption><thead><tr><th>Container</th><th>State / health</th><th>CPU</th><th>RAM</th><th>RX / TX</th><th>Block R / W</th><th>GPU activity</th><th>Sample age</th><th>Controls</th></tr></thead><tbody id="rl-container-rows"></tbody></table></div><p id="rl-batch-status" class="rl-note" role="status">Waiting for running-container samples…</p><p class="rl-note">All running containers rotate through bounded batches while this tab is visible. Selected container takes priority. CPU is % of one logical CPU and can exceed 100%. Missing metrics stay unknown; samples older than 20 seconds are stale.</p><p id="rl-gpu-summary" class="rl-note"></p><p class="rl-note">* GPU activity is recent name-based process attribution from the existing cache. It is not per-container utilization, and absence of a match does not prove idle. No new GPU polling is started.</p><section class="rl-box"><h3>Top host / Docker processes</h3><div id="rl-processes"></div></section></div><aside id="rl-container-inspector" class="rl-inspector"><h3>Select a container</h3><p>Selection shows details. Native controls remain separate.</p></aside></div>
+    <div class="rl-layout"><aside><div id="rl-folders" class="rl-filters"></div><div id="rl-docker-summary" class="rl-note"></div></aside><div class="rl-main"><div class="rl-scroll"><table><caption class="rl-sr">Docker inventory and rotating container telemetry</caption><thead><tr><th>Container</th><th>State / health</th><th>CPU</th><th>RAM</th><th>RX / TX</th><th>Block R / W</th><th>GPU activity</th><th>Sample age</th><th>Controls</th></tr></thead><tbody id="rl-container-rows"></tbody></table></div><p id="rl-batch-status" class="rl-note" role="status">Waiting for running-container samples…</p><p class="rl-note">All running containers rotate through bounded batches while this tab is visible. Selected container takes priority. CPU is % of one logical CPU and can exceed 100%. Missing metrics stay unknown; samples older than 20 seconds are stale.</p><p id="rl-native-metadata" class="rl-note"></p><p id="rl-gpu-summary" class="rl-note"></p><p class="rl-note">GPU collection is not enabled in this standalone build. Unsupported GPU fields stay unknown; no hardware sampler is started.</p><section class="rl-box"><h3>Host / Docker process sampling</h3><div id="rl-processes"></div></section></div><aside id="rl-container-inspector" class="rl-inspector"><h3>Select a container</h3><p>Selection shows details. Native controls remain separate.</p></aside></div>
   </section>
   <section id="rl-cooling" role="tabpanel" aria-labelledby="rl-tab-cooling" hidden><div class="rl-workspace-head"><h2>Cooling &amp; fans</h2><a id="rl-fan-manage" class="rl-button" href="/MD12xxFanControl" hidden>Open native fan control ↗</a></div><p class="rl-note">The existing cooling controller owns temperatures, curves, fan speeds, watchdogs and hardware access. Rackline reads status and opens its native control page.</p><div id="rl-cooling-status" class="rl-cooling-grid"></div><p id="rl-fan-age" class="rl-note"></p></section>
-  <footer class="rl-footer"><span>Rackline v@@APP_VERSION@@ · one instance per server</span><a href="/Dashboard">Return to unchanged WAZ / native dashboard</a></footer>
+  <footer class="rl-footer"><span>Rackline v@@APP_VERSION@@ · one instance per server</span><a href="/Dashboard">Return to native Unraid dashboard</a></footer>
 </section>
 <?php if (!isset($racklineNoBootstrap)): ?>
 <script id="rackline-bootstrap" type="application/json"><?=json_encode($racklineBoot, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE)?></script>

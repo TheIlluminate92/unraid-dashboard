@@ -34,7 +34,7 @@ test('adversarial: native menu is released when template disappears without ID c
  const jq=()=>({off(){return this;}});
  const window={jQuery:jq,addDockerContainerContext(){const menu={querySelectorAll:()=>[],parentNode:{removeChild(){nodes.delete('dropdown-'+id);}}};nodes.set('dropdown-'+id,menu);}};
  const context={window,document:{},$:key=>nodes.get(key),M,nativeMenus:menus};vm.createContext(context);vm.runInContext(fn('removeNativeMenu','updateRowMetrics'),context);
- const c={id,name:'demo',state:'running',menu:{template:'example.xml'}};
+ const c={id,name:'demo',state:'running',autostart:false,menu:{template:'example.xml'}};
  context.syncNativeMenus([c]);assert.equal(menus.size,1);
  nodes.delete(id);context.syncNativeMenus([{...c,menu:{}}]);
  assert.equal(menus.size,0,'Unavailable native controls must not leave old native menu/action delegates owned');

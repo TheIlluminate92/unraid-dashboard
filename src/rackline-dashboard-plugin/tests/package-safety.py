@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Offline package checks; does not execute the installer or touch an Unraid host."""
+"""Offline package checks; installer runs only in redirected temporary fixtures."""
 import base64
 import hashlib
 import importlib.util
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -36,7 +37,7 @@ class PackageSafety(unittest.TestCase):
                 self.assertNotRegex(script, r'\brm\b|\breboot\b|\bsystemctl\b|/etc/rc\.')
                 self.assertNotIn('/boot/config', script)
             installer = scripts[0]
-            self.assertLess(installer.index('for endpoint'), installer.index('mv -- "$runtime"'))
+            self.assertLess(installer.index('command -v php'), installer.index('mv -- "$runtime"'))
             self.assertLess(installer.index('php -l'), installer.index('mv -- "$runtime"'))
             self.assertIn('previous-runtime', installer)
             self.assertIn('sha256sum -c', installer)
@@ -55,6 +56,7 @@ class PackageSafety(unittest.TestCase):
                     data = archive.extractfile(member).read()
                     self.assertNotIn(b'@@APP_VERSION@@', data)
                     self.assertNotIn(b'@@RELEASE_VERSION@@', data)
+                    self.assertNotRegex(data, rb'@@[A-Z_]+@@')
                 view = archive.extractfile('rackline.dashboard/include/view.php').read()
                 self.assertIn((ROOT / 'VERSION').read_text().strip().encode(), view)
                 self.assertIn((ROOT / 'RELEASE').read_text().strip().encode(), view)
@@ -80,7 +82,7 @@ class PackageSafety(unittest.TestCase):
             finally:
                 builder.RUNTIME = original
 
-    def test_isolated_install_dependency_failure_activation_and_retention(self):
+    def test_isolated_install_without_waz_activation_and_retention(self):
         # Rewrite both absolute host prefixes into a temporary fixture. Never run on /usr or /var.
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
@@ -98,15 +100,6 @@ class PackageSafety(unittest.TestCase):
             script = script.replace('/usr/local/emhttp/plugins', str(plugins)).replace('/var/lock', str(locks))
             target = base / 'inline1-rackline.dashboard.sh'
             target.write_text(script)
-            result = subprocess.run(['bash', str(target)], capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn('requires installed WAZ telemetry', result.stdout)
-            self.assertEqual((runtime / 'predecessor-marker').read_text(), 'retain me')
-            self.assertEqual(list(plugins.glob('.rackline.dashboard.stage.*')), [])
-            dependencies = plugins / 'waz.dashboard/include'
-            dependencies.mkdir(parents=True)
-            for endpoint in ('metrics', 'storage', 'workloads'):
-                (dependencies / (endpoint + '.php')).write_text('dependency fixture')
             binaries = base / 'bin'
             binaries.mkdir()
             php = binaries / 'php'
@@ -120,6 +113,12 @@ class PackageSafety(unittest.TestCase):
             self.assertEqual(len(retained), 1)
             self.assertEqual(retained[0].read_text(), 'retain me')
             self.assertTrue((runtime / 'Rackline.page').is_file())
+            self.assertFalse((plugins / 'waz.dashboard').exists())
+            # Other plugins are not dependencies and are never modified.
+            dependencies = plugins / 'waz.dashboard/include'
+            dependencies.mkdir(parents=True)
+            for endpoint in ('metrics', 'storage', 'workloads'):
+                (dependencies / (endpoint + '.php')).write_text('dependency fixture')
             for endpoint in dependencies.iterdir():
                 self.assertEqual(endpoint.read_text(), 'dependency fixture')
             # A failed PHP lint must leave the activated runtime intact.
@@ -139,7 +138,7 @@ class PackageSafety(unittest.TestCase):
             self.assertIn('activation failed', result.stdout)
             self.assertEqual((runtime / 'rollback-marker').read_text(), 'restore me')
             self.assertEqual((runtime / 'Rackline.page').read_bytes(), before)
-            # Removal retains Rackline itself and leaves all WAZ fixtures intact.
+            # Removal retains Rackline itself and leaves all other-plugin fixtures intact.
             removal = xml.findall('FILE')[1].find('INLINE').text
             removal = removal.replace('/usr/local/emhttp/plugins', str(plugins)).replace('/var/lock', str(locks))
             result = subprocess.run(['bash'], input=removal, capture_output=True, text=True, env=env)
@@ -151,13 +150,45 @@ class PackageSafety(unittest.TestCase):
             for endpoint in dependencies.iterdir():
                 self.assertEqual(endpoint.read_text(), 'dependency fixture')
 
+    @unittest.skipUnless(shutil.which('php'), 'PHP CLI required for real lint activation')
+    def test_no_waz_install_with_real_php_lint(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            output = base / 'out'
+            builder.build(output)
+            xml = ET.parse(output / 'rackline.dashboard.plg').getroot()
+            plugins, locks = base / 'plugins', base / 'locks'
+            plugins.mkdir()
+            locks.mkdir()
+            script = xml.find('FILE/INLINE').text.replace('/usr/local/emhttp/plugins', str(plugins)).replace('/var/lock', str(locks))
+            target = base / 'inline1-rackline.dashboard.sh'
+            target.write_text(script)
+            result = subprocess.run(['bash', str(target)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse((plugins / 'waz.dashboard').exists())
+            self.assertTrue((plugins / 'rackline.dashboard/include/metrics.php').is_file())
+            self.assertTrue((plugins / 'rackline.dashboard/include/storage.php').is_file())
+            self.assertTrue((plugins / 'rackline.dashboard/include/workloads.php').is_file())
+
+    def test_runtime_has_no_waz_dependency(self):
+        # WAZ's source remains in this repository, but is neither packaged nor read.
+        for path in builder.RUNTIME.rglob('*'):
+            if path.is_file():
+                self.assertNotRegex(path.read_text(), r'(?i)(?:/plugins/|/var/run/|/boot/config/plugins/)waz[./]')
+                self.assertNotIn('waz-health-banner', path.read_text())
+        for path in ('include/metrics.php', 'include/storage.php', 'include/workloads.php'):
+            self.assertIn(path, builder.REQUIRED)
+        installer = (ROOT / 'plugin/install.sh.in').read_text()
+        self.assertNotIn('/waz.dashboard/', installer)
+
     def test_collector_read_only(self):
         source = (builder.RUNTIME / 'include/io.php').read_text()
-        self.assertEqual(re.findall(r"file_get_contents\('([^']+)'\)", source),
+        self.assertEqual(re.findall(r"rackline_io_read\('([^']+)',", source),
                          ['/proc/diskstats', '/proc/uptime'])
         self.assertNotRegex(source, r'\$_(?:GET|POST|REQUEST)|shell_exec|\bexec\s*\(|\bsystem\s*\(|file_put_contents|fopen|popen')
         self.assertIn("!== 'GET'", source)
         self.assertIn('RACKLINE_IO_NO_MAIN', source)
+        self.assertIn('file_get_contents($path, false, null, 0, $limit + 1)', source)
 
 
 if __name__ == '__main__':

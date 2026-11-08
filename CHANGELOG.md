@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Rackline standalone rebuild (2026-11-08)
+
+- Bundle Rackline-owned system, cached-storage and Docker inventory collectors; remove all WAZ install/runtime/cache/banner dependencies.
+- Keep native Unraid Docker menus/editor, folders, cached bays/SMART, and optional fan-controller handoffs without adopting unmanaged containers or starting hardware samplers.
+- Correct guest CPU accounting, preserve unknown sensor/network data, and guard boot/interface identity boundaries.
+- GPU attribution and top-process sampling are explicitly unavailable pending an independent implementation; per-container CPU/RAM/network/block metrics remain.
+- Add a second adversarial pass for large/malformed metadata, folder traversal/regex bounds, daemon timestamp freshness, native-menu input safety and repeated frontend lifecycle handling.
+- Expand isolated package fault injection to cover locking, corrupt payload/manifest, unsafe runtime paths, interrupted activation and repeated predecessor retention.
+- Add no-WAZ package and collector fixtures. This is source work only, not deployment or a rolling release; see [current validation and gaps](docs/RACKLINE.md).
+
 ## Unreleased — Rackline source implementation (2026-11-07)
 
 - Add an independent `rackline.dashboard` host-local workspace and additive Dashboard launcher without replacing WAZ.
