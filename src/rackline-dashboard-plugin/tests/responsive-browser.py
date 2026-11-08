@@ -224,6 +224,18 @@ def check_cooling_visibility(page,mode):
     return {'mode':mode,'tab_visible':page.locator('#rl-tab-cooling').is_visible(),'fan_requests':page.evaluate('window.RacklineFixture.fanRequests||0')}
 
 
+# Read all labels from the DOM, including intentionally visibility:hidden slots.
+# innerText omits hidden text; it is only a meaningful assertion for visible bays.
+PHYSICAL_GRID = r'''e => {
+ const rect=e.getBoundingClientRect();
+ return {width:rect.width,height:rect.height,children:[...e.children].map(n=>{
+  const r=n.getBoundingClientRect(),style=getComputedStyle(n),label=n.querySelector('b');
+  return {label:label.textContent,renderedLabel:label.innerText,x:r.x,y:r.y,width:r.width,height:r.height,
+   hidden:style.visibility==='hidden',bg:style.backgroundColor,color:style.color};
+ })};
+}'''
+
+
 def check_physical_locations(page):
     details=[]
     for columns,rows,width,height,start,orientation,align in [(4,2,120,48,20,'h','center'),(3,2,48,140,101,'v','right'),(65,1,44,60,700,'h','left')]:
@@ -236,9 +248,12 @@ def check_physical_locations(page):
         }""",[columns,rows,width,height,start,orientation,align])
         page.wait_for_function("name=>document.querySelector('#rl-bays h4')?.textContent===name",arg='Dynamic enclosure '+str(start))
         grid=page.locator('#rl-bays .rl-bay-grid');bays=grid.locator('button')
-        assert bays.count()==columns*rows
-        assert [bays.nth(i).locator('b').inner_text() for i in range(bays.count())]==[str(start+i) for i in range(columns*rows)]
-        geometry=grid.evaluate("""e=>{const rect=e.getBoundingClientRect();return {width:rect.width,height:rect.height,children:[...e.children].map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,hidden:getComputedStyle(n).visibility==='hidden',bg:getComputedStyle(n).backgroundColor,color:getComputedStyle(n).color};})};}""")
+        geometry=grid.evaluate(PHYSICAL_GRID)
+        expected=[str(start+i) for i in range(columns*rows)]
+        assert len(geometry['children'])==columns*rows, ('bay count',geometry)
+        assert [b['label'] for b in geometry['children']]==expected, ('DOM tray labels',expected,geometry)
+        assert all(b['renderedLabel']==b['label'] for b in geometry['children'] if not b['hidden']), ('visible tray labels',geometry)
+        assert [i for i,b in enumerate(geometry['children']) if b['hidden']]==([0] if rows>1 else []), ('reserved hidden positions',geometry)
         assert all(abs(b['width']-width)<1 and abs(b['height']-height)<1 for b in geometry['children'])
         assert geometry['children'][0]['hidden']==(rows>1)
         assert geometry['children'][0]['y']==geometry['children'][columns-1]['y']
@@ -445,7 +460,11 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 capture_overview(page,args.output / f'rackline-synthetic-{name}.png')
                 results.append({'case':name,'width':width,'details':details,'passed':True});print('PASS',name)
             except Exception:
+                # Keep the failing viewport first, then include the below-fold
+                # workspace and an atomic geometry snapshot for diagnosis.
                 page.screenshot(path=str(args.output / f'FAILED-viewport-{name}.png'),full_page=False)
+                (args.output / f'FAILED-geometry-{name}.json').write_text(json.dumps(page.evaluate(GEOMETRY),indent=2))
+                page.screenshot(path=str(args.output / f'FAILED-synthetic-{name}.png'),full_page=True)
                 raise
             finally:
                 (args.output / 'geometry-results.json').write_text(json.dumps(results,indent=2));context.close()

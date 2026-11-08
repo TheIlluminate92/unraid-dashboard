@@ -264,7 +264,12 @@ def main():
                 log.flush()
                 log.seek(0)
                 logs = log.read()
-                require('PHP Warning' not in logs and 'PHP Fatal' not in logs, 'No PHP warnings or fatals')
+                # Keep the warning gate strict, but make CI-only configuration
+                # failures actionable. This log contains synthetic fixture data
+                # only; bound the excerpt and redact the temporary source root.
+                errors = [line.replace(str(root), '<fixture>')[:1000] for line in logs.splitlines()
+                          if 'PHP Warning' in line or 'PHP Fatal' in line]
+                require(not errors, 'No PHP warnings or fatals; fixture diagnostics:\n' + '\n'.join(errors[:12]))
                 print(f'Cached SMART report: {checks} HTTP cases plus metadata/identity checks passed; synthetic files only.')
             finally:
                 server.terminate()

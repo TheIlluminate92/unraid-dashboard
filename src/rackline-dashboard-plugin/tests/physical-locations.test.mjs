@@ -50,3 +50,14 @@ test('native colors keep readable foregrounds and cannot inject CSS',()=>{
  const g=group(1,1);g.cells[0].display={source:'disklocation',identityVerified:false,color:'red;position:fixed',name:'not trusted'};assert.doesNotMatch(render([g]).draw(),/rl-native-color|not trusted|position:fixed/);
  g.cells[0].disk={name:'assigned',device:'sdx',identityColor:'#ff0000'};g.cells[0].display={source:'disklocation',identityVerified:true,color:null,name:'native',type:'Cache'};const unknown=render([g]).draw();assert.doesNotMatch(unknown,/#ff0000|rl-native-color/);assert.match(unknown,/--rl-identity:#647d8e/,'Unknown native color mode must stay neutral, not fall back to a device override');
 });
+
+test('browser bay snapshot distinguishes reserved hidden DOM labels from visible text',()=>{
+ const browser=fs.readFileSync(new URL('./responsive-browser.py',import.meta.url),'utf8');
+ const source=browser.match(/PHYSICAL_GRID = r'''([\s\S]*?)'''/)[1];
+ const snapshot=vm.runInNewContext('('+source+')',{getComputedStyle:n=>n.style});
+ const children=[true,false].map((hidden,i)=>({style:{visibility:hidden?'hidden':'visible',backgroundColor:'rgb(48, 48, 48)',color:'rgb(255, 255, 255)'},querySelector:()=>({textContent:String(20+i),innerText:hidden?'':String(20+i)}),getBoundingClientRect:()=>({x:i*125,y:0,width:120,height:48})}));
+ const result=snapshot({children,getBoundingClientRect:()=>({width:245,height:48})});
+ assert.deepEqual(Array.from(result.children,b=>b.label),['20','21']);assert.deepEqual(Array.from(result.children,b=>b.renderedLabel),['','21']);assert.equal(result.children[0].hidden,true);assert.equal(result.children[0].width,120);assert.equal(result.children[0].height,48);
+ assert.match(browser,/all\(b\['renderedLabel'\]==b\['label'\].*if not b\['hidden'\]/);
+ assert.match(browser,/reserved hidden positions/);assert.match(browser,/FAILED-geometry-/);
+});
