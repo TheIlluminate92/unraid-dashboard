@@ -17,7 +17,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php }}
-          extensions: curl, ctype, dom, simplexml, xml
+          extensions: curl, ctype, dom, simplexml, xml, tokenizer
       - name: Check source and contracts
         run: |
           node --check src/rackline-dashboard-plugin/source/usr/local/emhttp/plugins/rackline.dashboard/assets/js/app.js
@@ -25,7 +25,12 @@ jobs:
           node --test src/waz-dashboard-plugin/tests/*.test.mjs
           find src/rackline-dashboard-plugin/source -type f \( -name '*.php' -o -name '*.page' \) -print0 | xargs -0 -n1 php -l
           php src/rackline-dashboard-plugin/tests/system-metrics.php
+          php src/rackline-dashboard-plugin/tests/fan-detection.php
           php src/rackline-dashboard-plugin/tests/storage-parser.php
+          php -n src/rackline-dashboard-plugin/tests/storage-parser.php
+          python3 src/rackline-dashboard-plugin/tests/smart-report-endpoint.py
+          php src/rackline-dashboard-plugin/tests/smart-capture.php
+          python3 src/rackline-dashboard-plugin/tests/smart-capture-stress.py
           php src/rackline-dashboard-plugin/tests/workloads-parser.php
           php src/rackline-dashboard-plugin/tests/workload-stress.php
           php src/rackline-dashboard-plugin/tests/host-stress.php
@@ -35,10 +40,20 @@ jobs:
           python3 src/rackline-dashboard-plugin/tests/workloads-endpoint.py
           python3 src/rackline-dashboard-plugin/tests/workloads-no-xml.py
           node src/rackline-dashboard-plugin/tests/edit-url-fixtures.cjs | php src/rackline-dashboard-plugin/tests/native-edit-url.php
+          python3 src/rackline-dashboard-plugin/tests/portability.py
           python3 src/rackline-dashboard-plugin/tests/package-safety.py
           python3 src/rackline-dashboard-plugin/tests/package-stress.py
           bash src/rackline-dashboard-plugin/scripts/build.sh
           cd src/rackline-dashboard-plugin/dist && sha256sum -c SHA256SUMS
+      - name: Preserve reviewed package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rackline-reviewed-package-${{ github.sha }}-php-${{ matrix.php }}
+          path: |
+            src/rackline-dashboard-plugin/dist/rackline.dashboard.plg
+            src/rackline-dashboard-plugin/dist/rackline.dashboard.tgz
+            src/rackline-dashboard-plugin/dist/SHA256SUMS
+          if-no-files-found: error
   responsive:
     runs-on: ubuntu-latest
     steps:

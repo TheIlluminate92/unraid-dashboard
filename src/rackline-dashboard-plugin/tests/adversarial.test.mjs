@@ -17,17 +17,17 @@ test('adversarial: validPayload rejects null pool instead of poisoning drive ren
 });
 test('adversarial: old successful sample is stale despite a recent HTTP response',()=>{
  const elements=new Map();const $=id=>{if(!elements.has(id))elements.set(id,{textContent:'',classList:{toggle(){}}});return elements.get(id);};
- const context={status:{system:{received:100000,sample:1000,error:false}},$: $,Date:{now:()=>100000},text:(id,v)=>$(id).textContent=v,when:String,root:{classList:{add(){},remove(){}}}};
+ const context={renderDockerActions(){},status:{system:{received:100000,sample:1000,error:false}},$: $,Date:{now:()=>100000},text:(id,v)=>$(id).textContent=v,when:String,root:{classList:{add(){},remove(){}}}};
  vm.createContext(context);vm.runInContext(fn('refreshAge','currentContainer'),context);context.refreshAge();
  assert.match($('rl-system-age').textContent,/stale/);
 });
-test('adversarial: I/O refresh preserves focused native drive link node',()=>{
+test('adversarial: I/O refresh preserves the selected drive detail wrapper',()=>{
  let replacements=0;const dataNode={innerHTML:''};const inspector={dataset:{},querySelector:()=>dataNode,set innerHTML(v){replacements++;},get innerHTML(){return '';}};
  const drive={key:'sda',device:'sda',name:'disk1',smart:{}};
- const context={state:{drive:'sda'},$:()=>inspector,allDrives:()=>[drive],ioRates:()=>({devices:{}}),esc:String,stateBadge:()=>'',keyValues:()=>'',bytes:()=>'',rate:()=>'',temp:()=>'',num:M.number,when:String,encodeURIComponent};
+ const context={observeSmartSelection(){},ensureSmartState(){},renderSmartActions(){},smartAction:{states:new Map()},M,status:{},state:{drive:'sda'},$:()=>inspector,allDrives:()=>[drive],ioRates:()=>({devices:{}}),esc:String,stateBadge:()=>'',keyValues:()=>'',bytes:()=>'',rate:()=>'',temp:()=>'',num:M.number,when:String,encodeURIComponent};
  vm.createContext(context);vm.runInContext(fn('renderDriveInspector','renderBays'),context);
  context.renderDriveInspector(); const before=replacements;context.renderDriveInspector();
- assert.equal(replacements,before,'Stable selected drive must not replace action DOM every I/O poll');
+ assert.equal(replacements,before,'Stable selected drive must not replace its wrapper every I/O poll');
 });
 test('adversarial: native menu is released when template disappears without ID changing',()=>{
  const id='a'.repeat(12),button={dataset:{}},nodes=new Map([[id,button]]),menus=new Map();
@@ -57,7 +57,7 @@ test('adversarial: replay does not advance freshness and regression preserves ac
 });
 test('adversarial: HTTP clock offset avoids false stale flags but frozen feeds still age',()=>{
  const elements=new Map();const $=id=>{if(!elements.has(id))elements.set(id,{textContent:'',classList:{toggle(){}}});return elements.get(id);};
- const context={status:{system:{received:100000,advancedAt:100000,sample:1000,clockOffset:99000,error:false}},$: $,Date:{now:()=>100000},text:(id,v)=>$(id).textContent=v,when:String,root:{classList:{add(){},remove(){}}}};
- vm.createContext(context);vm.runInContext(fn('refreshAge','currentContainer'),context);context.refreshAge();assert.match($('rl-system-age').textContent,/updated/);
+ const context={renderDockerActions(){},status:{system:{received:100000,advancedAt:100000,sample:1000,clockOffset:99000,error:false}},$: $,Date:{now:()=>100000},text:(id,v)=>$(id).textContent=v,when:String,root:{classList:{add(){},remove(){}}}};
+ vm.createContext(context);vm.runInContext(fn('refreshAge','currentContainer'),context);context.refreshAge();assert.equal($('rl-system-age').textContent,'');assert.equal($('rl-system-age').hidden,true);
  context.status.system.advancedAt=90000;context.refreshAge();assert.match($('rl-system-age').textContent,/stale/);
 });

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / 'source/usr/local/emhttp/plugins/rackline.dashboard'
-REQUIRED = ('Rackline.page', 'RacklineDashboard.page', 'include/view.php', 'include/metrics.php', 'include/storage.php', 'include/workloads.php', 'include/io.php', 'include/containers.php',
+REQUIRED = ('Rackline.page', 'RacklineDashboard.page', 'include/view.php', 'include/metrics.php', 'include/storage.php', 'include/smart-report.php', 'include/smart-capture-lib.php', 'include/smart-capture.php', 'include/smart-capture-report.php', 'include/smart-capture-state.php', 'include/workloads.php', 'include/io.php', 'include/containers.php',
             'images/rackline.dashboard.svg', 'assets/js/model.js', 'assets/js/app.js', 'assets/css/rackline.css')
 
 
@@ -45,7 +45,11 @@ def build(output):
             info.size = len(data)
             info.mode = 0o644
             archive.addfile(info, io.BytesIO(data))
-    payload = gzip.compress(raw.getvalue(), mtime=0)
+    # GzipFile pins the OS header byte across Python 3.11/3.12/3.13+.
+    compressed = io.BytesIO()
+    with gzip.GzipFile(fileobj=compressed, mode='wb', filename='', mtime=0) as stream:
+        stream.write(raw.getvalue())
+    payload = compressed.getvalue()
     installer = (ROOT / 'plugin/install.sh.in').read_text()
     replacements = {'@VERSION@': version, '@RELEASE@': release,
                     '@SHA256@': hashlib.sha256(payload).hexdigest(),

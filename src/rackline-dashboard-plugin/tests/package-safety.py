@@ -19,7 +19,37 @@ builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
 
+def shell_without_payload(script):
+    """Exclude only inert, validated base64 inside the quoted payload heredoc."""
+    marker = "<<'RACKLINE_PAYLOAD'\n"
+    command = 'base64 -d > "$stage/payload.tgz" ' + marker
+    match = re.search('(?m)^' + re.escape(command), script)
+    if match is None:
+        return script
+    if script.count(marker) != 1:
+        raise ValueError('Ambiguous payload heredoc')
+    before, tail = script[:match.end()], script[match.end():]
+    payload, end, after = tail.partition('\nRACKLINE_PAYLOAD\n')
+    if not end or not re.fullmatch(r'[A-Za-z0-9+/=\n]+', payload):
+        raise ValueError('Invalid payload heredoc')
+    base64.b64decode(payload.replace('\n', ''), validate=True)
+    return before + 'RACKLINE_PAYLOAD\n' + after
+
+
 class PackageSafety(unittest.TestCase):
+    def test_payload_is_data_but_shell_commands_remain_checked(self):
+        sample = "base64 -d > \"$stage/payload.tgz\" <<'RACKLINE_PAYLOAD'\nrm/rebootAAA\nRACKLINE_PAYLOAD\n"
+        self.assertNotRegex(shell_without_payload(sample), r'\brm\b|\breboot\b')
+        commented = "# <<'RACKLINE_PAYLOAD'\nreboot\naa\nRACKLINE_PAYLOAD\n"
+        self.assertEqual(shell_without_payload(commented), commented)
+        self.assertRegex(shell_without_payload(commented), r'\breboot\b')
+        for command in ('rm file', 'reboot', 'systemctl stop service', '/etc/rc.test'):
+            self.assertRegex(shell_without_payload(sample + command + '\n'), r'\brm\b|\breboot\b|\bsystemctl\b|/etc/rc\.')
+        with self.assertRaises(ValueError):
+            shell_without_payload(sample.replace('rm/rebootAAA', 'rm -- file'))
+        with self.assertRaises(ValueError):
+            shell_without_payload(sample + sample)
+
     def test_build(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
@@ -32,11 +62,17 @@ class PackageSafety(unittest.TestCase):
             self.assertEqual(root.attrib['launch'], 'Rackline')
             self.assertNotIn('pluginURL', root.attrib)
             scripts = [node.find('INLINE').text for node in root.findall('FILE')]
+            # Scan the source template separately: altered shell/heredoc structure
+            # cannot hide a command inside the generated payload exclusion.
+            self.assertNotRegex((ROOT / 'plugin/install.sh.in').read_text(), r'\brm\b|\breboot\b|\bsystemctl\b|/etc/rc\.')
             for script in scripts:
                 subprocess.run(['bash', '-n'], input=script, text=True, check=True)
-                self.assertNotRegex(script, r'\brm\b|\breboot\b|\bsystemctl\b|/etc/rc\.')
+                self.assertNotRegex(shell_without_payload(script), r'\brm\b|\breboot\b|\bsystemctl\b|/etc/rc\.')
                 self.assertNotIn('/boot/config', script)
             installer = scripts[0]
+            runtime_required = re.search(r'for required in (.*?); do', installer)[1].split()
+            self.assertEqual(set(runtime_required), set(builder.REQUIRED))
+            self.assertLess(installer.index('PHP_VERSION_ID >= 80100'), installer.index('stage=$(mktemp'))
             self.assertLess(installer.index('command -v php'), installer.index('mv -- "$runtime"'))
             self.assertLess(installer.index('php -l'), installer.index('mv -- "$runtime"'))
             self.assertIn('previous-runtime', installer)
@@ -44,6 +80,8 @@ class PackageSafety(unittest.TestCase):
             self.assertIn('cmp "$stage/expected" "$stage/actual"', installer)
             payload = re.search(r"<<'RACKLINE_PAYLOAD'\n(.*?)\nRACKLINE_PAYLOAD", installer, re.S)[1]
             archive_bytes = base64.b64decode(payload)
+            self.assertEqual(archive_bytes[4:8], bytes(4))  # Fixed mtime.
+            self.assertEqual(archive_bytes[9], 255)  # Stable OS header across Python builds.
             self.assertEqual(archive_bytes, (output / 'rackline.dashboard.tgz').read_bytes())
             self.assertIn(hashlib.sha256(archive_bytes).hexdigest(), installer)
             with tarfile.open(output / 'rackline.dashboard.tgz') as archive:

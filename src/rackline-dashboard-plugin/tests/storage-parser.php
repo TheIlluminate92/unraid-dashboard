@@ -63,7 +63,10 @@ try {
     $sas = rackline_storage_parse_smart_cache("SMART Health Status: OK\nElements in grown defect list: 0\n", 300);
     check($sas['health'] === 'OK' && $sas['attributes']['Elements in grown defect list'] === '0', 'SAS SMART cache');
     check(!rackline_storage_parse_smart_cache('Drive is in STANDBY mode', 100)['available'], 'Standby-only report is unavailable');
-    check(rackline_storage_cached_smart('disk1', native_disk(), $sources['smartCache']) === $ata, 'Read matching SMART cache only');
+    $cached = rackline_storage_cached_smart('disk1', native_disk(), $sources['smartCache']);
+    check(array_intersect_key($cached, $ata) === $ata && $cached['cachedAtMs'] === 100000, 'Read matching SMART cache only');
+    check(str_starts_with($cached['reportUrl'], '/plugins/rackline.dashboard/include/smart-report.php?name=disk1&identity='), 'Fixed cached report route');
+    check(!str_contains($cached['reportUrl'], 'FIXTURE-A'), 'No raw serial in report link');
     foreach ([['id' => 'MODEL_FIXTURE-B'], ['id' => 'MODEL_FIXTURE-ABC'], ['id' => ''], ['serial' => 'FIXTURE-B']] as $overrides)
         check(!rackline_storage_cached_smart('disk1', native_disk($overrides), $sources['smartCache'])['available'], 'Reject missing or mismatched cache identity');
     check(!rackline_storage_cached_smart('../disks', native_disk(), $sources['smartCache'])['available'], 'No SMART path traversal');
@@ -71,12 +74,43 @@ try {
     check(rackline_storage_serial_matches('FIXTURE-A', ['id' => 'MODEL_FIXTURE-A_WWN']), 'SAS WWN suffix identity');
     check(rackline_storage_serial_matches('FIXTURE-A', ['serial' => 'FIXTURE-A']), 'Explicit current serial identity');
     check(!rackline_storage_serial_matches('', ['id' => 'MODEL_FIXTURE-A']), 'Empty serial never matches');
+    foreach (['device', 'id', 'serial', 'model'] as $identityField) {
+        foreach (["\x80", "\x81", "\xC0\xAF", "\xED\xA0\x80", "\xF4\x90\x80\x80"] as $invalidUtf8) {
+            check(rackline_storage_smart_identity('disk1', native_disk([$identityField => 'MODEL_' . $invalidUtf8])) === null,
+                'Malformed UTF-8 identity never receives a selector');
+        }
+    }
+    $unicodeA = rackline_storage_smart_identity('disk1', native_disk(['model' => "Fixture \u{00E9}"]));
+    $unicodeB = rackline_storage_smart_identity('disk1', native_disk(['model' => "Fixture e\u{0301}"]));
+    check(is_string($unicodeA) && is_string($unicodeB) && $unicodeA !== $unicodeB, 'Distinct valid UTF-8 identities are not normalized together');
+
     $write($sources['smartCache'] . '/crlf', "Serial number: FIXTURE-A\r\nSMART Health Status: OK\r\n");
     check(rackline_storage_cached_smart('crlf', native_disk(), $sources['smartCache'])['health'] === 'OK', 'CRLF serial identity');
     $write($sources['smartCache'] . '/no-identity', "SMART Health Status: OK\n");
     check(!rackline_storage_cached_smart('no-identity', native_disk(), $sources['smartCache'])['available'], 'Slot name alone cannot validate SMART identity');
     $write($sources['smartCache'] . '/oversized', $smartText . str_repeat('x', 262145));
     check(!rackline_storage_cached_smart('oversized', native_disk(), $sources['smartCache'])['available'], 'Oversized cache is not parsed partially');
+
+    // Audited native logical caches may contain attributes only, with no serial.
+    // Parsing possible values is not permission to attribute them to this disk.
+    foreach ([
+        'attribute-ata' => "  5 Reallocated_Sector_Ct 0x0033 100 100 036 Pre-fail Always - 0\n  9 Power_On_Hours 0x0032 099 099 000 Old_age Always - 123\n",
+        'attribute-sas' => "Elements in grown defect list: 0\n",
+    ] as $cacheName => $attributeText) {
+        $attributePath = $sources['smartCache'] . '/' . $cacheName;
+        $write($attributePath, $attributeText);
+        touch($attributePath, 100);
+        $parsedAttributes = rackline_storage_parse_smart_cache($attributeText, 100);
+        check($parsedAttributes['available'] && $parsedAttributes['health'] === null, 'Attribute-only text is parsable without inventing health');
+        $unverified = rackline_storage_cached_smart($cacheName, native_disk(), $sources['smartCache']);
+        check($unverified === ['available' => false, 'cacheStatus' => 'identity_unverified', 'cachePresent' => true,
+            'cachedAtMs' => 100000, 'unavailableReason' => 'missing_report_identity'], 'Present unverified cache exposes only status and file age');
+        check(rackline_storage_smart_report($cacheName, native_disk(), $sources['smartCache']) === null, 'No report body for unverified identity');
+    }
+    $write($sources['smartCache'] . '/sdb', $smartText);
+    check(rackline_storage_cached_smart('missing-logical', native_disk(), $sources['smartCache']) ===
+        ['available' => false, 'cacheStatus' => 'missing', 'cachePresent' => false], 'Device-keyed reports never substitute for absent logical cache');
+    check($cached['cacheStatus'] === 'verified' && $cached['cachePresent'] === true, 'Verified metadata retains cache presence');
 
     $display = ['hot' => '52', 'max' => '57', 'hotssd' => '70', 'maxssd' => '80'];
     check(rackline_storage_temperature_thresholds(native_disk(), [], $display) === ['warning' => 52.0, 'critical' => 57.0], 'HDD defaults from Dynamix');
@@ -91,6 +125,7 @@ try {
         native_disk(['name' => 'disk6', 'numErrors' => '2']),
         ['name' => 'disk7', 'type' => 'Data', 'status' => 'DISK_NP', 'device' => '', 'id' => '', 'size' => '0']];
     $disks = rackline_storage_disk_records($raw, [], [], $sources['smartCache']);
+    foreach ($disks as $diskRecord) check(is_string($diskRecord['selectionToken']) && preg_match('/^[a-f0-9]{64}$/D', $diskRecord['selectionToken']), 'Every current disk has an opaque selection token independent of report availability');
     check(count($disks) === 6, 'Unassigned placeholders excluded');
     check($disks[0]['location'] === null && $disks[0]['smart']['health'] === null, 'Root record nullable location and health');
     check($disks[1]['temperatureC'] === null && $disks[1]['spunDown'] === false && $disks[1]['statusLabel'] === 'UNKNOWN', 'Missing temperature never proves standby or activity');
@@ -137,6 +172,73 @@ try {
     check(array_column($layout['cells'], 'tray') === [0, null, 1, 2, 3, 4], 'Display labels skip hidden cell');
     $bypassed = rackline_storage_group_layout(array_replace($group, ['count_bypass_tray' => true]));
     check(array_column($bypassed['cells'], 'tray') === [0, null, 2, 3, 4, 5], 'Hidden bay counting setting retained');
+    // Count bypassed slots is a per-group setting, not a global override.
+    $nativeGroup = ['grid_columns' => '6', 'grid_rows' => '2', 'grid_count' => 'column',
+        'tray_direction' => '1', 'tray_start_num' => '0', 'hide_tray' => [1 => '1', 2 => '1'], 'count_bypass_tray' => '1'];
+    $emptyDisks = [];
+    $mixed = rackline_storage_location_data($emptyDisks, [], ['1' => $nativeGroup,
+        '2' => array_replace($nativeGroup, ['count_bypass_tray' => '0'])], [], [], ['count_bypass_tray' => true]);
+    check(array_column($mixed['groups'][0]['cells'], 'tray') === [null,2,4,6,8,10,null,3,5,7,9,11], 'Native counted hidden trays retain full grid numbering');
+    check(array_column($mixed['groups'][1]['cells'], 'tray') === [null,0,2,4,6,8,null,1,3,5,7,9], 'Each group keeps independent skip numbering despite global key');
+    check(array_column($mixed['groups'][0]['cells'], 'sourceTray') === [1,3,5,7,9,11,2,4,6,8,10,12], 'Hidden columns keep their source positions');
+    check(!rackline_storage_group_layout(array_replace($nativeGroup, ['count_bypass_tray' => []]))['cells'], 'Nested bypass setting fails closed');
+    foreach ([null, '', 'yes', 2, -1, 1.0, [], ['1']] as $bad) {
+        $emptyDisks = [];
+        check(!rackline_storage_location_data($emptyDisks, [], ['1' => array_replace($nativeGroup, ['count_bypass_tray' => $bad])], [], [])['available'], 'Malformed explicit group bypass must not silently renumber');
+    }
+    foreach ([false, 0, '0', true, 1, '1'] as $valid) check(rackline_storage_location_flag($valid) === in_array($valid, [true,1,'1'], true), 'Exact native group flag encodings');
+    $defaultsText = <<<'DEFAULTS'
+<?php
+// $bgcolor_flash = 'ffffff';
+/* $bgcolor_flash = 'eeeeee'; */
+$bgcolor_flash = '123ABC'; // allowed literal
+$device_bg_color = 0;
+$bgcolor_cache = "112233";
+DEFAULTS;
+    $defaults = rackline_storage_location_defaults($defaultsText);
+    check($defaults === (function_exists('token_get_all') ? ['bgcolor_flash'=>'123ABC', 'device_bg_color'=>0, 'bgcolor_cache'=>'112233'] : []), 'Native literal defaults use optional tokenizer or stay unknown');
+    foreach (["\n\$bgcolor_flash = 'ffffff';", "\n\$bgcolor_flash =\n'ffffff';", "\n\$bgcolor_flash .= 'ff';", "\n\$bgcolor_flash = getenv('ANY');"] as $extra)
+        check(!isset(rackline_storage_location_defaults($defaultsText . $extra)['bgcolor_flash']), 'Duplicate or unsupported native assignments stay unknown');
+    check(rackline_storage_location_defaults("<?php\nif (false)\n\$bgcolor_flash = '123abc';") === [], 'Conditional defaults not guessed');
+    check(rackline_storage_location_defaults(str_repeat('x',262145)) === [], 'Native defaults read bounded');
+    foreach (["return;\n", "include_once 'unknown.php';\n", "extract(['bgcolor_cache'=>'abcdef']);\n", "try { throw new Exception(); } finally {}\n"] as $statement)
+        check(rackline_storage_location_defaults("<?php\n".$statement."\$bgcolor_cache='abcdef';") === [], 'Unsupported PHP statement fails all optional defaults closed');
+
+    check(rackline_storage_location_defaults("<?php\n\$notes = 'literal text\n\$bgcolor_cache=\"ffffff\";\n';\n") === [], 'Multiline string bodies are never assignments');
+    check(!isset(rackline_storage_location_defaults($defaultsText . "\nunset(\$bgcolor_flash);")['bgcolor_flash']), 'Unset invalidates literal default');
+    check(rackline_storage_location_defaults("<?php\n\$bgcolor_flash='123abc';\n/* unterminated") === [], 'Unterminated source comment fails closed');
+
+    $styleSettings = ['device_bg_color'=>0, 'bgcolor_flash'=>'123abc','bgcolor_cache'=>'112233','bgcolor_empty'=>'222222', 'bgcolor_others'=>'333333', 'bgcolor_unraid'=>'444444','bgcolor_parity'=>'555555'];
+    $styleDevice = ['devicenode'=>'/dev/sdb','model_name'=>'Synthetic model','comment'=>'<b>cached text only</b>'];
+    $styleNative = ['name'=>'flash','type'=>'Boot','temp'=>'40','hotTemp'=>'45','maxTemp'=>'55'];
+    check(rackline_storage_location_display($styleDevice, [], $styleSettings, $styleNative)['color'] === '#123abc', 'Native Boot alias uses configured native color');
+    check(rackline_storage_location_display($styleDevice, ['group_color'=>'abcdef'], $styleSettings, $styleNative)['color'] === '#abcdef', 'Group override precedes type color');
+    check(rackline_storage_location_display($styleDevice + ['color'=>'fedcba'], ['group_color'=>'abcdef'], $styleSettings, $styleNative)['color'] === '#fedcba', 'Device override precedes group');
+    foreach ([40=>'#112233',45=>'#444444',55=>'#555555'] as $temp=>$expectedColor)
+        check(rackline_storage_location_display($styleDevice + ['color'=>'fedcba'], ['group_color'=>'abcdef'], array_replace($styleSettings,['device_bg_color'=>1]), array_replace($styleNative,['temp'=>(string)$temp]))['color'] === $expectedColor, 'Native heatmap ignores custom overrides');
+    $unverifiedDisplay = rackline_storage_location_display($styleDevice + ['color'=>'abcdef'], [], $styleSettings, null);
+    check(!$unverifiedDisplay['identityVerified'] && $unverifiedDisplay['name'] === null && $unverifiedDisplay['type'] === null && $unverifiedDisplay['color'] === '#abcdef', 'Unverified cache style does not become native identity');
+    check($unverifiedDisplay['comment'] === '<b>cached text only</b>', 'Cached comment stays text for escaped rendering');
+    foreach ([null,'', 'wrong', []] as $mode) check(rackline_storage_location_display($styleDevice, [], array_replace($styleSettings,['device_bg_color'=>$mode]), $styleNative)['color'] === null, 'Unknown mode has no invented color');
+    $emptyDisks=[];
+    $verticalMap = rackline_storage_location_data($emptyDisks, [], ['1'=>array_replace($nativeGroup, ['disk_tray_direction'=>'v','tray_width'=>'300','tray_height'=>'95','tray_align'=>'right','tray_align_txt'=>'hide','tray_pos'=>'none'])], [], [], $styleSettings);
+    check($verticalMap['groups'][0]['trayWidth'] === 95 && $verticalMap['groups'][0]['trayHeight'] === 300 && $verticalMap['groups'][0]['nameAlign'] === 'hide', 'Native vertical dimensions and alignment retained');
+    // Dynamic generic geometry matrix: different enclosures, count modes,
+    // directions, start labels, and per-group flags share no host-specific slots.
+    foreach ([[1,12],[12,1],[6,2],[4,6],[2,2],[100,1]] as [$cols,$rows]) foreach (['row','column'] as $order) foreach ([1,2,3,4] as $direction) foreach ([false,true] as $bypass) {
+        $shape = ['grid_columns'=>$cols,'grid_rows'=>$rows,'grid_count'=>$order,'tray_direction'=>$direction,'tray_start_num'=>17,'hide_tray'=>[1=>1,2=>1],'count_bypass_tray'=>$bypass];
+        $shapeResult = rackline_storage_group_layout($shape);
+        check(count($shapeResult['cells']) === $cols*$rows, 'Dynamic layout preserves exact enclosure cell count');
+        $sourceKeys = array_column($shapeResult['cells'],'sourceTray'); sort($sourceKeys);
+        check($sourceKeys === range(1,$cols*$rows), 'Dynamic source tray keys never duplicate or disappear');
+        foreach ($shapeResult['cells'] as $cell) if ($cell['sourceTray'] <= 2) check($cell['hidden'] && $cell['tray'] === null, 'Dynamic hidden positions stay reserved');
+        $labels = array_values(array_filter(array_column($shapeResult['cells'],'tray'), static fn($x): bool=>$x!==null));
+        check(count(array_unique($labels)) === count($labels), 'Dynamic displayed labels remain unique');
+        if (!$bypass && count($labels)) { sort($labels); check($labels === range(17,16+count($labels)), 'Skipped hidden labels form native contiguous numbering'); }
+    }
+    $emptyDisks=[];
+    $ordered = rackline_storage_location_data($emptyDisks, [], ['9'=>$nativeGroup,'shelf-next'=>$nativeGroup,'2'=>$nativeGroup], [], []);
+    check(array_column($ordered['groups'],'id') === ['9','shelf-next','2'], 'Persisted group iteration order is authoritative, not numeric sorting');
     $groups = ['1' => $group];
     $locations = ['valid' => ['groupid' => '1', 'tray' => 1], 'hidden' => ['groupid' => '1', 'tray' => 2],
         'stale' => ['groupid' => '1', 'tray' => 3], 'inventory-only' => ['groupid' => '1', 'tray' => 4],
@@ -149,6 +251,29 @@ try {
     $rawDisks = ['disk1' => native_disk(), 'disk2' => native_disk(['name' => 'disk2', 'device' => 'sdc', 'id' => 'MODEL_FIXTURE-C']),
         'disk3' => native_disk(['name' => 'disk3', 'device' => 'sdd', 'id' => 'MODEL_NEW-FIXTURE'])];
     $disks = rackline_storage_disk_records($rawDisks, [], [], $sources['smartCache']);
+    $alias = array_replace($rawDisks['disk1'], ['name' => 'flash', 'type' => 'Boot']);
+    foreach ([$rawDisks + ['flash' => $alias], ['flash' => $alias] + $rawDisks] as $aliased) {
+        $aliasMap = rackline_storage_location_data($disks, $aliased, $groups, $locations, $devices);
+        check($aliasMap['groups'][0]['cells'][0]['disk']['name'] === 'disk1', 'Exact Boot alias preserves assigned location independent of order');
+    }
+    foreach (['id' => 'MODEL_OTHER', 'serial' => 'OTHER', 'model' => 'OTHER', 'transport' => 'ata', 'type' => 'Cache'] as $key => $value) {
+        foreach ([$rawDisks + ['flash' => array_replace($alias, [$key => $value])], ['flash' => array_replace($alias, [$key => $value])] + $rawDisks] as $aliased) {
+            $aliasMap = rackline_storage_location_data($disks, $aliased, $groups, $locations, $devices);
+            check($aliasMap['groups'][0]['cells'][0]['disk'] === null && $disks[0]['location'] === null, 'Contradictory native alias or duplicate assignment cannot map: ' . $key);
+        }
+    }
+    foreach ([false,true] as $differentIds) foreach ([false,true] as $reverse) {
+        $cross = [native_disk(['name'=>'disk1','device'=>'sdb','serial'=>'DUPLICATE']), native_disk(['name'=>'disk2','device'=>'sdc','id'=>$differentIds?'OTHER_MODEL':'MODEL_FIXTURE-A','serial'=>'DUPLICATE'])];
+        if ($reverse) $cross = array_reverse($cross);
+        $crossDisks = rackline_storage_disk_records($cross, [], [], $sources['smartCache']);
+        $crossMap = rackline_storage_location_data($crossDisks, $cross, ['1'=>['grid_columns'=>2,'grid_rows'=>1]],
+            ['a'=>['groupid'=>'1','tray'=>1],'b'=>['groupid'=>'1','tray'=>2]],
+            ['a'=>['devicenode'=>'/dev/sdb','smart_serialnumber'=>'DUPLICATE'],'b'=>['devicenode'=>'/dev/sdc','smart_serialnumber'=>'DUPLICATE']], $styleSettings);
+        foreach ($crossMap['groups'][0]['cells'] as $cell) check($cell['disk'] === null && !$cell['display']['identityVerified'], 'Cross-node duplicate identity has no verified location or click target');
+        foreach ($crossDisks as $disk) check($disk['location'] === null, 'Cross-node duplicate identity has no array/pool location projection');
+    }
+    $crossIdOnly = [native_disk(['name'=>'disk1','device'=>'sdb']), native_disk(['name'=>'disk2','device'=>'sdc'])];
+    check(rackline_storage_location_nodes($crossIdOnly) === [] && rackline_storage_location_nodes(array_reverse($crossIdOnly)) === [], 'Cross-node duplicate ID rejected without explicit serial');
     $map = rackline_storage_location_data($disks, $rawDisks, $groups, $locations, $devices);
     $cells = $map['groups'][0]['cells'];
     check($disks[0]['location']['tray'] === 0 && $disks[0]['location']['sourceTray'] === 1, 'Source/display trays remain distinct');
@@ -203,7 +328,8 @@ try {
     check(rackline_storage_array_identity(['type' => 'Data', 'model' => 'ST24000NM000H-EXAMPLE'])['identityGroup'] === '24tb-h', 'Array family identity retained');
     check(rackline_storage_array_identity(['type' => 'Parity', 'model' => 'ST24000NM000H-EXAMPLE'])['identityGroup'] === 'parity', 'Parity color wins over model family');
 
-    $write($sources['disks'], ini_text($rawDisks + ['cache' => $poolRaw[0]]));
+    // This pool fixture is a different physical disk, not a duplicate identity.
+    $write($sources['disks'], ini_text($rawDisks + ['cache' => array_replace($poolRaw[0], ['id'=>'MODEL_POOL-A'])]));
     $write($sources['variables'], ini_text(['mdState' => 'STARTED'], false));
     $write($sources['dynamix'], ini_text(['display' => $display, 'parity' => ['mode' => '0']]));
     $write($sources['smartSettings'], ini_text(['MODEL_FIXTURE-A' => ['hotTemp' => '45', 'maxTemp' => '50']]));
@@ -211,9 +337,20 @@ try {
     $write($sources['pools'] . '/cache.cfg', ini_text(['diskFsType' => 'btrfs', 'diskFsProfile' => 'single'], false));
     foreach (['groups' => $groups, 'locations' => $locations, 'devices' => $devices, 'settings' => ['count_bypass_tray' => false]] as $name => $data)
         $write($sources['locations'] . '/' . $name . '.json', json_encode($data, JSON_THROW_ON_ERROR));
+    $write($sources['locationDefaults'], $defaultsText);
+    touch($sources['locations'] . '/groups.json', 1000);
+    $cacheReceipt = rackline_storage_location_file($sources['locations'] . '/groups.json');
+    check($cacheReceipt['writtenAtMs'] === 1000000 && $cacheReceipt['data'] === $groups, 'Layout cache timestamp is its file write time');
+    check(rackline_storage_location_file($temporary . '/missing.json')['writtenAtMs'] === null, 'Missing cache write time is unknown');
+    $dynamicGroups = ['1'=>array_replace($group,['tray_start_num'=>25,'count_bypass_tray'=>'1'])];
+    $write($sources['locations'] . '/groups.json', json_encode($dynamicGroups, JSON_THROW_ON_ERROR));
+    $dynamicSnapshot = rackline_storage_snapshot($sources);
+    check($dynamicSnapshot['array']['disks'][0]['location']['tray'] === 25 && $dynamicSnapshot['locations']['groups'][0]['cells'][0]['tray'] === 25, 'Saved layout edits propagate to physical and array projection on next snapshot');
+    $write($sources['locations'] . '/groups.json', json_encode($groups, JSON_THROW_ON_ERROR)); touch($sources['locations'] . '/groups.json',1000);
     $before = [];
     foreach (array_unique($files) as $file) $before[$file] = hash_file('sha256', $file);
     $snapshot = rackline_storage_snapshot($sources);
+    check($snapshot['locations']['source'] === 'disklocation_cache' && $snapshot['locations']['cacheWrittenAtMs']['groups'] === 1000000, 'Native source and file times remain separate from snapshot time');
     check($snapshot['schemaVersion'] === 1 && $snapshot['sampledAtMs'] > 0, 'Standalone native snapshot schema');
     check(count($snapshot['array']['disks']) === 3 && $snapshot['pools'][0]['name'] === 'cache', 'Complete native snapshot without predecessor files');
     check($snapshot['array']['disks'][0]['smart']['available'] && $snapshot['array']['disks'][0]['smart']['health'] === null, 'Available SMART with unknown health survives snapshot');

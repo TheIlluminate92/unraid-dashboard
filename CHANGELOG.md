@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — Rackline running-list refinements (2026-11-08, release candidate)
+
+- Remove routine update timestamps and redundant Docker explanations while preserving faults, stale/error states, real data, per-row ages and native-control restrictions.
+- Tighten mobile table/workspace spacing without shrinking text or touch targets, including native Docker fallback and Rackline footer links; group logical CPUs by reported socket and physical core with SMT siblings together and unknown topology explicit.
+- Keep folder/pool filter changes anchored in the viewport with a minimal temporary bottom reserve, input cancellation and cleanup, without fixed-height lists or page scroll locks.
+- Render dynamic Disk Location dimensions, hidden positions, orientation/alignment and native display labels/colors without changing verified assigned-drive targets. Preserve large grids and unverified/unknown states; keep cache file-write context distinct from device freshness.
+- Hide Cooling only after confirmed absent-controller detection; retain unknown/outage states, safe direct-hash fallback and keyboard navigation. Add bounded tri-state filesystem detection and offline fixtures.
+- Reveal keyboard controls obscured by Rackline's desktop sticky strip, and use measured viewport fit to keep tall strips from covering the workspace.
+- Replace native device details with an identity-validated passive cached SMART report and cache-file age, marking reports over 24 hours old. Distinguish an existing identity-unverified cache from absence without exposing untrusted health or report content. Add a separately confirmed, current-device-bound on-demand report capture and private saved-report download for qualified default ATA/SAS targets. Preserve native attribute-cache age separately; no background read, self-test or scheduler change. Production acceptance remains pending the release gates.
+- Wire the selected-drive SMART action through passive eligibility, explicit device/wake confirmation and one CSRF-protected capture submission. Preserve cancellation before dispatch and uncertainty after it, separate saved-read age from native cache mtime, and cover interrupted/repeated flows with synthetic frontend/browser fixtures.
+- Harden cached-report inventory parsing against BOM-prefixed duplicate sections, malformed UTF-8 selector collisions and binary/control truncation; add concurrent replacement/read and deterministic fuzz coverage.
+- Add explicit Docker check and selected-container update controls using existing native endpoints/tasks, with scoped confirmation, fresh identity/template preflight, cancellation guards and native fallback. Checks can contact registries/template sources; no background checks or updates are added. Unknown outcomes require native-result review before retry; installed-host acceptance remains pending.
+- Audit portable Unraid discovery; preserve unknown core identity when die IDs conflict, require PHP 8.1+ before staging, and keep installer/builder required files aligned including the cached SMART endpoint. Add offline missing-cURL, interface/topology and isolated package regressions; document capability requirements and unverified platforms.
+- Add source, endpoint and responsive geometry regressions. Focused local checks pass; exact-candidate browser/CI and installed acceptance remain release gates. Prepare the authorized 0.2.2 / build 2026.11.08.04 candidate while preserving the earlier 0.2.1 freeze artifacts. See [validation and pending work](docs/RACKLINE.md#local-running-list-refinements--2026-11-08-unpublished).
+
 ## Unreleased — Rackline mobile compatibility (2026-11-08)
 
 - Prepare Rackline 0.2.1 / build 2026.11.08.03 with scoped resets for native Unraid button sizing, margins and letter spacing, preserving bay order, hidden positions and local scrolling.
@@ -167,3 +182,5 @@ First unified WAZ Control release.
 - Added standalone WAZ Health configuration migration and recoverable manifest retirement.
 
 The development versions before v0.7.0 were rolling internal test builds and are not published here as supported releases.
+
+- Rackline 0.2.2 candidate: preserve per-group Disk Location hidden-tray numbering and identical native Boot aliases; project current native display settings separately from verified assigned-drive actions, with cache-write times and generic geometry regressions. Installed acceptance remains a separate gate.

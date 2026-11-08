@@ -123,8 +123,8 @@ test('daemon and receipt timestamp source transitions invalidate rate baselines'
 
 test('rendered inventory tokens observe stop/start and recreation while churn maps stay bounded',()=>{
  const c=container(1),state={docker:{containers:[c],folders:[],summary:{}},samples:new Map(),gpuBlocked:new Map(),inventoryVersions:new Map(),inventorySequence:0,container:'',folder:'all'};
- const ctx={state,M,Date:{now:()=>100000},stableMarkup(){},$:()=>({}),text(){},renderContainerRows(){},renderContainerInspector(){},renderAlerts(){},esc:String,num:M.number,pct:String,bytes:String,currentContainer:()=>null};
- vm.createContext(ctx);vm.runInContext(fn('renderDocker','visibleContainers'),ctx);ctx.renderDocker();const first=state.inventoryVersions.get(c.id);ctx.renderDocker();assert.equal(state.inventoryVersions.get(c.id),first);
+ const ctx={state,M,Date:{now:()=>100000},stableMarkup(){},$:()=>({}),text(){},renderContainerRows(){},renderContainerInspector(){},renderDockerActions(){},renderAlerts(){},esc:String,num:M.number,pct:String,bytes:String,currentContainer:()=>null};
+ vm.createContext(ctx);vm.runInContext(fn('renderDocker','dockerInventoryFresh'),ctx);ctx.renderDocker();const first=state.inventoryVersions.get(c.id);ctx.renderDocker();assert.equal(state.inventoryVersions.get(c.id),first);
  state.docker.containers=[{...c,state:'stopped'}];ctx.renderDocker();state.docker.containers=[c];ctx.renderDocker();assert.notEqual(state.inventoryVersions.get(c.id),first);
  for(let n=0;n<500;n++){const next=container(n+2);state.gpuBlocked.set('gone-'+n,90000);state.docker.containers=[next];ctx.renderDocker();assert.equal(state.inventoryVersions.size,1);assert.equal(state.gpuBlocked.size,0);}
 });

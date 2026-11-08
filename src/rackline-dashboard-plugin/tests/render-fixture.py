@@ -2,7 +2,7 @@
 """Render actual Rackline UI with generic fixtures for local QA; not packaged or deployed."""
 import argparse,re,shutil
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('output',type=Path);p.add_argument('--native-css',action='store_true');p.add_argument('--threads',type=int,choices=[16,32,72],default=32);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('output',type=Path);p.add_argument('--native-css',action='store_true');p.add_argument('--smt',type=int,choices=[1,2,4,8],default=2);p.add_argument('--threads',type=int,choices=[16,32,72],default=32);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
 root=Path(__file__).resolve().parents[1]/'source/usr/local/emhttp/plugins/rackline.dashboard'
 view=(root/'include/view.php').read_text();view=view[view.index('<link'):view.index('<?php if (!isset')];view=view.replace('<?=$racklineWeb?>','/plugins/rackline.dashboard').replace('@@APP_VERSION@@',(Path(__file__).resolve().parents[1]/'VERSION').read_text().strip()+' QA').replace('@@RELEASE_VERSION@@','qa')
 assets=a.output/'plugins/rackline.dashboard';shutil.copytree(root/'assets',assets/'assets',dirs_exist_ok=True);shutil.copytree(root/'images',assets/'images',dirs_exist_ok=True)
@@ -10,7 +10,7 @@ html='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewpor
 if a.native_css:
     native=Path(__file__).with_name('native-theme-fixture.css').read_text()
     html=html.replace('<style>body', '<style>'+native+'</style><style>body').replace(view, '<main id="displaybox">'+view+'</main>')
-html=html.replace('<script src="/fixture.js"></script>', '<script>window.RacklineFixture={threads:'+str(a.threads)+',frontBays:'+str(a.native_css).lower()+'};</script><script src="/fixture.js"></script>')
+html=html.replace('<script src="/fixture.js"></script>', '<script>window.RacklineFixture={threads:'+str(a.threads)+',smt:'+str(a.smt)+',frontBays:'+str(a.native_css).lower()+'};</script><script src="/fixture.js"></script>')
 (a.output/'index.html').write_text(html);(a.output/'review.html').write_text(html.replace('<script id="rackline-bootstrap"', '<style>.qa button,.qa span{display:none}.qa{font-size:11px;padding:10px 20px}.qa br{display:none}</style><script id="rackline-bootstrap"')); (a.output/'mobile.html').write_text('<html><head><title>390px mobile viewport QA</title></head><body style="margin:0;background:#111820"><iframe title="Mobile Rackline" src="/" style="width:390px;height:844px;border:0"></iframe></body></html>')
 shutil.copy2(Path(__file__).with_name('fixture.js'),a.output/'fixture.js')
 print(a.output)

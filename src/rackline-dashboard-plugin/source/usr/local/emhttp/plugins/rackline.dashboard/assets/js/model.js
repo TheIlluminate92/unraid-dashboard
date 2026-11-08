@@ -33,23 +33,70 @@
     return {rx:same?deltaRate(n.counters&&n.counters.rxBytes,old.counters&&old.counters.rxBytes,span,6):null,tx:same?deltaRate(n.counters&&n.counters.txBytes,old.counters&&old.counters.txBytes,span,6):null};
   }
   function logicalCpus(cpu, previous, validInterval) {
-    var seen=new Set(), rows=[];
-    list(cpu && cpu.cores).forEach(function(core){list(core.threads).forEach(function(thread){
-      var id=number(thread.cpuId);if(id===null||id<0||!Number.isInteger(id)||seen.has(id))return;seen.add(id);
-      rows.push({id:id,packageId:core.packageId,coreId:core.coreId,tempC:number(core.tempC),percent:validInterval?cpuPercent((cpu.counters||{})['cpu'+id],(previous||{})['cpu'+id]):null});
+    var rows=new Map();
+    var topologyId=function(value){var id=number(value);return Number.isSafeInteger(id)&&id>=0?id:null;};
+    list(cpu && cpu.cores).forEach(function(core){if(!object(core))return;list(core.threads).forEach(function(thread){
+      if(!object(thread))return;var id=topologyId(thread.cpuId);if(id===null)return;
+      var packageId=topologyId(core.packageId),coreId=topologyId(core.coreId),existing=rows.get(id);
+      // Conflicting or incomplete identity is not evidence of a sibling relationship.
+      if(existing){if(existing.packageId!==packageId||existing.coreId!==coreId){existing.packageId=null;existing.coreId=null;}return;}
+      rows.set(id,{id:id,packageId:packageId,coreId:coreId,tempC:number(core.tempC),percent:validInterval?cpuPercent((cpu.counters||{})['cpu'+id],(previous||{})['cpu'+id]):null});
     });});
-    return rows.sort(function(a,b){return a.id-b.id;});
+    return Array.from(rows.values()).sort(function(a,b){return a.id-b.id;});
+  }
+  function cpuTopology(cpu,previous,validInterval){
+    var sockets=new Map();
+    logicalCpus(cpu,previous,validInterval).forEach(function(thread){
+      var known=thread.packageId!==null&&thread.coreId!==null,packageId=known?thread.packageId:null,key=known?thread.coreId:'unknown:'+thread.id;
+      if(!sockets.has(packageId))sockets.set(packageId,{packageId:packageId,cores:new Map()});
+      var socket=sockets.get(packageId);
+      if(!socket.cores.has(key))socket.cores.set(key,{coreId:known?thread.coreId:null,threads:[]});
+      socket.cores.get(key).threads.push(thread);
+    });
+    return Array.from(sockets.values()).sort(function(a,b){return (a.packageId===null?Infinity:a.packageId)-(b.packageId===null?Infinity:b.packageId);}).map(function(socket){
+      return {packageId:socket.packageId,cores:Array.from(socket.cores.values()).sort(function(a,b){return (a.coreId===null?Infinity:a.coreId)-(b.coreId===null?Infinity:b.coreId)||a.threads[0].id-b.threads[0].id;})};
+    });
   }
   // Fill balanced rows rather than leaving one logical CPU stranded on a new row.
-  function coreColumns(count,width,fontSize,gap){
+  function coreColumns(count,width,fontSize,gap,threads){
     count=number(count);width=number(width);fontSize=number(fontSize);gap=number(gap);
     if(!Number.isInteger(count)||count<1)return 1;
     var minimum=Math.max(30,(fontSize>0?fontSize:14)*2.15),spacing=gap>=0?gap:3;
+    if(Number.isInteger(threads)&&threads>0)minimum=minimum*threads+3*(threads-1)+2;
     var capacity=Math.max(1,Math.min(count,Math.floor(((width>0?width:minimum)+spacing)/(minimum+spacing))));
     var columns=Math.ceil(count/Math.ceil(count/capacity));
     while(columns>1&&count%columns>0&&count%columns<columns/2)columns--;
     return columns;
   }
+  function cachedReportState(smart){
+    if(!object(smart))return {label:'Unavailable',verified:false,present:false};
+    if(smart.available===true&&(smart.cacheStatus===undefined||smart.cacheStatus==='verified')&&smart.cachePresent!==false)return {label:'Identity verified',verified:true,present:true};
+    if(smart.cacheStatus==='identity_unverified'&&smart.cachePresent===true)return {label:'Cache present; identity unverified',verified:false,present:true};
+    if(smart.cacheStatus==='missing'&&smart.cachePresent===false)return {label:'No cached report',verified:false,present:false};
+    return {label:smart.cachePresent===true?'Cache present; unavailable':'Unavailable',verified:false,present:smart.cachePresent===true};
+  }
+  function cachedReportAge(smart,now){
+    var state=cachedReportState(smart);if(!state.present)return {label:state.label,old:false,atMs:null};
+    var at=number(smart.cachedAtMs),time=number(now),age=at!==null&&time!==null?time-at:null;
+    if(at===null||at<=0||age===null||age<0)return {label:'Age unknown',old:false,atMs:null};
+    var old=age>86400000,label=age<60000?'Under 1 min':age<3600000?Math.floor(age/60000)+' min ago':age<172800000?Math.floor(age/3600000)+' h ago':Math.floor(age/86400000)+' d ago';
+    return {label:(old?'Old · ':'')+label,old:old,atMs:at};
+  }
+  function bayTextColor(color){
+    if(typeof color!=='string'||!/^#[a-f0-9]{6}$/i.test(color))return '#ffffff';
+    var rgb=[1,3,5].map(function(at){var c=parseInt(color.slice(at,at+2),16)/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);});
+    return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#000000':'#ffffff';
+  }
+  function smartTarget(drive){
+    if(!object(drive)||typeof drive.name!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(drive.name)||typeof drive.device!=='string'||!/^[a-zA-Z0-9_-]{1,128}$/.test(drive.device)||typeof drive.selectionToken!=='string'||!/^[a-f0-9]{64}$/.test(drive.selectionToken))return null;
+    return {name:drive.name,device:drive.device,identity:drive.selectionToken,key:JSON.stringify([drive.name,drive.device,drive.selectionToken])};
+  }
+  function capturedReport(data,target){
+    if(!object(data)||!target||data.source!=='rackline_capture'||typeof data.binding!=='string'||!/^[a-f0-9]{64}$/.test(data.binding)||!Number.isInteger(data.capturedAtMs)||data.capturedAtMs<=0||!Number.isInteger(data.exitStatus)||data.exitStatus<0||data.exitStatus>255||(data.exitStatus&7)!==0||data.hasWarnings!==((data.exitStatus&248)!==0))return null;
+    var url='/plugins/rackline.dashboard/include/smart-capture-report.php?name='+encodeURIComponent(target.name)+'&device='+encodeURIComponent(target.device)+'&identity='+target.identity+'&binding='+data.binding;
+    return data.reportUrl===url?{reportUrl:url,binding:data.binding,capturedAtMs:data.capturedAtMs,hasWarnings:data.hasWarnings,exitStatus:data.exitStatus,source:data.source}:null;
+  }
+  function capturedReportAge(report,now){return cachedReportAge({available:true,cachedAtMs:report&&report.capturedAtMs},now);}
   function validId(id){return typeof id==='string'&&/^(?:[a-f0-9]{12}|[a-f0-9]{64})$/i.test(id);}
   function inventoryIndex(inventory){
     var index={ids:new Map(),prefixes:new Map(),names:new Map()};
@@ -178,5 +225,5 @@
     return ['webUi','tailscaleWebUi','support','project','registry','donate','readme'].every(function(k){var value=c.menu[k];return !value||!/[\s\\]/.test(value)&&/^(?:https?:\/\/|\/(?!\/))/i.test(value);});
   }
   function nativeArgs(c){var m=c.menu||{};return [c.name,c.imageId,m.template||'',c.state==='stopped'?0:1,c.state==='paused'?1:0,number(c.updateStatus)===null?3:Number(c.updateStatus),c.autostart?1:0,m.webUi||'',m.tailscaleWebUi||'',m.shell||'',c.id,m.support||'',m.project||'',m.registry||'',m.donate||'',m.readme||''];}
-  return {number:number,list:list,systemInterval:systemInterval,networkRates:networkRates,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,coreColumns:coreColumns,sameIdentity:sameIdentity,inventoryIndex:inventoryIndex,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,nativeMenuReady:nativeMenuReady,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl,batchPlan:batchPlan,validBatchStats:validBatchStats,batchMetrics:batchMetrics};
+  return {number:number,list:list,systemInterval:systemInterval,networkRates:networkRates,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,cpuTopology:cpuTopology,coreColumns:coreColumns,cachedReportState:cachedReportState,cachedReportAge:cachedReportAge,bayTextColor:bayTextColor,smartTarget:smartTarget,capturedReport:capturedReport,capturedReportAge:capturedReportAge,sameIdentity:sameIdentity,inventoryIndex:inventoryIndex,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,nativeMenuReady:nativeMenuReady,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl,batchPlan:batchPlan,validBatchStats:validBatchStats,batchMetrics:batchMetrics};
 }));
