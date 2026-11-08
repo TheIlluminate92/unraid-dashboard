@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> [Rackline operating guide and acceptance checklist](docs/RACKLINE.md): **0.2.5 / 2026.11.08.07 is prepared for the authorized readability update on both existing Unraid pilots.** Exact-head browser/CI and installation are pending; the last confirmed installed release is 0.2.4 on both. This candidate changes only Cooling typography and physical-bay labels. The unrelated disk-identity fix remains unshipped and SMART capture remains held. PR #41 remains draft/unmerged; WAZ history below stays separate.
+> [Rackline operating guide and acceptance checklist](docs/RACKLINE.md): **0.2.5 / 2026.11.08.07 is published and installed on both authorized Unraid pilots.** Exact-source CI passed, including 88 Chromium scenarios, and both installed 17-file runtimes/boot registrations match. Read the guide for bounded live checks and remaining browser limits. This release changes only Cooling typography and physical-bay labels. The unrelated disk-identity fix remains unshipped and SMART capture remains held. PR #41 remains draft/unmerged; WAZ history below stays separate.
 
 <!-- historian-overview:start -->
 ## Project overview

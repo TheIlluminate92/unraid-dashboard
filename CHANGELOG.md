@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.2.5 candidate / 2026.11.08.07 — cooling and bay-label readability
+## 0.2.5 / 2026.11.08.07 — cooling and bay-label readability
 
 - Enlarge Cooling labels, readings, headings and supporting text; wrap long readings and adapt card columns without reducing phone text or changing fan controls.
 - Prefer saved Disk Location comments as bay labels. Keep verified native names or cached-model fallback, separate visible identity status, disabled unverified actions, and existing geometry/colors. Never substitute a serial/node or guess a live identity for presentation.
-- Pass all 255 Rackline/WAZ Node tests, storage/display fixtures, syntax checks and independent incremental source review. Prepare additional desktop/mobile/200% browser assertions without claiming execution. Two identical isolated packages are prepared for the authorized update; publication, exact-head CI and installation are pending. Existing 0.2.4 hashes and the separate pending identity fix are preserved. See [current handoff](docs/RACKLINE.md#local-cooling-and-bay-label-readability--november-8-2026).
+- Publish immutable source/package commit `7c5c69ac15e7e07f27946df15fabada56f99f022`. All 255 Rackline/WAZ Node tests, PHP 8.2/8.4, Unix-socket/endpoint fixtures and 88 Chromium desktop/mobile/200% cases pass; independent screenshot review finds no blocker. Both downloaded CI packages match the two reproducible local builds and frozen release hashes.
+- Install on both authorized pilots with exact 17-file runtime and boot-registration verification. Retain fresh 0.2.4 recovery and all earlier generations. Workload continuity and bounded passive checks are recorded separately from incomplete browser acceptance; no active SMART, control change, restart, rollback or cleanup was exercised. The separate pending identity fix remains unshipped. See [current acceptance](docs/RACKLINE.md#025-readability-publication-and-acceptance--november-8-2026).
 
 ## Unreleased — cached disk identity hardening (2026-11-08, local only)
 
