@@ -32,7 +32,7 @@ The following is dated intermediate worker evidence supplied November 8 UTC. It 
 | Hide Cooling when controller genuinely absent | Still being implemented. | Confirmed absence must differ from genuine controller error/stale/fault; never hide a real error merely to simplify the UI. |
 | Fresh SMART read/daily full report | **Not ready**; locator, before/after assignment identity, controller options, authentication and report contract still being verified. | No promise of cache population or disk-wake behavior; no active disk read/self-test added by this documentation. |
 
-Intermediate reported checks: 146 Node tests, PHP checks, 605 independent action cases, four portability cases, 64 topology permutations, 2, 684 host-stress assertions and 13 package tests. These are worker-reported intermediate results, not final frozen/exact-commit or live-load proof. The previous local patch is stale; wait for the owner's final freeze/test/gap handoff. No authenticated new-batch browser/menu/editor or installed rollout acceptance is established.
+Intermediate reported checks: 146 Node tests, PHP checks, 605 independent action cases, four portability cases, 64 topology permutations, 2,684 host-stress assertions and 13 package tests. These are worker-reported intermediate results, not final frozen/exact-commit or live-load proof. The previous local patch is stale; wait for the owner's final freeze/test/gap handoff. No authenticated new-batch browser/menu/editor or installed rollout acceptance is established.
 
 ### SMART freshness and identity
 
