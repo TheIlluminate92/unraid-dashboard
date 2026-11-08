@@ -1,10 +1,64 @@
 # Rackline: independent host workspace
 
-## Current state — 2026-11-08
+## Current state and handoff — 2026-11-08 UTC
 
-Rackline is a **source implementation for review, not an installed-host release**. It is a separate `rackline.dashboard` plugin, version 0.2.1, build 2026.11.08.03. No live installation, configuration, container action, fan change or WAZ replacement is performed by this source work. Operational ownership stays with each host's existing owner; no new operational owner is assigned here.
+Maintainer: Rackline implementation worker for source; each existing host owner for runtime; Historian for documentation.
+Reviewed: 2026-11-07 (America/Chicago), using November 8 UTC source/host-owner reports.
+Status: one installed Unraid pilot; draft published source; separate unpublished running batch. This documentation does not authorize a release, installation, native action or PR merge.
 
-Each server runs its own `/Rackline` workspace inside its authenticated Unraid WebUI. A small additive Dashboard panel opens it. The native `/Dashboard`, Main/Docker pages and fan-control plugin remain in place. Rackline now installs and runs without the old WAZ plugin. An existing WAZ install is left untouched; removal is a separate authorized operation. There is no separate service, port, cloud API, fleet aggregator or dashboard-layout editor. This first integration is an additive workspace/launcher, not a DOM replacement of Unraid's Dashboard. Native-theme acceptance on installed hosts remains pending.
+Rackline is a standalone, **host-local Unraid WebUI** workspace at `/Rackline`, with an additive native Dashboard launcher and its own system/storage/Docker collectors. It is not a generic Linux dashboard or a combined cross-host/fleet view. It runs independently of WAZ; native Unraid pages and optional controller plugins remain their owners' interfaces.
+
+| Layer | Last supplied or verified state | Limits |
+|---|---|---|
+| Installed pilot | Host owner reported Rackline 0.2.1/build 2026.11.08.03, runtime commit `2fd85793e1e01d8b06b7aff26eedfb951fbe47c0`, before the November 8 04:09 UTC status. Both package hashes and12 runtime files matched; collectors/folders/pools and bounded samples for all nine running containers checked. | Pilot evidence only; no containers/core services restarted. Authenticated live-browser/native-control/reboot acceptance remains unverified. No second-host rollout is established. |
+| Published review source | [Draft PR41](https://github.com/TheIlluminate92/unraid-dashboard/pull/41), head `2225af048209b15f5b0c40f2a8ff174a38c8cf89`; test-only follow-up to installed 2fd8579 with unchanged package bytes. Open, draft and unmerged at this documentation review. | A PR head or synthetic browser test is not installed-host acceptance. |
+| Installed-source CI | Exact 2fd8579 Rackline PHP 8.2/8.4, responsive matrix, artifact and WAZ checks passed. | [Rackline run](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42445041260), [artifact run](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42445035161), [WAZ run](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42445041276). Synthetic geometry is not authenticated host rendering. |
+| Published test-only head CI | Exact 2225af0 PHP and WAZ checks passed; **responsive job failed** at native-style geometry checking. | [Failed responsive job](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42445765614/job/128624241986). Do not call this head all-green or the stronger focus checks accepted. No code fix or rerun is implied by this docs update. |
+| Active running batch | Separate implementation checkout remains unpublished at the 2225af0 code baseline; dirty source docs/code are not imported here. | Owner's no-push hold remains. Final freeze, another bug/stress round, exact-head checks and release decision are still required. |
+
+### Running list, not a frozen release
+
+The following is dated intermediate worker evidence supplied November 8UTC. It is neither a final package allowlist nor installed behavior. Requested work is additive to the existing queue; no documentation publication releases held code.
+
+| Item | Reported local state | Acceptance or side-effect boundary |
+|---|---|---|
+| Remove routine update timers/filler; tighter mobile Drives/Docker spacing | Local copy/timer/spacing changes retained. | Do not infer collector polling was removed or a live host updated; final behavior needs the frozen source record. |
+| CPU grouping | Local grouping uses actual socket/core/sibling topology;64 topology permutations reported. | Generic Unraid discovery, not hard-coded pilot CPU placement; missing/ambiguous topology must stay explicit. |
+| Sticky-strip keyboard focus and wrapping | Local fixes retained. | New-batch browser rendering is blocked by a socket restriction; no new installed acceptance. |
+| Cached SMART details/age | Passive links and cache-age work retained; identity must be verified before linking a report. | Cache-present-but-identity-unverified differs from absent. Old means **over 24 hours**. A page refresh does not refresh SMART. |
+| Docker update check and selected update | “Check all registries”/“Update selected” controls implemented locally; earlier edge cases were under repair, not a frozen acceptance result. | Checking may contact registries; updating may pull/recreate/restart a container through native controls. No live check/update was performed. Do not expose these as currently installed Rackline controls. |
+| Automatic discovery/organization | Local portable-Unraid implementation and four portability cases reported passed. | Native dependencies still apply; no arbitrary OS, all-hardware or all-plugin-version guarantee. |
+| Stable Docker/folder/drive-filter viewport | Still being implemented. | Must preserve selection and viewport rather than jumping the page; not completed or deployed. |
+| Hide Cooling when controller genuinely absent | Still being implemented. | Confirmed absence must differ from genuine controller error/stale/fault; never hide a real error merely to simplify the UI. |
+| Fresh SMART read/daily full report | **Not ready**; locator, before/after assignment identity, controller options, authentication and report contract still being verified. | No promise of cache population or disk-wake behavior; no active disk read/self-test added by this documentation. |
+
+Intermediate reported checks:146 Node tests, PHP checks,605 independent action cases, four portability cases,64 topology permutations,2,684 host-stress assertions and13 package tests. These are worker-reported intermediate results, not final frozen/exact-commit or live-load proof. The previous local patch is stale; wait for the owner's final freeze/test/gap handoff. No authenticated new-batch browser/menu/editor or installed rollout acceptance is established.
+
+### SMART freshness and identity
+
+Keep collection time, cache mtime, dashboard receipt time and self-test completion separate. Observed native Unraid attribute intervals differed between inspected hosts:24hours versus30seconds for active disks; these are host-specific settings, **not Rackline defaults or proof of every successful read**. Sleeping drives may keep older cached reports. Rackline's existing storage path reads native cache; another plugin's newer cache is not automatically the same source.
+
+For the proposed cached-report UI, show identity-verified cache present, cache present with identity unverified, and absent as different states. Do not attach a report to a replacement/ambiguous disk by guessing. A native report download may read fresh device data without populating Rackline's cache; forced/full reads can differ from standby-protected reads. Active freshness, cache refresh and wake guarantees remain unresolved. Do not equate report age with a completed SMART self-test.
+
+### Installation, controls and recovery
+
+- Use a specifically reviewed **Rackline** package through Unraid's native plugin process only under the host owner's scope. The source build below produces the independent Rackline PLG/TGZ/checksums; the repository's rolling `waz.dashboard.plg` is **not a Rackline installer**. No automated update URL is provided for this review build.
+- Preserve current plugin identity/configuration, native Unraid navigation and optional integrations. WAZ removal/replacement is a separate authorized action; the supplied pilot report says WAZ was removed and prior Rackline plus original WAZ recovery copies retained. This is not an instruction to remove WAZ on another host. No private recovery paths/configuration/host inventory are published here.
+- Read-only Rackline collector refreshes are distinct from native mutations. Existing native Docker menu/editor links can stop/recreate containers when intentionally used; the native fan-control page owns fan changes. Rackline collectors add no fan writer or SMART probe. Local-only update/fresh-SMART controls above have not acquired installed acceptance.
+- Before an authorized install/update, the host owner checks exact package hashes, prerequisites, matching retained predecessor and rollback/removal plan. Preserve separate WAZ and Rackline recovery generations; do not infer reboot recovery from temporary-fixture package tests. Native theme, authenticated menus/editor, reboot/rollback and actual overhead need their own host evidence. No service/container restart or fan/disk action is performed for documentation.
+- General WAZ context remains in [installation](INSTALL.md), [recovery](RECOVERY.md) and [maintenance/migration](MAINTENANCE_AND_MIGRATION.md); those WAZ artifact instructions must not be substituted for the separate Rackline build/host-owner procedure here.
+
+### Architecture and portability prerequisites
+
+The detailed published-source contracts below are the baseline, not proof that the unpublished controls are delivered. Required: Unraid authenticated same-origin PHP/WebUI, local kernel proc/sysfs data, Docker local socket reads with PHP cURL-multi/Unix-socket support and native Docker manager compatibility. Optional FolderView/Organizer, DiskLocation and MD12xx controller metadata are discovered locally when available. No separate service/port/cloud credential/fleet collector is introduced. The pilot's successful container samples provide that host's compatibility evidence only.
+
+All-container CPU/RAM/network/block activity is fair bounded rotating sampling, not simultaneous full-inventory capture. Preserve sample age, coverage, partial/error/unavailable and recreation/reset boundaries. GPU attribution and top-process/per-container process sampling remain **unavailable** in published/installed Rackline unless a later independently reviewed source record establishes otherwise. Never import old WAZ GPU/process claims into this standalone plugin.
+
+### Current replacement-chat handoff and dated change
+
+Resume with this state table, [PR41](https://github.com/TheIlluminate92/unraid-dashboard/pull/41), the design/validation history below and the host owner's private pilot/recovery receipts. Implementation worker owns the active code, host owners own native actions, and Historian owns this isolated documentation pass. No new operational owner or standing action authority is assigned. Next source step: finish viewport/fan/SMART issues, freeze the full batch, repeat requested bug/stress verification and report exact source/package/check gaps **before lifting the code no-push hold**. Do not copy a dirty code checkout or its dirty docs into a documentation-only commit.
+
+November 8UTC documentation reconciliation: distinguish installed 2fd8579, published test-only 2225af0/failed-responsive gap, and the unpublished running list; retain old source/rollback history, add controls/side-effects and native SMART/identity limits. Only README.md and this existing Rackline guide change. No code, package, workflow, runtime, host inventory or private screenshot is published by this batch. Earlier source-only statements below retain their original phase scope; they do not negate the later supplied installed-pilot evidence.
 
 ## Design and source contracts
 
@@ -17,7 +71,7 @@ Each server runs its own `/Rackline` workspace inside its authenticated Unraid W
 - Cooling reads the existing local MD12xx controller endpoint only when detected. Watchdog recovery/fault, stale state, shelf status and optional chassis/IPMI state are shown. Empty-array missing statuses are tolerated. Component timestamps use epoch seconds. Watchdog generatedAt is a state-transition timestamp, not a heartbeat; its age is shown only as last state change. Current shelf health relies on the controller-derived root stale flag, while IPMI retains its own stale flag. The existing `/MD12xxFanControl` page owns every setting change; Rackline does not require WAZ’s banner. Rackline adds no fan writer, policy, watchdog, hardware access or POST.
 - Polls do not overlap per feed and pause in hidden tabs: system 1 s, container batches 2 s after completion while Docker is visible, physical I/O 2 s, storage/inventory/fans 5 s. Request timeout is 8 s. Optional fan 404/410 stops further polling until reload. Feed errors/staleness are explicit; last successful data may remain visible. Native links stay usable.
 
-Dependencies: native Unraid PHP/WebUI and kernel proc/sysfs reads, Docker’s local socket for container data, and the installed native Docker manager for native menus/editor. Optional FolderView/Organizer, Disk Location and MD12xx fan-controller files/endpoints are read directly if present. No WAZ runtime, configuration, asset, collector, GPU cache or health banner is used. PHP cURL multi with Unix-socket support is required for Docker reads; its installed-host availability remains unverified. Missing optional integrations and unsupported telemetry stay unavailable. WAZ source and its existing release are unchanged.
+Dependencies: native Unraid PHP/WebUI and kernel proc/sysfs reads, Docker’s local socket for container data, and the installed native Docker manager for native menus/editor. Optional FolderView/Organizer, Disk Location and MD12xx fan-controller files/endpoints are read directly if present. No WAZ runtime, configuration, asset, collector, GPU cache or health banner is used. PHP cURL multi with Unix-socket support is required for Docker reads; supplied pilot container-sample acceptance establishes that host only, not other-host availability. Missing optional integrations and unsupported telemetry stay unavailable. WAZ source and its existing release are unchanged.
 
 The system collector is GET-only with no commands or persistent state. It subtracts the double-counted guest CPU fields, uses monotonic time and boot identity to invalidate rate baselines, keeps package/core temperature identity separate, and reads memory availability and default-route interface counters directly. Unreadable counters stay null; interface ifindex changes invalidate rates. It does not run DIMM/ECC, UPS or GPU probes. Without a default route or an explicitly configured Rackline PRIMARY_INTERFACE, interface telemetry remains unknown. Ambiguous multisocket AMD temperature attribution remains unknown.
 
