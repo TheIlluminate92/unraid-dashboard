@@ -1,6 +1,6 @@
 # Unraid Dashboard
 
-> Standalone Unraid workspace: [Rackline operating state, running batch and recovery boundaries](docs/RACKLINE.md). Its own plugin and collectors power the host-local `/Rackline` page independently of WAZ. One owner-operated pilot is reported installed; PR41 remains draft/unmerged and the next running code batch is unpublished. This is not a generic Linux or cross-host dashboard. WAZ release/history below remain separate.
+> Standalone Unraid workspace: [Rackline operating state, running batch and recovery boundaries](docs/RACKLINE.md). Its own plugin and collectors power the host-local `/Rackline` page independently of WAZ. One owner-operated pilot is reported installed; PR 41 remains draft/unmerged and the next running code batch is unpublished. This is not a generic Linux or cross-host dashboard. WAZ release/history below remain separate.
 
 <!-- historian-overview:start -->
 ## Project overview
