@@ -108,3 +108,18 @@
 #rackline-root .rl-bay-grid button.rl-native-color,#rackline-root .rl-bay-grid button.rl-native-color:hover{background:var(--rl-bay-color);color:var(--rl-bay-text)}
 #rackline-root .rl-bay-grid button.rl-native-color b,#rackline-root .rl-bay-grid button.rl-native-color small{color:inherit}
 #rackline-root .rl-bay-grid button:disabled{opacity:1}
+
+/* Larger/asymmetric topologies get their own first layer. Keep DOM/keyboard
+   order and the original compact strip unchanged. em-based minima respond to
+   text enlargement; min(100%, ...) also permits a single narrow column. */
+#rackline-root.rl-pulse-expanded .rl-pulse{grid-template-columns:repeat(auto-fit,minmax(min(100%,max(18em,30%)),1fr));align-items:start}
+#rackline-root.rl-pulse-expanded .rl-pulse article{grid-column:auto;overflow-wrap:anywhere}
+#rackline-root.rl-pulse-expanded .rl-pulse article:first-child{grid-column:1/-1}
+#rackline-root.rl-pulse-expanded .rl-cores{grid-template-columns:repeat(auto-fit,minmax(min(100%,36em),1fr));align-items:start;gap:10px}
+#rackline-root.rl-pulse-expanded .rl-pulse article:not(:first-child){padding-top:10px;padding-bottom:10px}
+#rackline-root.rl-pulse-expanded .rl-dual{display:flex;flex-wrap:wrap;padding:8px 0;gap:8px 16px}
+#rackline-root.rl-pulse-expanded .rl-dual>div{min-width:0;flex:1 1 7em}
+#rackline-root.rl-pulse-expanded .rl-dual>div+div{margin-top:0}
+#rackline-root.rl-pulse-expanded .rl-dual b{white-space:normal;overflow-wrap:anywhere}
+#rackline-root.rl-pulse-expanded .rl-meter{margin:8px 0}
+#rackline-root.rl-pulse-expanded .rl-reading>small{white-space:normal;overflow:visible;overflow-wrap:anywhere}

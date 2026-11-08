@@ -56,6 +56,9 @@ GEOMETRY = r'''() => {
   viewport:innerWidth,viewportHeight:innerHeight,documentWidth:document.documentElement.scrollWidth,root:box(root),
   cpu:cores.map(e=>({id:e.querySelector('span').textContent,...box(e),clipped:[...e.querySelectorAll('span,b')].some(n=>n.scrollWidth>n.clientWidth+1)})),
   sockets,overlap,
+  pulseExpanded:root.classList.contains('rl-pulse-expanded'),
+  pulseCards:[...root.querySelectorAll('.rl-pulse article')].map(box),
+  pulseClipped:[...root.querySelectorAll('.rl-pulse .rl-label,.rl-pulse .rl-foot,.rl-pulse .rl-reading,.rl-pulse .rl-dual,.rl-pulse .rl-dual b')].filter(e=>e.clientWidth>0&&(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1)).map(e=>e.textContent),
   bays:bays.map(e=>({label:e.querySelector('b').textContent,hidden:getComputedStyle(e).visibility==='hidden',...box(e)})),
   controls:allControls.map(e=>({label:e.textContent.trim(),...box(e)})),
   buttonStyle:visible.length?['minWidth','marginTop','marginRight','letterSpacing','textTransform'].map(k=>[k,getComputedStyle(visible[0])[k]]):[],
@@ -94,6 +97,17 @@ def verify(page, threads, phone=False, smt=2):
                 for b in group['cpus'][i+1:]:
                     assert min(a['right'],b['right']) - max(a['x'],b['x']) <= .5 or min(a['bottom'],b['bottom']) - max(a['y'],b['y']) <= .5
 
+    cards = data['pulseCards']
+    assert not data['pulseClipped'], ('metric text clipped', data['pulseClipped'])
+    for i, card in enumerate(cards):
+        for other in cards[i+1:]:
+            assert min(card['right'],other['right']) - max(card['x'],other['x']) <= .5 or min(card['bottom'],other['bottom']) - max(card['y'],other['y']) <= .5, ('performance cards overlap', cards)
+    expanded = socket_count > 1 or threads // smt > 8 or smt > 2
+    assert data['pulseExpanded'] == expanded, ('wrong strip mode', data)
+    if expanded:
+        assert all(card['y'] >= cards[0]['bottom'] - 1 for card in cards[1:]), ('secondary cards not below CPU', data)
+        assert all(card['x'] >= data['root']['x'] and card['right'] <= data['root']['right'] + 1 for card in cards), ('card overflow', data)
+        assert all(cards[i]['y'] <= cards[i+1]['y'] + 1 for i in range(len(cards)-1)), ('reading order changed', data)
     if data['bays']:
         assert not data['overlap'], data['overlap']
         assert [b['label'] for b in data['bays']] == ['0','2','4','8','9','1','3','5','6','7']
@@ -408,11 +422,12 @@ def check_smart_flow(page, mode):
 with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_playwright() as p:
     fixture_dir = Path(temp)
     browser = p.chromium.launch(executable_path=args.browser, headless=True, args=['--no-sandbox'])
-    cases = [(str(width), width, 16, 1, False, 2) for width in [320,360,390,430,768,1024,1440]]
+    cases = [(str(width), width, 16, 1, False, 2) for width in [320,360,390,430,768,1024,1440,1920,2048]]
     cases += [(f'{width}-text-200', width, 16, 1, True, 2) for width in [320,390]]
     # Browser zoom reflow emulation: halve CSS viewport and double device scale.
     cases += [('desktop-200-percent-reflow',720,16,2,False,2)]
-    cases += [(f'{width}-{threads}-cpus',width,threads,1,False,2) for width in [390,1024,1440] for threads in [32,72]]
+    cases += [(f'{width}-{threads}-cpus',width,threads,1,False,2) for width in [320,390,540,768,900,1024,1200,1440,1920,2048] for threads in [32,72]]
+    cases += [(f'{width}-{threads}-text-200',width,threads,1,True,2) for width in [320,390,768,1024,1440,1920,2048] for threads in [32,72]]
     cases += [('320-text-200-smt8',320,16,1,True,8),('1024-single-thread-cores',1024,16,1,False,1),('1024-short-viewport',1024,32,1,False,2)]
     try:
         for name,width,threads,scale,text_scale,smt in cases:
@@ -438,6 +453,21 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                     page.set_viewport_size({'width':width,'height':height})
                 page.wait_for_timeout(100)
                 data=verify(page,threads,width<=700,smt)
+                if not text_scale and width >= 1200 and threads in [32,72]:
+                    cards=data['pulseCards']
+                    assert max(c['y'] for c in cards[1:])-min(c['y'] for c in cards[1:]) <= 1, ('secondary layer is not one row', cards)
+                    assert all(c['height'] < cards[0]['height']-10 for c in cards[1:]), ('secondary layer is not visibly thinner', cards)
+                if threads == 16 and smt == 2:
+                    # Compact baseline equivalence: removing only the adaptive
+                    # CSS must not alter any card/socket geometry at this width.
+                    baseline = page.evaluate('''() => {
+                      const style=[...document.querySelectorAll('style')].find(e=>e.textContent.includes('/* Larger/asymmetric topologies'));
+                      const original=style.textContent;
+                      const boxes=()=>[...document.querySelectorAll('.rl-pulse article,.rl-cpu-socket')].map(e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height];});
+                      const before=boxes();style.textContent=original.slice(0,original.indexOf('/* Larger/asymmetric topologies'));
+                      const after=boxes();style.textContent=original;return {before,after};
+                    }''')
+                    assert baseline['before'] == baseline['after'], ('compact baseline changed', baseline)
                 if not text_scale and width<=700 and threads==16:
                     assert data['tabTop'] < 900, ('mobile strip too tall', data['tabTop'])
                 capture_overview(page,args.output / f'rackline-synthetic-{name}-drives.png')

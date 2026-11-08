@@ -95,6 +95,18 @@ The implementation worker owns source; existing host owners own native actions; 
 
 November 8 preparation: the already published 398704b source/package and the existing 15:43–15:46 UTC host receipt were read without a new live audit. Artifact SHA256 values and all 17 package-member/source hashes are checked locally; exact-head CI results are existing remote evidence. Earlier 0.2.1/0.2.2, local-candidate and failed-then-fixed CI phases remain history. Source-state paragraphs below retain their original phase meaning; **this operating/acceptance record is the current summary**. Only the README lead and guide are proposed changes. This turn is local preparation only: no push, PR metadata update, readiness change, publication, merge or runtime operation.
 
+## Adaptive performance strip candidate — 0.2.4 / 2026.11.08.06
+
+The owner authorized packaging, testing and publication on November 8. Version **0.2.4 / 2026.11.08.06** is prepared locally from the installed 0.2.3 runtime, with two byte-identical isolated builds and [versioned candidate files](../releases/rackline/0.2.4-2026.11.08.06/README.md). Parent publication and exact-head CI are pending. No candidate installation or browser acceptance has occurred; the installed pilot and acceptance limits above are unchanged.
+
+- Preserve the existing compact single-socket layout up to its eight two-thread physical-group budget. Larger groups, additional reported sockets or higher SMT select an expanded layout without host-name rules or guessed CPU identities.
+- Give the CPU card its own first row. Socket sections pack using available width and text size; memory, network and disk I/O use a shorter wrapping second layer in their existing DOM order. Unknown topology remains explicit.
+- Retain measured core fitting, readable labels, focus and native controls. Recheck sticky fit after final secondary metric text changes. Classification does not depend on its own expanded width, avoiding sample/resize oscillation; multiple sockets return without flattening core arrays.
+
+Validation: **209 Rackline + 42 WAZ Node tests passed**, including sparse/interleaved, asymmetric, missing, high-SMT and 4,096-socket cases, plus repeated final-height growth/shrink. Supported PHP/parser/stress/HTTP, true DOM-absence, portability and 14 isolated package tests also passed. Python AST and 69 literal browser JavaScript scripts/expressions compile; the incremental diff is clean. The browser suite now prepares 320–2048px, 32/72-logical-CPU and 200% text cases, compact baseline equivalence, nonoverlap, clipping, row placement and shorter secondary-card checks.
+
+**Rendered browser tests have not run for this change.** No after screenshot, pixel equivalence, installed-host acceptance or new CI result is claimed. The prior browser launch restriction was not retried. Run the exact published candidate's browser suite and visual review before installation. Prior Unix-socket fixtures were not retried locally and remain CI gates. Collectors, endpoints and current server files are unchanged; new identifiers/artifacts are isolated from preserved 0.2.3 and 0.2.2 distributions.
+
 ## Historical source-state snapshot — 2026-11-08
 
 The installed pilot baseline is **0.2.2 / 2026.11.08.04**, runtime source `e4142e73242d59e035d9f357bdcd5545f0d94cc1`, permanent distribution `1295357586d61252c691bea59684205a0c0f855f`. The host owner confirmed all 17 runtime files and boot registration match that distribution. Published-release CI is green. Live passive data, folder/topology checks and a 35-second, 85-request collector stress pass succeeded. This is not acceptance of an actual SMART capture, native-browser rendering, Docker menus/editor or fan-control actions. The second planned host has not been deployed.

@@ -73,18 +73,30 @@ function cpuMarkup(cpu,previous,valid){
   }).join('')+'</div></section>';
  }).join(''):'<span>CPU topology unavailable</span>';
 }
+// A compact strip has room for eight two-thread physical groups. Decide from
+// topology, never the expanded card's measured width or fluctuating utilization:
+// repeated samples and ResizeObserver passes cannot toggle the layout back/forth.
+function expandedPulse(cpu){
+ var sockets=M.cpuTopology(cpu,null,false);
+ if(sockets.length>1)return true;
+ var cores=sockets.length?sockets[0].cores:[];
+ return cores.length>8||cores.some(function(core){return core.threads.length>2;});
+}
 function renderSystem(){var d=state.system;if(!d)return;var p=state.previousSystem,span=M.systemInterval(d,p),valid=span!==null;
  text('rl-cpu',pct(valid?M.cpuPercent(d.cpu&&d.cpu.counters&&d.cpu.counters.cpu,p.cpu&&p.cpu.counters&&p.cpu.counters.cpu):null));
  text('rl-topology',(num(d.cpu&&d.cpu.physicalCoreCount)===null?'Physical core count unknown':d.cpu.physicalCoreCount+' physical cores')+' · '+(num(d.cpu&&d.cpu.threadCount)===null?'unknown':d.cpu.threadCount)+' logical CPUs');text('rl-model',d.cpu&&d.cpu.model||'Processor unavailable');text('rl-temperature',temp(d.cooling&&d.cooling.cpuTempC));
+ root.classList.toggle('rl-pulse-expanded',expandedPulse(d.cpu));
  $('rl-cores').innerHTML=cpuMarkup(d.cpu,p&&p.cpu&&p.cpu.counters,valid);layoutCores();
  var mem=d.memory||{},total=num(mem.totalBytes),available=num(mem.availableBytes),used=total!==null&&available!==null&&available>=0&&available<=total?total-available:null;
  text('rl-ram',bytes(used,true)+' / '+bytes(total,true));$('rl-ram-bar').style.width=total>0&&used!==null?Math.min(100,used/total*100)+'%':'0%';text('rl-ram-detail',bytes(available,true)+' available · '+bytes(mem.cachedBytes,true)+' cache (overlaps available)');
  var n=d.network||{},network=M.networkRates(d,p),rx=network.rx,tx=network.tx;
  text('rl-rx',rate(rx));text('rl-tx',rate(tx));text('rl-interface',n.interface||'Unavailable');text('rl-network-detail',(n.up===true?'Link up':n.up===false?'Link down':'Link unknown')+' · '+(num(n.speedMbps)!==null?n.speedMbps+' Mb/s link':'Speed unknown'));
+ // Secondary cards can reflow independently of the observed CPU grid.
+ layoutPulse();
 }
 function allDrives(){return M.drives(state.storage);}
 function ioRates(){return M.diskRates(state.io,state.previousIo,allDrives());}
-function renderIo(){var rates=ioRates();text('rl-read',rate(rates.read));text('rl-write',rate(rates.write));text('rl-io-detail',rates.expected?rates.count+' / '+rates.expected+' known devices · kernel counters':'Waiting for device inventory / two samples');if(state.drive)renderDriveInspector();}
+function renderIo(){var rates=ioRates();text('rl-read',rate(rates.read));text('rl-write',rate(rates.write));text('rl-io-detail',rates.expected?rates.count+' / '+rates.expected+' known devices · kernel counters':'Waiting for device inventory / two samples');layoutPulse();if(state.drive)renderDriveInspector();}
 function renderAlerts(){var messages=[];[state.storage,state.docker].forEach(function(d){M.list(d&&d.attention&&d.attention.messages).forEach(function(m){messages.push(String(m));});});messages=[...new Set(messages)];$('rl-alerts').hidden=!messages.length;$('rl-alerts').innerHTML=messages.map(function(m){return '<span>'+esc(m)+'</span>';}).join('');}
 function renderDrives(){var rows=allDrives(),groups=[...new Set(rows.map(function(d){return d.group;}))];if(state.pool!=='all'&&!groups.includes(state.pool))state.pool='all';if(state.drive&&!rows.some(function(d){return d.key===state.drive;}))state.drive='';
  stableMarkup($('rl-pools'),[{id:'all',label:'All drives',count:rows.length}].concat(groups.map(function(g){return{id:g,label:g,count:rows.filter(function(d){return d.group===g;}).length};})).map(function(g){return '<button data-pool="'+esc(g.id)+'" aria-pressed="'+(state.pool===g.id)+'">'+esc(g.label)+'<small>'+g.count+'</small></button>';}).join(''));

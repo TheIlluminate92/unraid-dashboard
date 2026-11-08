@@ -2,6 +2,8 @@
 
 > [Rackline operating guide, pinned install/update and acceptance checklist](docs/RACKLINE.md): **0.2.3 / 2026.11.08.05 is published and installed** on the owner's host-local Unraid pilot, including Ember/banner/native-default-color work. Exact package/runtime/boot and bounded passive checks passed. Authenticated SMART/native controls, rendered installed UI and reboot/rollback remain unrun; zero captures and all recovery retained. Repository distribution is not a main merge or GitHub Release/tag. PR #41 remains draft/unmerged; WAZ history below stays separate.
 
+> Adaptive-layout **0.2.4 / 2026.11.08.06** is prepared for authorized publication and exact-head CI. [Candidate files](releases/rackline/0.2.4-2026.11.08.06/README.md). It is not installed or browser-accepted; the installed 0.2.3 record above remains current.
+
 <!-- historian-overview:start -->
 ## Project overview
 

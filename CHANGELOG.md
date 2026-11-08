@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4 candidate / 2026.11.08.06 — publication and exact-head CI pending
+
+- Preserve the compact strip and give larger/multiple-socket CPU topologies a full-width first layer, with shorter memory/network/I/O cards below. Discover topology and fit to width/text size without host-specific layout rules or changed keyboard order.
+- Recheck sticky fit after secondary text changes and avoid eager multi-socket array flattening. Add topology, repeated-height, large-input and prepared browser geometry regressions.
+- Local validation: 209 Rackline and 42 WAZ Node tests plus supported PHP/parser/stress/HTTP/portability and 14 isolated package checks pass. Two 0.2.4 builds reproduce identical bytes. Browser Python and 69 literal JavaScript scripts/expressions compile. The prepared 320–2048px browser matrix and Unix-socket CI remain unrun locally; no new rendered or installed-host acceptance is claimed. Preserve 0.2.3 artifacts and the installed baseline; parent publication and exact-head CI are next.
+
 ## 0.2.3 candidate / 2026.11.08.05 — awaiting CI and pilot acceptance
 
 - Prepare the reviewed healthy-status cleanup, tokenizer-independent native defaults and Ember palette under new release identifiers. Preserve published 0.2.2 artifacts and unchanged physical mapping/identity semantics.
