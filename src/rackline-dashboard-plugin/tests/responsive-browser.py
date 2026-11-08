@@ -215,6 +215,67 @@ def check_filter_switches(page):
     return checks
 
 
+def check_cooling_typography(page, text_scale=False, long_text=False):
+    page.locator('#rl-tab-cooling').click();settle_layout(page)
+    page.wait_for_function("document.querySelectorAll('#rl-cooling-status article').length >= 3")
+    if long_text:
+        page.evaluate(r'''() => {
+          const original=window.fetch;
+          window.fetch=async (...args)=>{
+            const response=await original(...args);
+            if(!String(args[0]).includes('fancontrol')||!response.ok)return response;
+            const payload=await response.json();
+            payload.watchdog.message='Controller status with a deliberately long description and no truncation';
+            payload.shelves[0].name='Synthetic shelf with a very long configured enclosure name';
+            payload.shelves[0].telemetryMessage='SensorIdentifierWithoutBreaks'.repeat(5);
+            payload.ipmi.message='Firmware cooling remains active while telemetry is cached';
+            return {ok:true,status:200,json:async()=>payload};
+          };
+          document.dispatchEvent(new Event('visibilitychange'));
+        }''')
+        page.wait_for_function("document.querySelector('#rl-cooling-status').textContent.includes('SensorIdentifierWithoutBreaks')")
+    if text_scale:
+        # Stable stylesheet scaling also covers readings recreated by polling.
+        # Inline snapshots alone would miss replacement DOM nodes.
+        page.add_style_tag(content='''
+          #rackline-root #rl-cooling {font-size:28px!important}
+          #rackline-root #rl-cooling h2 {font-size:42px!important}
+          #rackline-root #rl-cooling h3 {font-size:40px!important}
+          #rackline-root #rl-cooling dl>div,#rackline-root #rl-cooling dt {font-size:30px!important}
+          #rackline-root #rl-cooling dd {font-size:34px!important}
+          #rackline-root #rl-cooling .rl-note,#rackline-root #rl-cooling .rl-button {font-size:28px!important}
+        ''')
+    settle_layout(page)
+    data=page.locator('#rl-cooling').evaluate(r'''panel=>{
+      const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+      const style=e=>({font:parseFloat(getComputedStyle(e).fontSize),...rect(e)});
+      const cards=[...panel.querySelectorAll('.rl-box')];
+      const rows=[...panel.querySelectorAll('dl>div')];
+      const readings=[...panel.querySelectorAll('h3,dt,dd,.rl-note')];
+      return {panel:rect(panel),documentWidth:document.documentElement.scrollWidth,viewport:innerWidth,
+        cards:cards.map(rect),headings:[...panel.querySelectorAll('h3')].map(style),
+        labels:[...panel.querySelectorAll('dt')].map(style),values:[...panel.querySelectorAll('dd')].map(style),
+        clipped:readings.filter(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1).map(e=>e.textContent),
+        rows:rows.map(e=>({row:rect(e),label:rect(e.querySelector('dt')),value:rect(e.querySelector('dd'))})),
+        button:style(panel.querySelector('.rl-button'))};
+    }''')
+    factor=2 if text_scale else 1
+    assert min(x['font'] for x in data['headings'])>=20*factor, data
+    assert min(x['font'] for x in data['labels'])>=15*factor, data
+    assert min(x['font'] for x in data['values'])>=17*factor, data
+    assert not data['clipped'], ('clipped cooling text',data)
+    assert data['documentWidth']<=data['viewport']+1, ('cooling page overflow',data)
+    for card in data['cards']:
+        assert card['x']>=data['panel']['x']-1 and card['right']<=data['panel']['right']+1, data
+    for row in data['rows']:
+        assert row['label']['right']<=row['value']['x']+1, ('cooling labels/values overlap',row)
+        assert row['value']['right']<=row['row']['right']+1, row
+        assert max(row['label']['bottom'],row['value']['bottom'])<=row['row']['bottom']+1, row
+    assert data['button']['height']>=44
+    page.locator('#rl-fan-manage').focus();verify_focus_visible(page,page.locator('#rl-fan-manage'))
+    return data
+
+
 def check_cooling_visibility(page,mode):
     if mode=='absent':
         assert not page.locator('#rl-tab-cooling').is_visible()
@@ -305,11 +366,11 @@ def check_physical_locations(page):
     assert php, 'PHP is required for actual defaults-derived browser fixtures'
     native=json.loads(subprocess.run([php,str(HERE / 'native-defaults-browser-fixture.php')],check=True,capture_output=True,text=True).stdout)
     details=[]
-    for columns,rows,width,height,start,orientation,align in [(4,2,120,48,20,'h','center'),(3,2,48,140,101,'v','right'),(65,1,44,60,700,'h','left')]:
+    for columns,rows,width,height,start,orientation,align in [(4,2,120,44,20,'h','center'),(3,2,48,140,101,'v','right'),(65,1,44,60,700,'h','left')]:
         page.evaluate("""([columns,rows,width,height,start,orientation,align,nativeDisplay])=>{
           const cells=Array.from({length:columns*rows},(_,i)=>({sourceTray:i+1,tray:start+i,hidden:i===0&&rows>1,present:false,display:{source:'disklocation',identityVerified:false,color:'#303030'},disk:null}));
           cells[1]={...cells[1],present:true,display:nativeDisplay,disk:{name:'synthetic-long-drive-label',device:'sdb',selectionToken:'a'.repeat(64),poolName:'actual-fixture-pool'}};
-          cells[2]={...cells[2],present:true,display:{source:'disklocation',identityVerified:false,color:'#ffff00',model:'Unverified cached fixture'}};
+          cells[2]={...cells[2],present:true,display:{source:'disklocation',identityVerified:false,color:'#ffff00',model:'Unverified cached fixture',comment:'Configured archive label'}};
           window.RacklineFixture.locationGroups=[{id:'dynamic-fixture',name:'Dynamic enclosure '+start,columns,rows,trayWidth:width,trayHeight:height,trayDirection:orientation,trayAlign:align,nameAlign:align,position:'none',cells}];
           document.dispatchEvent(new Event('visibilitychange'));
         }""",[columns,rows,width,height,start,orientation,align,native['display']])
@@ -325,10 +386,17 @@ def check_physical_locations(page):
         assert geometry['children'][0]['hidden']==(rows>1)
         assert geometry['children'][0]['y']==geometry['children'][columns-1]['y']
         if rows>1: assert geometry['children'][columns]['y']>geometry['children'][0]['y']
-        assert 'Boot fixture-boot-alias' in bays.nth(1).inner_text()
+        assert 'Synthetic alias' in bays.nth(1).inner_text()
         assert bays.nth(1).get_attribute('data-drive')=='sdb'
         assert bays.nth(2).get_attribute('data-drive') is None and bays.nth(2).is_disabled()
-        assert 'identity unverified' in bays.nth(2).inner_text()
+        assert 'Configured archive label' in bays.nth(2).inner_text()
+        assert bays.nth(2).locator('.rl-bay-status').inner_text()=='Unverified'
+        assert 'Cached · identity unverified' in bays.nth(2).get_attribute('aria-label')
+        if width>=120:
+            assert bays.nth(2).locator('.rl-bay-status').evaluate('e=>e.scrollWidth<=e.clientWidth+1'), 'Unverified warning clipped on ordinary-width bay'
+        # Native narrow vertical bays retain their configured dimensions. Names
+        # and status may ellipsize there; full text remains in title/aria-label.
+        assert bays.nth(2).evaluate('e=>e.scrollHeight<=e.clientHeight+1'), 'Cached label/status must fit native tray height'
         assert geometry['children'][1]['bg']==native['expectedBackground'], ('defaults-derived computed bay background',geometry)
         assert geometry['children'][1]['color']==native['expectedForeground'], ('defaults-derived computed bay foreground',geometry)
         assert color_contrast(geometry['children'][1]['color'],geometry['children'][1]['bg'])>=4.5
@@ -511,6 +579,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 assert page.locator('#rl-tab-cooling').get_attribute('aria-selected')=='true'
                 focus_checks.append(verify_focus_visible(page,page.locator('#rl-tab-cooling')))
                 verify(page,threads,width<=700,smt)
+                check_cooling_typography(page)
                 capture_overview(page,args.output / f'rackline-synthetic-{name}-cooling.png')
                 footer=page.locator('#rackline-root .rl-footer a[href="/Dashboard"]')
                 footer.focus();focus_checks.append(verify_focus_visible(page,footer))
@@ -530,6 +599,8 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 context.close()
         extra_cases=[('filters-'+str(w),w,'filters') for w in [390,1024,1440]]
         extra_cases += [('cooling-'+mode+'-'+str(w),w,mode) for w in [390,1024] for mode in ['absent','unknown','outage']]
+        extra_cases += [('cooling-type-'+str(w),w,'cooling-type') for w in [320,390,768,1024,1440,2048]]
+        extra_cases += [('cooling-type-200-'+str(w),w,'cooling-type-200') for w in [320,1024]]
         extra_cases += [('ember-status-'+str(w),w,'ember') for w in [390,1024,1440]]
         extra_cases += [('physical-'+str(w),w,'physical') for w in [390,1024,1440]]
         extra_cases += [('smart-'+mode+'-'+str(w),w,'smart:'+mode) for w in [390,1024] for mode in ['normal','cancel','failure','unsupported','old','warnings','prepareHold','captureHold']]
@@ -541,7 +612,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
             try:
                 page.set_content(document(fixture_dir,16,fan=False if mode=='absent' else None if mode=='unknown' else True,filter_stress=mode=='filters',smart_test=mode.startswith('smart:')))
                 page.wait_for_function("document.querySelector('#rl-cpu').textContent !== '—'",timeout=5000)
-                details=check_ember_status(page) if mode=='ember' else check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
+                details=check_cooling_typography(page,text_scale=mode.endswith('200'),long_text=True) if mode.startswith('cooling-type') else check_ember_status(page) if mode=='ember' else check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
                 assert not errors,errors
                 capture_overview(page,args.output / f'rackline-synthetic-{name}.png')
                 results.append({'case':name,'width':width,'details':details,'passed':True});print('PASS',name)

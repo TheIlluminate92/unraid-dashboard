@@ -34,8 +34,27 @@ test('cached labels/colors never inject markup or create unverified actions',()=
 
 test('native display alias never changes the assigned drive/SMART selection target',()=>{
  const g=group(1,1,27);g.cells[0]={tray:27,present:true,hidden:false,display:{source:'disklocation',identityVerified:true,name:'fixture-boot-alias',device:'sdx',type:'Boot',color:'#224488',model:'Fixture model',comment:'Boot alias display'},disk:{name:'assigned-pool-member',device:'sdx',selectionToken:'a'.repeat(64),poolName:'actual-pool',identityColor:'#123456'}};
- const html=render([g]).draw();assert.match(html,/<small>Boot fixture-boot-alias<\/small>/);assert.match(html,/data-drive="sdx"/);assert.match(html,/Selected drive: assigned-pool-member \(sdx\)/);assert.doesNotMatch(html,/data-drive="fixture-boot-alias"/);assert.match(html,/--rl-bay-color:#224488;--rl-bay-text:#ffffff/);
- g.cells[0].display.identityVerified=false;const unknown=render([g]).draw();assert.match(unknown,/Cached device · identity unverified/);assert.doesNotMatch(unknown,/data-drive=|Boot fixture-boot-alias/);
+ const html=render([g]).draw();assert.match(html,/<small>Boot alias display<\/small>/);assert.match(html,/Disk Location comment/);assert.match(html,/data-drive="sdx"/);assert.match(html,/Selected drive: assigned-pool-member \(sdx\)/);assert.doesNotMatch(html,/data-drive="fixture-boot-alias"/);assert.match(html,/--rl-bay-color:#224488;--rl-bay-text:#ffffff/);
+ g.cells[0].display.identityVerified=false;const unknown=render([g]).draw();assert.match(unknown,/<small>Boot alias display<\/small><small class="rl-bay-status">Unverified<\/small>/);assert.doesNotMatch(unknown,/data-drive=|Boot fixture-boot-alias/);
+});
+test('saved labels and model fallback never use a serial, node or unverified native alias as a name',()=>{
+ const g=group(1,1,2),cell=g.cells[0];cell.present=true;
+ cell.inventory={serial:'SECRET-SERIAL',name:'unproven-name',model:'unproven-inventory-model'};
+ cell.display={source:'disklocation',identityVerified:false,name:'unsafe-alias',device:'sdy',model:'Cached model',comment:'  Backup archive  ',color:'#abcdef'};
+ const h=render([g]);let html=h.draw();assert.match(html,/<small>Backup archive<\/small>/);assert.match(html,/Cached · identity unverified/);assert.doesNotMatch(html,/data-drive=|SECRET-SERIAL|unsafe-alias|unproven-name/);
+ cell.display.comment=' \n ';html=h.draw();assert.match(html,/<small>Cached model<\/small>/);assert.match(html,/Cached · identity unverified/);assert.doesNotMatch(html,/<small>sdy<\/small>|data-drive=/);
+ cell.display.model='';html=h.draw();assert.match(html,/<small>Cached device<\/small>/);assert.doesNotMatch(html,/unproven-inventory-model|data-drive=/);
+ cell.display.comment='<img src=x onerror=bad>" &';html=h.draw();assert.doesNotMatch(html,/<img/);assert.match(html,/<small>&lt;img src=x onerror=bad&gt;&quot; &amp;<\/small>/);
+ cell.display.comment=['not a label'];cell.display.model={not:'a label'};assert.match(h.draw(),/<small>Cached device<\/small>/);
+});
+test('presentation label refreshes keep verified actions bound to the assigned disk',()=>{
+ const g=group(1,1),cell=g.cells[0];cell.present=true;cell.disk={name:'disk4',device:'sdd'};
+ cell.display={source:'disklocation',identityVerified:true,type:'Data',name:'disk4',comment:'Archive'};
+ const h=render([g]);assert.match(h.draw(),/<small>Archive<\/small>/);
+ cell.display.comment='Photos';let html=h.draw();assert.match(html,/<small>Photos<\/small>/);assert.match(html,/data-drive="sdd"/);assert.doesNotMatch(html,/rl-bay-status/);
+ cell.display.comment='';assert.match(h.draw(),/<small>Data disk4<\/small>/);
+ cell.display.identityVerified=false;html=h.draw();assert.match(html,/Cached · identity unverified/);assert.doesNotMatch(html,/data-drive=|<small>Data disk4<\/small>/);
+ cell.present=false;cell.disk=null;html=h.draw();assert.match(html,/<small>Empty<\/small>/);assert.doesNotMatch(html,/rl-bay-status/);
 });
 test('native dimensions are already oriented and alignment enum changes follow each payload',()=>{
  const g={...group(2,2),trayDirection:'v',trayWidth:60,trayHeight:180,trayAlign:'right',nameAlign:'vertical',position:'right'};const h=render([g]);let html=h.draw();assert.match(html,/--rl-tray-width:60px;--rl-tray-height:180px/);assert.match(html,/data-tray-direction="v"/);assert.match(html,/data-tray-align="right"/);assert.match(html,/data-name-align="vertical"/);assert.match(html,/data-position="right"/);

@@ -1,6 +1,68 @@
 # Rackline: independent host workspace
 
-## What runs now — November 8, 2026
+## 0.2.5 readability candidate — November 8, 2026
+
+The owner authorized this update on both existing pilots. **Prepared:** 0.2.5 / 2026.11.08.07, based on published 0.2.4 commit `b6ef4d3a1604f2c4ad4ccc81a4a1da1b7fe9f464`. Publication, exact-head browser/CI and installed acceptance are pending. Both hosts remain at the previously confirmed 0.2.4 until a later installation receipt says otherwise.
+
+Only the Cooling typography and physical-bay presentation in `assets/css/rackline.css` and `assets/js/app.js` change in the runtime source. Every PHP file, collector, identity matcher, native control, model and installer is unchanged from the published baseline. The separate cached-identity hardening stays unshipped, and SMART capture stays held. Version/build substitution updates the package's displayed version and cache keys. See the [immutable candidate package](../releases/rackline/0.2.5-2026.11.08.07/README.md).
+
+Two isolated builds produce identical bytes. All 255 Node tests and isolated package/portability checks pass against this clean candidate; this is separate from testing the dirty implementation checkout. The new responsive browser assertions are prepared for exact-head CI, not claimed as run locally. Deployment uses the existing native owner workflow with retained 0.2.4 recovery and bounded passive/UI verification, without service or container restarts, fan changes, SMART operations or recovery deletion. The earlier 0.2.4 receipt and local-only research below remain historical/current-context evidence, not proof that this update is installed.
+
+## Current release and identity-fix handoff — November 8, 2026
+
+**Installed:** 0.2.4 / 2026.11.08.06 on both authorized host-local Unraid pilots. **Local only:** the independently reviewed cached disk-identity hardening and the cooling/bay-label readability changes described below. No corrected package, push or deployment has occurred. PR #41 remains draft/unmerged; no main merge, GitHub Release/tag or automatic update is implied.
+
+The current distribution is pinned to source/artifact commit `b6ef4d3a1604f2c4ad4ccc81a4a1da1b7fe9f464`, under [`releases/rackline/0.2.4-2026.11.08.06/`](../releases/rackline/0.2.4-2026.11.08.06/README.md). The frozen release README records preparation-time evidence; this section records later publication and acceptance. Do not overwrite that generation to incorporate a fix.
+
+| File | SHA256 |
+|---|---|
+| `rackline.dashboard.plg` | `a95ef0c6084831cf9d97ff9c958af4c269dc069aa1e43ead378636a90be1597a` |
+| `rackline.dashboard.tgz` | `8757677510fc1fd0396dc4e3842fac05dca93079270a22a9b8252e7007e44e51` |
+
+### Local cooling and bay-label readability — November 8, 2026
+
+Requested UI changes are implemented locally, not published or installed. Cooling card labels increase from 11 to 15 px, readings to 17 px, card headings from 16 to 20 px, and supporting text/buttons to 14 px. Cards adapt to available width and text size; long labels/messages wrap without reducing phone text. These changes are scoped to Cooling and do not change fan settings, collection or controller ownership.
+
+Physical bays now use the saved Disk Location `comment` as the presentation label when present. Without a comment, verified native names remain available; unverified records show their cached model or a generic cached-device fallback. Serial numbers, device nodes and unverified native aliases are never promoted into names or used to guess a live join. The distinct **Unverified** line and full title/accessibility warning remain; unverified bays cannot select a current drive or open SMART actions. Saved layout, numbering, colors and dimensions remain unchanged. Narrow native trays can ellipsize names/status; the complete text remains in the title/accessibility label. The existing data path and synthetic comments were verified, but the screenshot does not establish which friendly comments are configured on the live host.
+
+Validation: **255/255 Rackline and WAZ Node tests**, the native storage parser and native-defaults display fixture, JavaScript syntax, browser-suite Python syntax, **76 literal browser JavaScript expressions**, and whitespace checks pass. Independent incremental source review found no remaining blocker. The prepared browser matrix adds long cooling labels/messages at 320–2048 px and stable 200% text cases at 320/1024 px, and checks configured bay labels/status in 44 px trays. **These new browser cases were not executed** because the existing local browser-launch restriction was respected. No rendered desktop/mobile acceptance, new CI run or installed-host check is claimed.
+
+The frozen 0.2.4 PLG/TGZ hashes above remain unchanged. These edits are separate from the pending identity hardening and must not silently publish that unrelated fix. Before publication, reconcile the incremental UI patch against the intended release source, run browser/CI checks and obtain the applicable publication/deployment authorization. A runtime update needs a new immutable build identifier. Rollback is limited to this small UI/test/documentation change; do not reset the dirty checkout or replace existing release artifacts.
+
+### Published build and host acceptance
+
+- Exact-head [push CI](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42504544983), [Rackline PR checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42504549849) and [WAZ PR checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42504549833) passed. PHP 8.2/8.4 package artifacts were downloaded and independently matched to the frozen distribution and all 17 runtime members.
+- All **80 real Chromium synthetic scenarios** passed, including 320–2048 px, larger and multiple-socket topology, 200% text/reflow, compact-layout equivalence, focus, filters, native colors and SMART mock flows. Unix-socket transport and standalone workload-endpoint CI passed. These are not live control-action tests.
+- Both pilots' native installation, 17-file runtime set, boot registration and artifact hashes matched. The single-socket pilot retains its compact strip; the authenticated dual-socket pilot renders reported socket/core/SMT grouping with the thinner secondary metric layer.
+- Single-socket passive acceptance passed **84 calls in 35.04 seconds**, maximum two added test processes, no same-feed overlap, zero errors/timeouts, and 10.81–18.27 ms CLI collector wall times. All running containers were sampled. Protected container identities/start states, mounts and core service identities remained unchanged. These are bounded observations, not saturation capacity or long-term overhead claims.
+- Authenticated dual-socket acceptance verified current Docker sampling, mobile layout at 520 and 320 px without horizontal overflow, folder/name selection by click and keyboard, and a native menu/configuration-editor round trip **without applying changes**. Cooling was fresh/normal and read-only. A suspected row-selection issue did not reproduce. A subsequent bounded collector-process stress pass completed **70/70 system/I/O calls in 35.001 seconds**, at most two added processes, without same-feed overlap, errors or stop conditions. Background browser concurrency was not observed; this is not authenticated HTTP stress.
+- The single-socket authenticated browser route remains blocked. Its live menu/editor, rendered focus/mobile and SMART capture are **unrun**. Login redirects and metadata eligibility do not count as authenticated acceptance.
+- The former dashboard was recoverably removed from the dual-socket pilot with exact hotfixed recovery retained. Independent fan services, protected containers and mounts remained unchanged. A temporary process-difference alert was reconciled to normal short-lived fan-polling children, not persistent service replacement.
+- **SMART captures remain held; zero attempts.** No container update/restart, fan change, array operation, hardware self-test, sleeping-drive wake, reboot or actual rollback was exercised. Recovery cleanup remains held. GPU attribution and host/per-container process sampling remain unsupported.
+
+### Approved local identity hardening, not deployed
+
+The live bug hunt reproduced a pre-existing unsafe inference in cached SMART and Disk Location matching: an underscore-delimited native ID could be interpreted using a model token or arbitrary suffix as the serial. **No wrong current live mapping has been established.** Matching a device node or a hex-looking suffix alone is not identity proof.
+
+The focused local fix:
+
+- Validates candidate and current identity types, bounds, UTF-8 and control bytes before normalization or successful matching.
+- Preserves exact explicit current serial only. A native full ID or everything after a model prefix is not assumed to be in the SMART-serial namespace, even when strings happen to match. It rejects inferred token boundaries, unproven suffixes, contradictory explicit serials and stale candidate-side model/WWN evidence.
+- Validates the raw Disk Location candidate serial before coercion.
+- Restricts report serial-field formatting to horizontal whitespace, preventing an empty field from borrowing the next line. Empty duplicate serial fields remain ambiguous.
+- Keeps unverified cached inventory visible without assigning it a current disk, native type/temperature color or report access. The main native drive inventory and telemetry remain available.
+
+**Compatibility cost:** composite native IDs lacking independent current serial evidence become unverified. All currently verified occupied cells on both inspected pilots would lose actionable live-drive joins under this fallback. Geometry and explicitly saved bay/group colors remain; colors derived from verified native type/temperature may become unknown. Do not describe this as preserving every existing physical-bay interaction.
+
+Read-only udev metadata on both pilots was consistent with current native IDs and cached serials, but lacked a kernel-incarnation marker. Stable device numbers and symlinks cannot prove those records were not already stale. No udev resolver was added. A bounded, before/after-bound read of kernel-cached VPD page 0x80 on the single-socket pilot matched the four inspected SAS serials exactly; two SSD payloads contained trailing padding and remain unqualified. Matching-version upstream source uses a memory-buffer read, not a SCSI command. No resolver is implemented: native-assignment binding, supported padding semantics and second-pilot evidence still need review. These metadata reads are not an active SMART capture or hardware probe.
+
+Local validation passed **251 Node tests**, storage fixtures normally and with `-n`, **2,684 host-stress assertions**, **298 SMART capture assertions**, **180 passive SMART HTTP cases**, **332 capture-stress assertions**, **7 package-safety tests**, **4 portability tests**, all **13 runtime PHP/page lints**, and changed-file whitespace checks. Final review rejected both untyped full-ID equality and post-model suffix equality because they can cross identifier namespaces. Both fallbacks were removed; the relevant suites passed again, and an independent reviewer passed **123 current in-memory PHP checks** across matching, location, transport-label and serial-parser cases with no remaining blocking finding. The reviewer's full fixture rerun was restricted by temporary-file permissions; the implementation worker ran the full suites. No new browser or Unix-socket run is claimed for this unpublished correction.
+
+Next: review the compatibility impact with the owner and obtain approval before packaging/publishing/deploying the correction. A future runtime correction needs a new immutable build identifier, not replacement of `.06`. Preserve all recovery while acceptance remains incomplete. The date-version proposal is advisory only; current app version and native build naming are unchanged.
+
+The following 0.2.3 record is historical evidence from an earlier rollout. Its then-current status, unrun stages and proposed actions do not override this current handoff.
+
+## Historical 0.2.3 acceptance record — November 8, 2026
 
 Maintainer: Rackline implementation worker for source; existing host owners for installations; Historian for this documentation reconciliation.
 Reviewed: 2026-11-08 (America/Chicago).

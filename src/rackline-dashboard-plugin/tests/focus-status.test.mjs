@@ -74,7 +74,7 @@ test('removed device action has no active native-page fallback',()=>{
  assert.match(inspector,/Cache age/);assert.match(inspector,/SMART health/);
 });
 test('mobile table density retains fonts, local scrolling and 44px controls',()=>{
- const density=css.slice(css.indexOf('/* A small mobile density adjustment;'));
+ const start=css.indexOf('/* A small mobile density adjustment;'),end=css.indexOf('/* Measured fit:',start);assert(start>=0&&end>start);const density=css.slice(start,end);
  assert.match(density,/@media\(max-width:700px\)/);assert.match(density,/padding-top:6px;padding-bottom:6px/);assert.match(density,/\.rl-layout\{gap:8px\}/);assert.doesNotMatch(density,/font-size|overflow:hidden/);
  assert.match(css,/\.rl-filters button,#rackline-root td button,#rackline-root \.rl-button\{min-height:44px\}/);
 });

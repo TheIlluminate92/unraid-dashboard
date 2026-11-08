@@ -44,7 +44,7 @@ test('adaptive CPU groups derive width/font size while keeping siblings inside t
 test('physical bays keep their source order, hidden cells and full accessible labels',()=>{
  assert.match(app,/M\.list\(group\.cells\)\.map/);
  assert.match(app,/cell\.hidden\?'rl-hidden '/);
- assert.match(app,/aria-label="'\+esc\(group\.name\+', bay '\+label\+', '\+role\)/);
+ assert.match(app,/aria-label="'\+esc\(group\.name\+', bay '\+label\+', '\+role\+\(identityNote/);
  assert.match(css,/#rackline-root \.rl-bay-grid \.rl-hidden\{visibility:hidden\}/);
  assert.match(css,/\.rl-enclosure\{max-width:100%;overflow:auto;padding:6px\}/);
  assert.match(css,/\.rl-bay-grid button:focus-visible\{[^}]*outline:3px/);

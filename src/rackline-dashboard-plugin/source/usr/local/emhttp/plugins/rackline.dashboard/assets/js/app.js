@@ -209,10 +209,16 @@ function renderBays(){
    if(display&&display.identityVerified!==true)key=null;
    // Native display aliases are presentation only. Only the separately verified
    // assigned disk supplies the selection target and its pool/SMART identity.
-   var role=display&&display.identityVerified===true?[display.type,display.name].filter(Boolean).join(' ')||'Cached device':display&&cell.present?'Cached device · identity unverified':d?d.name:cell.present?'Unmapped':'Empty';
+   // Disk Location's saved comment is the owner's presentation label, not a
+   // serial or a current-device proof. Cached labels remain useful even when
+   // live identity is unknown; keep that status visible and actions disabled.
+   var savedLabel=display&&typeof display.comment==='string'?display.comment.trim():'',cachedModel=display&&typeof display.model==='string'?display.model.trim():'';
+   var unverified=!!(display&&cell.present&&display.identityVerified!==true);
+   var role=display&&cell.present?savedLabel||(display.identityVerified===true?[display.type,display.name].filter(Boolean).join(' '):cachedModel)||'Cached device':d?d.name:cell.present?'Unmapped':'Empty';
+   var identityNote=unverified?'Cached · identity unverified':'';
    var nativeColor=display&&typeof display.color==='string'&&/^#[0-9a-f]{6}$/i.test(display.color)?display.color:'',color=nativeColor||!display&&d&&/^#[0-9a-f]{6}$/i.test(d.identityColor||'')&&d.identityColor||'#647d8e';
    var detail=display?[display.device,display.model,display.comment].filter(Boolean).join(' · '):'',current=d&&display?' · Selected drive: '+d.name+' ('+d.device+')':'';
-   return '<button '+(key&&!cell.hidden?'data-drive="'+esc(key)+'"':'disabled')+' title="'+esc('Bay '+label+' · '+role+(detail?' · '+detail:'')+current)+'" aria-label="'+esc(group.name+', bay '+label+', '+role)+'" style="--rl-identity:'+color+(nativeColor?';--rl-bay-color:'+nativeColor+';--rl-bay-text:'+M.bayTextColor(nativeColor):'')+'" class="'+(cell.hidden?'rl-hidden ':'')+(nativeColor?'rl-native-color ':'')+(key===state.drive?'rl-selected':'')+'"><b>'+esc(label)+'</b><small>'+esc(role)+'</small></button>';
+   return '<button '+(key&&!cell.hidden?'data-drive="'+esc(key)+'"':'disabled')+' title="'+esc('Bay '+label+' · '+role+(savedLabel?' · Disk Location comment':'')+(identityNote?' · '+identityNote:'')+(detail?' · '+detail:'')+current)+'" aria-label="'+esc(group.name+', bay '+label+', '+role+(identityNote?', '+identityNote:''))+'" style="--rl-identity:'+color+(nativeColor?';--rl-bay-color:'+nativeColor+';--rl-bay-text:'+M.bayTextColor(nativeColor):'')+'" class="'+(cell.hidden?'rl-hidden ':'')+(unverified?'rl-unverified ':'')+(nativeColor?'rl-native-color ':'')+(key===state.drive?'rl-selected':'')+'"><b>'+esc(label)+'</b><small>'+esc(role)+'</small>'+(identityNote?'<small class="rl-bay-status">Unverified</small>':'')+'</button>';
   }).join('')+'</div></section>';
  }).join(''):'<p class="rl-note">No cached bay map available from Disk Location.</p>'));
 }

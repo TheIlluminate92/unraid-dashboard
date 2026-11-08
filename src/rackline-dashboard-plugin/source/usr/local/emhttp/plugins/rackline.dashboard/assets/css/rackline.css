@@ -123,3 +123,21 @@
 #rackline-root.rl-pulse-expanded .rl-dual b{white-space:normal;overflow-wrap:anywhere}
 #rackline-root.rl-pulse-expanded .rl-meter{margin:8px 0}
 #rackline-root.rl-pulse-expanded .rl-reading>small{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+
+/* A cached bay label and its identity warning fit inside native 44px trays.
+   Do not change configured bay dimensions, colors, numbering or selection. */
+#rackline-root .rl-bay-grid button.rl-unverified{padding-top:2px;padding-bottom:2px}
+#rackline-root .rl-bay-grid button.rl-unverified b,#rackline-root .rl-bay-grid button.rl-unverified small{line-height:1.1}
+#rackline-root .rl-bay-grid button.rl-unverified .rl-bay-status{font-size:10px}
+
+/* Cooling cards have room for readable labels and larger measurements. Keep
+   these rules local to this workspace; narrow cards wrap instead of shrinking
+   text or forcing a page-wide scrollbar. */
+#rackline-root #rl-cooling .rl-cooling-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,20em),1fr));align-items:start}
+#rackline-root #rl-cooling .rl-box{min-width:0;overflow-wrap:anywhere}
+#rackline-root #rl-cooling h3{font-size:20px;line-height:1.35}
+#rackline-root #rl-cooling dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:baseline;gap:8px 16px;padding:11px 0;font-size:15px;line-height:1.5}
+#rackline-root #rl-cooling dt,#rackline-root #rl-cooling dd{min-width:0;overflow-wrap:anywhere;white-space:normal}
+#rackline-root #rl-cooling dd{font-size:17px;font-weight:550;font-variant-numeric:tabular-nums}
+#rackline-root #rl-cooling .rl-note,#rackline-root #rl-cooling .rl-box>p{font-size:14px;line-height:1.6}
+#rackline-root #rl-cooling .rl-button{font-size:14px;min-height:44px}

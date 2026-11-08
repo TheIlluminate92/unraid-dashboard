@@ -1,6 +1,23 @@
 # Changelog
 
-## 0.2.4 candidate / 2026.11.08.06 — publication and exact-head CI pending
+## 0.2.5 candidate / 2026.11.08.07 — cooling and bay-label readability
+
+- Enlarge Cooling labels, readings, headings and supporting text; wrap long readings and adapt card columns without reducing phone text or changing fan controls.
+- Prefer saved Disk Location comments as bay labels. Keep verified native names or cached-model fallback, separate visible identity status, disabled unverified actions, and existing geometry/colors. Never substitute a serial/node or guess a live identity for presentation.
+- Pass all 255 Rackline/WAZ Node tests, storage/display fixtures, syntax checks and independent incremental source review. Prepare additional desktop/mobile/200% browser assertions without claiming execution. Two identical isolated packages are prepared for the authorized update; publication, exact-head CI and installation are pending. Existing 0.2.4 hashes and the separate pending identity fix are preserved. See [current handoff](docs/RACKLINE.md#local-cooling-and-bay-label-readability--november-8-2026).
+
+## Unreleased — cached disk identity hardening (2026-11-08, local only)
+
+- Remove ambiguous native-ID token/suffix inference from passive SMART and Disk Location identity checks. Validate raw types, bounded UTF-8 and control bytes before normalization; retain exact explicit/current identity proofs and fail closed otherwise.
+- Correct serial-field parsing so blank lines cannot borrow a serial from the following line and empty duplicates remain ambiguous. Add adversarial cache, endpoint and unverified-bay regressions.
+- Local relevant suites and independent focused review pass; see [current handoff](docs/RACKLINE.md#current-release-and-identity-fix-handoff--november-8-2026). No corrected package, publication or deployment. Previously inferred joins can become unverified; no wrong current mapping has been established.
+
+## 0.2.4 / 2026.11.08.06 — published and installed on authorized pilots
+
+- Publish the adaptive performance strip at `b6ef4d3a1604f2c4ad4ccc81a4a1da1b7fe9f464`; exact-head PHP 8.2/8.4, Unix-socket and all 80 synthetic Chromium cases pass, with package artifacts independently matched.
+- Install the exact frozen package on both authorized pilots. Bounded passive checks and selected authenticated dual-socket layout/native-navigation checks pass. The current handoff distinguishes incomplete browser/SMART/control acceptance and the separately prepared identity fix. No main merge, release tag, reboot or recovery cleanup.
+
+## Historical 0.2.4 candidate preparation / 2026.11.08.06
 
 - Preserve the compact strip and give larger/multiple-socket CPU topologies a full-width first layer, with shorter memory/network/I/O cards below. Discover topology and fit to width/text size without host-specific layout rules or changed keyboard order.
 - Recheck sticky fit after secondary text changes and avoid eager multi-socket array flattening. Add topology, repeated-height, large-input and prepared browser geometry regressions.

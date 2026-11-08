@@ -40,7 +40,7 @@ test('classification is stable across sample values, viewport widths and text si
  }
 });
 test('expanded styles are scoped and retain source order and intrinsic height',()=>{
- const added=css.slice(css.indexOf('/* Larger/asymmetric topologies'));
+ const start=css.indexOf('/* Larger/asymmetric topologies'),end=css.indexOf('/* A cached bay label',start);assert(start>=0&&end>start);const added=css.slice(start,end);
  for(const selectors of added.matchAll(/([^{}]+)\{/g)){
   const clean=selectors[1].replace(/\/\*[\s\S]*?\*\//g,'').trim();
   assert(clean.startsWith('#rackline-root.rl-pulse-expanded '),clean);
