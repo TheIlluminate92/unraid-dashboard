@@ -4,7 +4,7 @@
 
 Maintainer: Rackline implementation worker for source; existing host owners for installations; Historian for this documentation reconciliation.
 Reviewed: 2026-11-08 (America/Chicago).
-Status: **0.2.2 installed on the owner's Unraid pilot; passive acceptance passed, active/browser acceptance incomplete.** PR41 is still draft/unmerged. No main merge, GitHub Release or tag is implied.
+Status: **0.2.2 installed on the owner's Unraid pilot; passive acceptance passed, active/browser acceptance incomplete.** PR 41 is still draft/unmerged. No main merge, GitHub Release or tag is implied.
 
 Rackline is a standalone **host-local Unraid WebUI** workspace at `/Rackline`, opened by its native Dashboard launcher. It supplies its own collectors and does not require WAZ. It is not a generic Linux app or combined cross-host dashboard. Other Unraid installations need their own prerequisite and acceptance checks.
 
@@ -12,9 +12,9 @@ Rackline is a standalone **host-local Unraid WebUI** workspace at `/Rackline`, o
 
 | Item | Exact evidence |
 |---|---|
-| Installed version | **0.2.2 / 2026.11.08.04**, host-owner receipt November 8 **06:44–06:53UTC / 00:44–00:53CST**. All 17 runtime files and boot registration matched. |
+| Installed version | **0.2.2 / 2026.11.08.04**, host-owner receipt November 8 **06:44–06:53 UTC / 00:44–00:53 CST**. All 17 runtime files and boot registration matched. |
 | Runtime source | `3a914477f0f2c5e088a32779c44c2a45dfb07029`. |
-| Source/test head before distribution | `e4142e73242d59e035d9f357bdcd5545f0d94cc1`; [Rackline47-case synthetic Chromium checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454524022) and [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454527807) passed. |
+| Source/test head before distribution | `e4142e73242d59e035d9f357bdcd5545f0d94cc1`; [Rackline 47-case synthetic Chromium checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454524022) and [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454527807) passed. |
 | Pinned distribution | `1295357586d61252c691bea59684205a0c0f855f`, `releases/rackline/0.2.2-2026.11.08.04/`. This is repository distribution, **not a GitHub Release/tag or main merge**. |
 | Distribution-head CI | All returned exact-head checks completed successfully: [Rackline PHP/browser](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455831602), [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455831603), [push artifact checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455827646). The old 2225af0 responsive failure is historical and subsequently fixed/tested, not a current 0.2.2 failure. |
 
@@ -39,7 +39,7 @@ Native SMART polling intervals are host settings, not Rackline guarantees: inspe
 This procedure documents the host owner's workflow; it does not authorize another installation or native control test.
 
 1. Confirm the intended compatible Unraid host, task scope and exact version. Review the [pinned distribution README](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/README.md) and capability contracts below. Check native authenticated PHP/WebUI, local proc/sysfs data, required PHP/cURL-multi Unix-socket support and native Docker compatibility; optional integrations may be absent. No arbitrary OS/hardware guarantee or automatic dependency installation.
-2. Obtain the exact pinned [Rackline installer](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/rackline.dashboard.plg), [payload](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/rackline.dashboard.tgz) and [SHA256SUMS](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/SHA256SUMS). Compare local SHA256 values before installation; stop on a mismatch. The PLG embeds its payload, so a separate TGZ transfer is not needed for native installation. Keep the filename `rackline.dashboard.plg`; the rolling WAZ installer is a different product.
+2. Obtain the exact pinned [Rackline installer](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/rackline.dashboard.plg), [payload](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/rackline.dashboard.tgz) and [SHA 256 SUMS](https://github.com/TheIlluminate92/unraid-dashboard/blob/1295357586d61252c691bea59684205a0c0f855f/releases/rackline/0.2.2-2026.11.08.04/SHA256SUMS). Compare local SHA256 values before installation; stop on a mismatch. The PLG embeds its payload, so a separate TGZ transfer is not needed for native installation. Keep the filename `rackline.dashboard.plg`; the rolling WAZ installer is a different product.
 
    | File | Expected SHA256 |
    |---|---|
@@ -55,7 +55,7 @@ This procedure documents the host owner's workflow; it does not authorize anothe
 
 | Check | Supplied pilot outcome | Boundary |
 |---|---|---|
-| Exact distribution / runtime / boot | Passed: package hashes,17runtime files and boot registration matched. | Another host/version needs its own readback. |
+| Exact distribution / runtime / boot | Passed: package hashes, 17 runtime files and boot registration matched. | Another host/version needs its own readback. |
 | Discovery / identity / grouping | Passed: native CPU sibling topology, occupied bay targets/labels/order and configured Docker folder memberships matched. | Generic discovery code plus one host's bounded evidence, not a public host inventory or universal compatibility claim. |
 | All running-container sampling | Passed for all nine running containers in the bounded checks. | Rotating age/coverage remains explicit; no GPU/process attribution. |
 | Installed passive collector pass | **35 seconds, 85 requests plus one discovery read, max two concurrent calls, zero errors/timeouts; 10.7–17.9 ms CLI calls.** | CLI collector wall times, not authenticated HTTP/browser latency, saturation capacity or long-term overhead. |
@@ -91,7 +91,7 @@ Keep the installed 0.2.1 predecessor and its verified old PLG/TGZ/runtime/boot c
 
 The implementation worker owns source/Ember; existing host owners own native actions; Historian reconciles docs. Next steps are the separately scoped authenticated acceptance and local-only Ember work, **not another install or active test performed by this documentation task**. Native controller settings and Docker mutations remain their owners' controls. No new worker, permission, unauthenticated proxy, service/port or cloud aggregator is introduced.
 
-November 8documentation reconciliation: the latest source contracts below were read at published 1295357, and the supplied host receipt at 06:44–06:53 UTC was reused without a live audit. Exact distribution artifact bytes and current distribution-head CI were independently read. The earlier 0.2.1 pilot/intermediate batch and 2225 responsive failure remain historical, superseded by installed 0.2.2 and later successful source/CI checks. The source-state paragraphs below describe their original publication phases; **this operating-state/acceptance record is the current summary**. Only README.md and this guide change; no dirty source docs/code, Ember, package, workflow, main merge, tag or runtime action is included.
+November 8 documentation reconciliation: the latest source contracts below were read at published 1295357, and the supplied host receipt at 06:44–06:53 UTC was reused without a live audit. Exact distribution artifact bytes and current distribution-head CI were independently read. The earlier 0.2.1 pilot/intermediate batch and 2225 responsive failure remain historical, superseded by installed 0.2.2 and later successful source/CI checks. The source-state paragraphs below describe their original publication phases; **this operating-state/acceptance record is the current summary**. Only README.md and this guide change; no dirty source docs/code, Ember, package, workflow, main merge, tag or runtime action is included.
 
 ## Historical source-state snapshot — 2026-11-08
 
