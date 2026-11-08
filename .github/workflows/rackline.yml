@@ -39,3 +39,23 @@ jobs:
           python3 src/rackline-dashboard-plugin/tests/package-stress.py
           bash src/rackline-dashboard-plugin/scripts/build.sh
           cd src/rackline-dashboard-plugin/dist && sha256sum -c SHA256SUMS
+  responsive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare isolated browser test dependency
+        run: |
+          python3 -m venv .rackline-browser-env
+          .rackline-browser-env/bin/pip install playwright==1.56.0
+      - name: Check native-style mobile and desktop geometry
+        run: |
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          test -n "$CHROME"
+          .rackline-browser-env/bin/python src/rackline-dashboard-plugin/tests/responsive-browser.py --browser "$CHROME" --output rackline-responsive-results
+      - name: Preserve synthetic screenshots and geometry
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rackline-synthetic-responsive-${{ github.sha }}
+          path: rackline-responsive-results
+          if-no-files-found: warn

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Rackline mobile compatibility (2026-11-08)
+
+- Prepare Rackline 0.2.1 / build 2026.11.08.03 with scoped resets for native Unraid button sizing, margins and letter spacing, preserving bay order, hidden positions and local scrolling.
+- Balance all logical CPU tiles using available width and text size, compact the mobile performance strip, and retain visible keyboard focus and touch targets.
+- Remove the duplicate Rackline header links while retaining native Unraid navigation, the footer return link and contextual controls.
+- Shorten interface wording without losing CPU, cache, stale-data or ownership caveats; explicitly mark unsupported GPU telemetry unavailable.
+- Add native-style, text-scaling and responsive browser fixtures with CI screenshot artifacts. Local source/package checks pass; new rendered and installed-host acceptance remains pending. See [the dated validation record](docs/RACKLINE.md#mobile-compatibility-and-wording--2026-11-08).
+
 ## Unreleased — Rackline standalone rebuild (2026-11-08)
 
 - Bundle Rackline-owned system, cached-storage and Docker inventory collectors; remove all WAZ install/runtime/cache/banner dependencies.

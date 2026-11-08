@@ -103,3 +103,8 @@ test('failed, missing, duplicate and unavailable selected batches break CPU hist
   assert.equal(h.state.history.length,2,failure);assert.equal(h.state.history[1].cpu,null,failure);
  }
 });
+
+test('unsupported GPU source is explicitly unavailable rather than a missing sample',()=>{
+ const h=harness(),c=h.state.docker.containers[0];h.state.gpu={available:false,status:'unsupported'};assert.equal(h.gpuActivity(c),'Unavailable');
+ h.state.gpu=null;assert.equal(h.gpuActivity(c),'Unknown');
+});

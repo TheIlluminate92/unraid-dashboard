@@ -40,6 +40,16 @@
     });});
     return rows.sort(function(a,b){return a.id-b.id;});
   }
+  // Fill balanced rows rather than leaving one logical CPU stranded on a new row.
+  function coreColumns(count,width,fontSize,gap){
+    count=number(count);width=number(width);fontSize=number(fontSize);gap=number(gap);
+    if(!Number.isInteger(count)||count<1)return 1;
+    var minimum=Math.max(30,(fontSize>0?fontSize:14)*2.15),spacing=gap>=0?gap:3;
+    var capacity=Math.max(1,Math.min(count,Math.floor(((width>0?width:minimum)+spacing)/(minimum+spacing))));
+    var columns=Math.ceil(count/Math.ceil(count/capacity));
+    while(columns>1&&count%columns>0&&count%columns<columns/2)columns--;
+    return columns;
+  }
   function validId(id){return typeof id==='string'&&/^(?:[a-f0-9]{12}|[a-f0-9]{64})$/i.test(id);}
   function inventoryIndex(inventory){
     var index={ids:new Map(),prefixes:new Map(),names:new Map()};
@@ -168,5 +178,5 @@
     return ['webUi','tailscaleWebUi','support','project','registry','donate','readme'].every(function(k){var value=c.menu[k];return !value||!/[\s\\]/.test(value)&&/^(?:https?:\/\/|\/(?!\/))/i.test(value);});
   }
   function nativeArgs(c){var m=c.menu||{};return [c.name,c.imageId,m.template||'',c.state==='stopped'?0:1,c.state==='paused'?1:0,number(c.updateStatus)===null?3:Number(c.updateStatus),c.autostart?1:0,m.webUi||'',m.tailscaleWebUi||'',m.shell||'',c.id,m.support||'',m.project||'',m.registry||'',m.donate||'',m.readme||''];}
-  return {number:number,list:list,systemInterval:systemInterval,networkRates:networkRates,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,sameIdentity:sameIdentity,inventoryIndex:inventoryIndex,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,nativeMenuReady:nativeMenuReady,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl,batchPlan:batchPlan,validBatchStats:validBatchStats,batchMetrics:batchMetrics};
+  return {number:number,list:list,systemInterval:systemInterval,networkRates:networkRates,deltaRate:deltaRate,cpuPercent:cpuPercent,logicalCpus:logicalCpus,coreColumns:coreColumns,sameIdentity:sameIdentity,inventoryIndex:inventoryIndex,folders:folders,drives:drives,diskRates:diskRates,containerMetrics:containerMetrics,nativeArgs:nativeArgs,nativeMenuReady:nativeMenuReady,validPayload:validPayload,validStats:validStats,fanHealth:fanHealth,editUrl:editUrl,batchPlan:batchPlan,validBatchStats:validBatchStats,batchMetrics:batchMetrics};
 }));
