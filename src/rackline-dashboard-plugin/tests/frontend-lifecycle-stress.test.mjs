@@ -17,11 +17,11 @@ function harness(options={}){
  function element(id){if(elements.has(id))return elements.get(id);const classes=new Set();const e={...target(),id,textContent:'',innerHTML:'',dataset:{},style:{},hidden:false,setAttribute(){},focus(){},contains(){return false;},querySelectorAll(){return[];},querySelector(){return null;},appendChild(){},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c),contains:c=>classes.has(c)}};elements.set(id,e);return e;}
  for(const match of fs.readFileSync(new URL('include/view.php',root),'utf8').matchAll(/id="([^"]+)"/g))element(match[1]);element('rackline-bootstrap').textContent=JSON.stringify({hostName:'Synthetic',available:options.available!==false,fanAvailable:options.fan===true});
  const document={...target(),readyState:'complete',hidden:false,activeElement:null,getElementById:id=>elements.get(id)||null,createElement:()=>element('created'),body:element('body')};
- const window={...target()};
+ const window={...target(),...(options.animationFrame||{})};
  const base={schemaVersion:1,sampledAtMs:clock};const feeds={system:{...base,cpu:{cores:[],counters:{}},memory:{},network:{}},storage:{...base,array:{disks:[]},parity:{disks:[],configured:false},pools:[]},io:{...base,status:'ok',monotonicSeconds:100,devices:{}},docker:{...base,dockerAvailable:true,containers:[],folders:[],summary:{}},fan:{enabled:true,mode:'auto',controller:[],shelves:[]}};
- const ctx={window,document,location:{hash:options.hash||'',href:'',reload(){reloads++;}},history:{pushState(){}},AbortController,Date:class extends Date{static now(){return clock;}},console,
+ const ctx={window,document,location:{hash:options.hash||'',href:'',reload(){reloads++;}},history:{pushState(){}},AbortController,URLSearchParams,Date:class extends Date{static now(){return clock;}},console,
   setTimeout(fn,ms){const id=++serial;timeouts.set(id,{fn,at:clock+ms});return id;},clearTimeout:id=>timeouts.delete(id),setInterval(fn,ms){const id=++serial;intervals.set(id,{fn,ms,at:clock+ms});return id;},clearInterval:id=>intervals.delete(id),
-  fetch(url,init){const key=url.includes('metrics.php')?'system':url.includes('storage.php')?'storage':url.includes('io.php')?'io':url.includes('workloads.php')?'docker':url.includes('containers.php')?'batch':'fan';const req={url,init,key};requests.push(req);return handlers[key]?handlers[key](req):Promise.resolve({ok:true,json:async()=>structuredClone(feeds[key])});}};
+  fetch(url,init){const key=url.includes('smart-capture-state.php')?'smartstate':url.includes('smart-capture.php')?'smartpost':url.includes('metrics.php')?'system':url.includes('storage.php')?'storage':url.includes('io.php')?'io':url.includes('workloads.php')?'docker':url.includes('containers.php')?'batch':'fan';const req={url,init,key};requests.push(req);return handlers[key]?handlers[key](req):Promise.resolve({ok:true,json:async()=>structuredClone(feeds[key])});}};
  if(options.ResizeObserver)ctx.ResizeObserver=options.ResizeObserver;
  vm.createContext(ctx);vm.runInContext(model,ctx);
  const h={ctx,window,document,feeds,handlers,requests,timeouts,intervals,e:element,get clock(){return clock;},get reloads(){return reloads;},load(){vm.runInContext(app,ctx);},async flush(){for(let i=0;i<24;i++)await Promise.resolve();},async tick(ms){clock+=ms;for(const [id,t]of [...timeouts])if(t.at<=clock){timeouts.delete(id);t.fn();}for(const t of intervals.values())if(t.at<=clock){t.at=clock+t.ms;t.fn();}await this.flush();},listeners(){return window.listenerCount()+document.listenerCount()+[...elements.values()].reduce((n,e)=>n+e.listenerCount(),0);}};
@@ -29,7 +29,7 @@ function harness(options={}){
 }
 
 test('lifecycle stress: 100 reinitializations retain exactly one set of timers and listeners',async t=>{
- const h=harness();await h.flush();const listeners=h.listeners(),timers=h.timeouts.size;assert.equal(listeners,10);assert.equal(timers,6);
+ const h=harness();await h.flush();const listeners=h.listeners(),timers=h.timeouts.size;assert.equal(listeners,17);assert.equal(timers,6);
  const start=performance.now();for(let n=0;n<100;n++){const old=h.window.Rackline;h.load();await h.flush();assert.equal(h.listeners(),listeners);assert.equal(h.timeouts.size,timers);assert.equal(h.intervals.size,1);const currentEdit=h.window.editContainer;old.destroy();assert.equal(h.window.editContainer,currentEdit,'stale teardown must not restore a native wrapper over the new app');}
  h.window.Rackline.destroy();assert.equal(h.listeners(),0);assert.equal(h.timeouts.size,0);assert.equal(h.intervals.size,0);t.diagnostic(`100 synthetic reinitializations in ${(performance.now()-start).toFixed(1)} ms.`);
 });
@@ -58,7 +58,7 @@ test('polling remains bounded through 8-second timeouts and resumes without over
  let active=0,maxActive=0;const h=harness({handlers:{system:req=>{active++;maxActive=Math.max(maxActive,active);return new Promise((resolve,reject)=>req.init.signal.addEventListener('abort',()=>{active--;reject(new Error('Synthetic timeout'));}));}}});await h.flush();
  await h.tick(1000);await h.tick(1000);assert.equal(h.requests.filter(r=>r.key==='system').length,1);
  await h.tick(6000);assert.equal(active,0);assert.match(h.e('rl-system-age').textContent,/unavailable/);
- delete h.handlers.system;h.feeds.system={...h.feeds.system,sampledAtMs:109000};await h.tick(1000);assert.match(h.e('rl-system-age').textContent,/updated/);assert.equal(maxActive,1);h.window.Rackline.destroy();assert.equal(h.timeouts.size,0);
+ delete h.handlers.system;h.feeds.system={...h.feeds.system,sampledAtMs:109000};await h.tick(1000);assert.equal(h.e('rl-system-age').textContent,'');assert.equal(h.e('rl-system-age').hidden,true);assert.equal(maxActive,1);h.window.Rackline.destroy();assert.equal(h.timeouts.size,0);
 });
 
 test('100 hidden ticks issue no extra requests and optional fan 410 remains disabled',async()=>{
@@ -127,8 +127,50 @@ test('CPU ResizeObserver observes the grid and disconnects across repeated lifec
  const h=harness({ResizeObserver});await h.flush();
  for(let n=0;n<20;n++){
   assert.equal(observers.filter(o=>o.connected).length,1);assert.equal(observers.at(-1).element,h.e('rl-cores'));
-  assert.equal(h.window.listeners.get('resize')?.size||0,0);
+  assert.equal(h.window.listeners.get('resize')?.size||0,2);
   h.load();await h.flush();
  }
  h.window.Rackline.destroy();assert.equal(observers.filter(o=>o.connected).length,0);assert.equal(h.listeners(),0);
+});
+
+test('focus reveal listener and pending animation frames are removed on reinitialization and destroy',async()=>{
+ const pending=new Map();let serial=0;
+ const h=harness({animationFrame:{requestAnimationFrame:fn=>{pending.set(++serial,fn);return serial;},cancelAnimationFrame:id=>pending.delete(id)}});await h.flush();
+ for(let n=0;n<20;n++){h.e('rackline-root').emit('focusin');h.e('rackline-root').emit('focusin');assert.equal(pending.size,1);h.load();await h.flush();assert.equal(pending.size,0);}
+ h.e('rackline-root').emit('focusin');assert.equal(pending.size,1);h.window.Rackline.destroy();assert.equal(pending.size,0);assert.equal(h.listeners(),0);
+});
+
+test('real app teardown removes filter reserve and pending correction across repeated reinitialization',async()=>{
+ const pending=new Map();let serial=0;
+ const h=harness({animationFrame:{requestAnimationFrame:fn=>{pending.set(++serial,fn);return serial;},cancelAnimationFrame:id=>pending.delete(id)}});await h.flush();
+ Object.assign(h.window,{innerHeight:900,scrollX:0,scrollY:300,scrollTo({left,top}){this.scrollX=left;this.scrollY=top;}});h.document.documentElement={scrollHeight:2000};h.e('rackline-root').contains=()=>true;
+ const panel=h.e('rl-docker'),bar=h.e('rl-folders');bar.scrollLeft=30;bar.getBoundingClientRect=()=>({top:100});
+ let attached=0;panel.appendChild=e=>{e.parentNode=panel;attached++;};panel.removeChild=e=>{e.parentNode=null;attached--;};h.e('created').getBoundingClientRect=()=>({height:parseFloat(h.e('created').style.height)||0});
+ const button={dataset:{folder:'all'}},event={target:{closest:selector=>['[data-docker-action]','[data-smart-action]'].includes(selector)?null:button}};
+ for(let i=0;i<20;i++){h.e('rackline-root').emit('click',event);assert.equal(pending.size,1);assert.equal(attached,1);h.load();await h.flush();assert.equal(pending.size,0);assert.equal(attached,0);assert.equal(h.listeners(),17);}
+ h.e('rackline-root').emit('click',event);h.window.Rackline.destroy();assert.equal(pending.size,0);assert.equal(attached,0);assert.equal(h.listeners(),0);
+});
+
+// Actual app lifecycle with the SMART action, not only extracted helpers.
+async function selectedSmartHarness(){
+ const h=harness();await h.flush();const drive={name:'disk1',device:'sde',selectionToken:'a'.repeat(64),smart:{available:false,cachePresent:false,cacheStatus:'missing'}};
+ h.feeds.storage={...h.feeds.storage,sampledAtMs:105000,array:{disks:[drive]}};
+ h.handlers.smartstate=async()=>({ok:true,json:async()=>({status:200,supported:true,available:false})});
+ h.window.csrf_token='synthetic-csrf-token';h.window.confirm=()=>true;h.e('rackline-root').contains=()=>true;h.e('rl-smart-actions');
+ await h.tick(5000);
+ const click=dataset=>h.e('rackline-root').emit('click',{target:{closest:selector=>selector==='[data-smart-action]'?(dataset.smartAction?{dataset}:null):selector==='[data-docker-action]'?null:{dataset}}});
+ click({drive:'sde'});await h.flush();return {...h,click};
+}
+test('actual app hide leaves submitted SMART capture running; destroy aborts and cleans without late rendering',async()=>{
+ const h=await selectedSmartHarness();let resolveCapture;
+ h.handlers.smartpost=async request=>{const fields=new URLSearchParams(request.init.body);if(fields.get('action')==='prepare')return {ok:true,json:async()=>({status:200,binding:'b'.repeat(64),requestId:'123456-'+'c'.repeat(32),requiresWakeConfirmation:true})};return new Promise(resolve=>resolveCapture=resolve);};
+ h.click({smartAction:'read'});await h.flush();const capture=h.requests.filter(r=>r.key==='smartpost').at(-1);assert.equal(new URLSearchParams(capture.init.body).get('action'),'capture');
+ h.document.hidden=true;h.document.emit('visibilitychange');assert.equal(capture.init.signal.aborted,false,'A hide event must not abort a dispatched capture');
+ const markup=h.e('rl-smart-actions').innerHTML;h.window.Rackline.destroy();assert.equal(capture.init.signal.aborted,true);assert.equal(h.timeouts.size,0);assert.equal(h.intervals.size,0);assert.equal(h.listeners(),0);
+ resolveCapture({ok:false,status:503});await h.flush();assert.equal(h.e('rl-smart-actions').innerHTML,markup);assert.equal(h.requests.filter(r=>r.key==='smartpost').length,2);
+});
+test('actual app cancelled preparation cannot show confirmation or submit after filter navigation',async()=>{
+ const h=await selectedSmartHarness();let resolvePrepare,prompts=0;h.window.confirm=()=>{prompts++;return true;};h.handlers.smartpost=()=>new Promise(resolve=>resolvePrepare=resolve);
+ h.click({smartAction:'read'});await h.flush();h.click({pool:'Parity'});
+ resolvePrepare({ok:true,json:async()=>({status:200,binding:'b'.repeat(64),requestId:'123456-'+'c'.repeat(32),requiresWakeConfirmation:true})});await h.flush();assert.equal(prompts,0);assert.equal(h.requests.filter(r=>r.key==='smartpost').length,1);h.window.Rackline.destroy();assert.equal(h.timeouts.size,0);
 });

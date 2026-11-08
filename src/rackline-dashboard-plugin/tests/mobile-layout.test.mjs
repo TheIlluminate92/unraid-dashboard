@@ -31,15 +31,15 @@ test('CPU columns use balanced rows at phone, tablet and desktop widths',()=>{
  }
  for(const count of [undefined,null,0,-1,NaN,Infinity,2.5])assert.equal(M.coreColumns(count,300,14,3),1);
 });
-test('adaptive CPU layout derives width/font size without losing core data',()=>{
- let applied,width=284,fontSize='28px';const grid={getBoundingClientRect:()=>({width}),style:{setProperty:(key,value)=>applied=[key,value]}};
- const context={M,coreCount:16,$:()=>grid,window:{getComputedStyle:()=>({fontSize,columnGap:'3px'})}};
- vm.createContext(context);vm.runInContext(app.slice(app.indexOf('function layoutCores('),app.indexOf('function renderSystem(')),context);
- context.layoutCores();assert.deepEqual(applied,['--rl-core-columns',4]);
- width=500;fontSize='14px';context.layoutCores();assert.deepEqual(applied,['--rl-core-columns',8]);
- assert.match(app,/coreCount=cores\.length;layoutCores\(\)/);
- assert.match(app,/coreObserver\.disconnect\(\)/);
- assert.match(app,/removeEventListener\('resize',layoutCores\)/);
+test('adaptive CPU groups derive width/font size while keeping siblings inside their group',()=>{
+ let applied,width=284,fontSize='28px';const groups=Array.from({length:8},()=>({dataset:{threads:'2'},getBoundingClientRect:()=>({width:width/2}),style:{setProperty(){}}}));
+ const grid={children:groups,getBoundingClientRect:()=>({width}),style:{setProperty:(key,value)=>applied=[key,value]}};
+ const context={M,layoutPulse(){},q:()=>[grid],window:{getComputedStyle:()=>({fontSize,columnGap:'4px'})}};
+ vm.createContext(context);vm.runInContext(app.slice(app.indexOf('function layoutCores('),app.indexOf('function cpuMarkup(')),context);
+ context.layoutCores();assert.deepEqual(applied,['--rl-core-columns',2]);
+ width=500;fontSize='14px';context.layoutCores();assert.deepEqual(applied,['--rl-core-columns',4]);
+ assert.match(app,/cpuMarkup\(d.cpu,p&&p.cpu&&p.cpu.counters,valid\);layoutCores\(\)/);
+ assert.match(app,/coreObserver\.disconnect\(\)/);assert.match(app,/removeEventListener\('resize',layoutCores\)/);
 });
 test('physical bays keep their source order, hidden cells and full accessible labels',()=>{
  assert.match(app,/M\.list\(group\.cells\)\.map/);
@@ -51,10 +51,10 @@ test('physical bays keep their source order, hidden cells and full accessible la
 });
 test('copy preserves CPU basis, stale samples and unavailable unsupported GPU readings',()=>{
  const view=readFileSync(new URL('include/view.php',base),'utf8');
- assert.match(view,/100% = one logical CPU/);assert.match(view,/samples over 20 seconds are stale/);
- assert.match(app,/GPU telemetry unavailable/);
+ assert.match(view,/100% = one logical CPU/);assert.match(view,/Samples over 20 seconds are stale/);
+ assert.match(app,/gpu.status==='unsupported'\)return 'Unavailable'/);
  assert.doesNotMatch(app,/GPU activity is a recent name-based process match|in this standalone build/);
- assert.match(app,/Network and disk rates are reported by Docker, not measured at physical disks/);
+ assert.match(app,/Docker-reported block I\/O, not physical disk throughput/);
 });
 
 test('empty CPU topology spans its grid and duplicate header navigation is removed',()=>{

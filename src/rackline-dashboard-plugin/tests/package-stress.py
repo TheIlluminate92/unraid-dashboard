@@ -82,6 +82,14 @@ class PackageStress(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0); self.assertIn('already in progress', result.stdout)
             self.assert_retained(); self.assertFalse(list(self.plugins.glob('.rackline.dashboard.stage.*')))
 
+    def test_unsupported_php_stops_before_staging(self):
+        (self.bin / 'php').write_text('#!/bin/sh\nexit 1\n')
+        result = self.run_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('requires PHP 8.1 or newer', result.stdout)
+        self.assert_retained()
+        self.assertFalse(list(self.plugins.glob('.rackline.dashboard.stage.*')))
+
     def test_checksum_and_manifest_corruption_leave_runtime_intact(self):
         wrong_digest = self.install.replace(hashlib.sha256(self.archive).hexdigest(), '0' * 64)
         result = self.run_install(wrong_digest)
@@ -100,8 +108,9 @@ class PackageStress(unittest.TestCase):
         sentinel = self.base / 'untouched'; sentinel.write_text('sentinel')
         result = self.run_install(self.rebuild_archive_script(symlink))
         self.assertNotEqual(result.returncode, 0); self.assert_retained(); self.assertEqual(sentinel.read_text(), 'sentinel')
-        result = self.run_install(self.rebuild_archive_script(lambda member: None if member.name.endswith('/include/storage.php') else member))
-        self.assertNotEqual(result.returncode, 0); self.assertIn('Incomplete Rackline runtime', result.stdout); self.assert_retained()
+        for missing in ('storage.php', 'smart-report.php'):
+            result = self.run_install(self.rebuild_archive_script(lambda member: None if member.name.endswith('/include/' + missing) else member))
+            self.assertNotEqual(result.returncode, 0); self.assertIn('Incomplete Rackline runtime', result.stdout); self.assert_retained()
 
     def test_interrupt_after_predecessor_move_restores_active_runtime(self):
         mover = self.bin / 'mv'

@@ -33,6 +33,7 @@ function rackline_storage_sources(): array
         'smartCache' => '/var/local/emhttp/smart',
         'pools' => '/boot/config/pools',
         'locations' => '/boot/config/plugins/disklocation',
+        'locationDefaults' => '/usr/local/emhttp/plugins/disklocation/pages/default_settings.php',
         'dynamix' => '/boot/config/plugins/dynamix/dynamix.cfg',
         'parityCron' => '/boot/config/plugins/dynamix/parity-check.cron',
     ];
@@ -301,17 +302,94 @@ function rackline_storage_serial_matches(string $serial, array $raw): bool
     return $suffix !== '' && !str_contains($suffix, '_');
 }
 
-function rackline_storage_cached_smart(string $name, array $raw, string $directory, ?int &$remaining = null): array
+function rackline_storage_smart_identity(string $name, array $raw): ?string
 {
-    if (!preg_match('/^[a-zA-Z0-9_-]+$/D', $name)) return ['available' => false];
+    if (!preg_match('/^[a-zA-Z0-9_-]{1,128}$/D', $name)) return null;
+    $identity = [$name];
+    foreach (['device', 'id', 'serial', 'model'] as $key) {
+        if (isset($raw[$key]) && (!is_scalar($raw[$key]) || is_bool($raw[$key]))) return null;
+        $value = rackline_storage_text($raw[$key] ?? '');
+        // Replacement-character JSON would collapse different malformed byte
+        // identities into one selector. Reject them instead of repairing them.
+        if (preg_match('//u', $value) !== 1) return null;
+        $identity[] = $value;
+    }
+    if ($identity[2] === '' && $identity[3] === '') return null;
+    // Selection guard, not an authentication token. Do not put raw serials in URLs.
+    return hash('sha256', "rackline-smart-selection-v1\0" . json_encode($identity));
+}
+
+function rackline_storage_smart_report(string $name, array $raw, string $directory, ?int &$remaining = null, ?array &$cacheMetadata = null): ?array
+{
+    $cacheMetadata = ['available' => false, 'cacheStatus' => 'unavailable'];
+    if (rackline_storage_smart_identity($name, $raw) === null || $remaining !== null && $remaining <= 0) return null;
+    // Only existing regular files in the fixed cache directory. Links and special
+    // files are not reports. Recheck metadata so disappearing/replaced files fail closed.
     $path = $directory . '/' . $name;
-    if (!is_file($path) || $remaining !== null && $remaining <= 0) return ['available' => false];
+    clearstatcache(true, $path);
+    if (is_link($directory) || is_link($path) || !is_dir($directory)) return null;
+    $before = @lstat($path);
+    if (!is_array($before)) {
+        // Failed reads/access checks are unknown, not proof that a cache is absent.
+        if (is_readable($directory) && is_executable($directory))
+            $cacheMetadata = ['available' => false, 'cacheStatus' => 'missing', 'cachePresent' => false];
+        return null;
+    }
+    if (($before['mode'] & 0170000) !== 0100000) return null;
+    $cacheMetadata['cachePresent'] = true;
     $limit = $remaining === null ? 262144 : min(262144, $remaining);
+    if ($before['size'] <= 0 || $before['size'] > $limit || $before['mtime'] <= 0) {
+        $cacheMetadata['unavailableReason'] = $before['size'] > $limit ? 'report_too_large' : 'invalid_report';
+        if ($remaining !== null && $before['size'] > $limit) $remaining -= $limit;
+        return null;
+    }
     $text = rackline_storage_read($path, $limit);
     if ($remaining !== null) $remaining -= $text === null ? $limit : strlen($text);
-    if ($text === null || preg_match_all('/^\s*Serial Number:\s*([^\r\n]+)\r?$/mi', $text, $matches) !== 1
-        || !rackline_storage_serial_matches($matches[1][0], $raw)) return ['available' => false];
-    return rackline_storage_parse_smart_cache($text, (int) @filemtime($path));
+    clearstatcache(true, $path);
+    $after = @lstat($path);
+    if (!is_array($after)) {
+        $cacheMetadata = ['available' => false, 'cacheStatus' => 'unavailable', 'unavailableReason' => 'changed_report'];
+        return null;
+    }
+    foreach (['dev', 'ino', 'mode', 'size', 'mtime', 'ctime'] as $key) if ($before[$key] !== $after[$key]) {
+        $cacheMetadata = ['available' => false, 'cacheStatus' => 'unavailable', 'unavailableReason' => 'changed_report'];
+        return null;
+    }
+    if ($text === null || strlen($text) !== $before['size']) {
+        $cacheMetadata['unavailableReason'] = 'unreadable_report';
+        return null;
+    }
+    // Cache presence/time is useful even when native attribute-only files lack
+    // identity. Never project their text, attributes or health as this drive's.
+    $cacheMetadata['cachedAtMs'] = $before['mtime'] * 1000;
+    if (str_contains($text, "\0")) {
+        $cacheMetadata['unavailableReason'] = 'invalid_report';
+        return null;
+    }
+    $serialCount = preg_match_all('/^\s*Serial Number:\s*([^\r\n]+)\r?$/mi', $text, $matches);
+    if ($serialCount !== 1 || !rackline_storage_serial_matches($matches[1][0], $raw)) {
+        $cacheMetadata['cacheStatus'] = 'identity_unverified';
+        $cacheMetadata['unavailableReason'] = $serialCount === 0 ? 'missing_report_identity'
+            : ($serialCount !== 1 ? 'ambiguous_report_identity' : 'report_identity_mismatch');
+        return null;
+    }
+    $smart = rackline_storage_parse_smart_cache($text, (int) $before['mtime']);
+    if (!$smart['available']) {
+        $cacheMetadata['unavailableReason'] = 'invalid_report';
+        return null;
+    }
+    $cacheMetadata = ['available' => true, 'cacheStatus' => 'verified', 'cachePresent' => true, 'cachedAtMs' => $before['mtime'] * 1000];
+    return ['text' => $text, 'cachedAtMs' => $before['mtime'] * 1000, 'smart' => $smart];
+}
+
+function rackline_storage_cached_smart(string $name, array $raw, string $directory, ?int &$remaining = null): array
+{
+    $report = rackline_storage_smart_report($name, $raw, $directory, $remaining, $cacheMetadata);
+    if ($report === null) return $cacheMetadata;
+    return $report['smart'] + $cacheMetadata + [
+        'reportUrl' => '/plugins/rackline.dashboard/include/smart-report.php?name=' . rawurlencode($name)
+            . '&identity=' . rackline_storage_smart_identity($name, $raw),
+    ];
 }
 
 function rackline_storage_disk_records(array $rawDisks, array $smartSettings, array $displaySettings, string $smartCache): array
@@ -371,6 +449,7 @@ function rackline_storage_disk_records(array $rawDisks, array $smartSettings, ar
         }
         $records[] = [
             'name' => $name,
+            'selectionToken' => rackline_storage_smart_identity($name, $raw),
             'index' => rackline_storage_count($raw['idx'] ?? null),
             'model' => rackline_storage_text($raw['model'] ?? '') ?: explode('_', rackline_storage_text($raw['id'] ?? ''), 2)[0],
             'capacityBytes' => rackline_storage_kib_bytes($raw['size'] ?? null),
@@ -400,6 +479,96 @@ function rackline_storage_disk_records(array $rawDisks, array $smartSettings, ar
     return $records;
 }
 
+function rackline_storage_location_flag($value): ?bool
+{
+    if (in_array($value, [false, 0, '0'], true)) return false;
+    if (in_array($value, [true, 1, '1'], true)) return true;
+    return null;
+}
+
+function rackline_storage_location_color($value): ?string
+{
+    return is_string($value) && preg_match('/^[0-9a-f]{6}$/iD', $value) ? '#' . strtolower($value) : null;
+}
+
+/** Read known literal native defaults as data. Never include native PHP. */
+function rackline_storage_location_defaults(string $text): array
+{
+    if (!function_exists('token_get_all') || strlen($text) > 262144) return [];
+    try { $rawTokens = token_get_all($text, TOKEN_PARSE); } catch (ParseError $error) { return []; }
+    $tokens = array_values(array_filter($rawTokens, static fn($token): bool => !is_array($token) || !in_array($token[0], [T_WHITESPACE,T_COMMENT,T_DOC_COMMENT], true)));
+    if (count($tokens) > 20000 || !is_array($tokens[0] ?? null) || $tokens[0][0] !== T_OPEN_TAG) return [];
+    $keys = ['bgcolor_parity','bgcolor_unraid','bgcolor_cache','bgcolor_flash','bgcolor_others','bgcolor_empty','device_bg_color'];
+    $values = []; $seen = []; $count = count($tokens);
+    // Whole-file whitelist: PHP tag, comments, simple scalar assignments, and
+    // an optional final closing tag. Anything executable or dynamic is unknown.
+    for ($i = 1; $i < $count;) {
+        $variable = $tokens[$i++];
+        if (is_array($variable) && $variable[0] === T_CLOSE_TAG && $i === $count) break;
+        if (!is_array($variable) || $variable[0] !== T_VARIABLE || ($tokens[$i++] ?? null) !== '=') return [];
+        $literal = $tokens[$i++] ?? null;
+        $negative = $literal === '-';
+        if ($negative) $literal = $tokens[$i++] ?? null;
+        if (!is_array($literal)) return [];
+        $scalar = in_array($literal[0], [T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER], true)
+            || $literal[0] === T_STRING && in_array(strtolower($literal[1]), ['true','false','null'], true);
+        if (!$scalar || $negative && !in_array($literal[0], [T_LNUMBER,T_DNUMBER], true) || ($tokens[$i++] ?? null) !== ';') return [];
+        $key = substr($variable[1],1);
+        if (!in_array($key, $keys, true)) continue;
+        if (isset($seen[$key])) { unset($values[$key]); continue; }
+        $seen[$key] = true;
+        if ($negative) continue;
+        if ($key === 'device_bg_color' && $literal[0] === T_LNUMBER && in_array($literal[1], ['0','1'], true)) $values[$key] = (int) $literal[1];
+        elseif ($key !== 'device_bg_color' && $literal[0] === T_CONSTANT_ENCAPSED_STRING && preg_match('/^([\'"])([0-9a-f]{6})\\1$/iD', $literal[1], $m)) $values[$key] = $m[2];
+    }
+    return $values;
+}
+
+/** File-write times are not scan/health times or proof of meaningful changes. */
+function rackline_storage_location_file(string $path): array
+{
+    $unknown = ['data' => [], 'writtenAtMs' => null];
+    clearstatcache(true, $path); $before = @lstat($path);
+    if (!is_array($before) || ($before['mode'] & 0170000) !== 0100000 || $before['size'] > 1048576) return $unknown;
+    $text = rackline_storage_read($path);
+    clearstatcache(true, $path); $after = @lstat($path);
+    if ($text === null || !is_array($after)) return $unknown;
+    foreach (['dev','ino','mode','size','mtime','ctime'] as $key) if ($before[$key] !== $after[$key]) return $unknown;
+    $data = json_decode($text, true);
+    if (!is_array($data)) return $unknown;
+    $time = rackline_storage_count($after['mtime']);
+    return ['data' => $data, 'writtenAtMs' => $time !== null && $time > 0 && $time <= intdiv(RACKLINE_STORAGE_SAFE_INTEGER, 1000) ? $time * 1000 : null];
+}
+
+function rackline_storage_location_display(?array $device, array $group, array $settings, ?array $native): array
+{
+    $verified = $device !== null && $native !== null;
+    $color = null;
+    $mode = array_key_exists('device_bg_color', $settings) ? rackline_storage_location_flag($settings['device_bg_color']) : null;
+    $type = $verified ? rackline_storage_text($native['type'] ?? '') : '';
+    if ($device === null) $color = rackline_storage_location_color($settings['bgcolor_empty'] ?? null);
+    elseif ($mode === false) {
+        $key = ['Parity'=>'bgcolor_parity','Data'=>'bgcolor_unraid','Cache'=>'bgcolor_cache','Boot'=>'bgcolor_flash'][$type] ?? 'bgcolor_others';
+        $color = rackline_storage_location_color($device['color'] ?? null)
+            ?? rackline_storage_location_color($group['group_color'] ?? null)
+            ?? ($verified ? rackline_storage_location_color($settings[$key] ?? null) : null);
+    } elseif ($mode === true && $verified) {
+        $temp = rackline_storage_number($native['temp'] ?? null);
+        $hot = rackline_storage_number($native['hotTemp'] ?? null);
+        $max = rackline_storage_number($native['maxTemp'] ?? null);
+        if ($temp !== null && $temp > 0 && $temp <= 250 && $hot !== null && $max !== null && $hot > 0 && $max >= $hot)
+            $color = rackline_storage_location_color($settings[$temp >= $max ? 'bgcolor_parity' : ($temp >= $hot ? 'bgcolor_unraid' : 'bgcolor_cache')] ?? null);
+        else $color = rackline_storage_location_color($settings['bgcolor_others'] ?? null);
+    }
+    $node = $device !== null ? basename(rackline_storage_text($device['devicenode'] ?? '')) : '';
+    return ['source' => 'disklocation', 'identityVerified' => $verified,
+        'name' => $verified ? (rackline_storage_text($native['name'] ?? '') ?: null) : null,
+        'device' => preg_match('/^[a-zA-Z0-9_.-]{1,128}$/D', $node) ? $node : null,
+        'type' => $type ?: null, 'color' => $color,
+        'model' => rackline_storage_text($device['model_name'] ?? ''),
+        'comment' => rackline_storage_text($device['comment'] ?? '') ?: null];
+}
+
 function rackline_storage_group_layout(array $group): array
 {
     $columns = rackline_storage_count($group['grid_columns'] ?? 1);
@@ -413,6 +582,8 @@ function rackline_storage_group_layout(array $group): array
         return ['columns' => 0, 'rows' => 0, 'cells' => []];
     $count = $columns * $rows;
     $countByColumn = strcasecmp($countMode, 'column') === 0;
+    $bypass = array_key_exists('count_bypass_tray', $group) ? rackline_storage_location_flag($group['count_bypass_tray']) : false;
+    if ($bypass === null) return ['columns' => 0, 'rows' => 0, 'cells' => []];
     $hidden = is_array($group['hide_tray'] ?? null) ? $group['hide_tray'] : [];
     foreach ($hidden as $value) if (!is_scalar($value) && $value !== null) return ['columns' => 0, 'rows' => 0, 'cells' => []];
     // Disk Location stores one-based source keys even when the displayed
@@ -427,7 +598,7 @@ function rackline_storage_group_layout(array $group): array
     $labels = [];
     $number = $start;
     foreach ($runs as $run) foreach ($run as $key) {
-        if (empty($hidden[$key]) || !empty($group['count_bypass_tray'])) $labels[$key] = $number++;
+        if (empty($hidden[$key]) || !empty($bypass)) $labels[$key] = $number++;
     }
     $cells = [];
     for ($position = 0; $position < $count; $position++) {
@@ -450,6 +621,44 @@ function rackline_storage_location_identity_matches(array $device, array $raw): 
     return rackline_storage_serial_matches(rackline_storage_text($device['smart_serialnumber'] ?? ''), $raw);
 }
 
+/** Resolve native Boot aliases without accepting contradictory assigned disks. */
+function rackline_storage_location_nodes(array $rawDisks): array
+{
+    $candidates = [];
+    foreach ($rawDisks as $raw) if (is_array($raw)) {
+        $node = rackline_storage_text($raw['device'] ?? '');
+        if ($node !== '') $candidates[$node][] = $raw;
+    }
+    // Even different locators cannot prove a physical identity when the native
+    // inventory repeats its exact ID or explicit serial across multiple nodes.
+    $owners = []; $ambiguous = [];
+    foreach ($candidates as $node => $records) foreach ($records as $record) foreach (['id','serial'] as $field) {
+        $value = rackline_storage_text($record[$field] ?? '');
+        if ($value !== '') $owners[$field . ':' . $value][$node] = true;
+    }
+    foreach ($owners as $nodes) if (count($nodes) > 1) foreach ($nodes as $node => $_) $ambiguous[$node] = true;
+    $result = [];
+    foreach ($candidates as $node => $records) {
+        if (isset($ambiguous[$node])) continue;
+        if (count($records) === 1) { $result[$node] = ['current' => $records[0], 'display' => $records[0]]; continue; }
+        $assigned = array_values(array_filter($records, static fn(array $r): bool => in_array($r['type'] ?? null, ['Data', 'Parity', 'Cache'], true)));
+        if (count($assigned) !== 1) continue;
+        $current = $assigned[0];
+        if (rackline_storage_text($current['id'] ?? '') === '') continue;
+        foreach ($records as $record) {
+            if ($record !== $current && ($record['type'] ?? null) !== 'Boot') continue 2;
+            foreach (['id', 'serial', 'model', 'transport'] as $key) {
+                $a = $current[$key] ?? ''; $b = $record[$key] ?? '';
+                if (!is_string($a) || !is_string($b) || $a !== $b || !preg_match('//u', $a) || preg_match('/[\x00-\x1f\x7f]/', $a)) continue 3;
+            }
+        }
+        // Native Disk Location's node-indexed display uses the last alias. The
+        // actionable Rackline projection remains the single assigned member.
+        $result[$node] = ['current' => $current, 'display' => $records[count($records) - 1]];
+    }
+    return $result;
+}
+
 function rackline_storage_location_data(array &$disks, array $rawDisks, array $groupsRaw, array $locationsRaw, array $devicesRaw, array $settings = []): array
 {
     foreach ($disks as &$disk) $disk['location'] = null;
@@ -466,16 +675,11 @@ function rackline_storage_location_data(array &$disks, array $rawDisks, array $g
         $bayCount += $columns * $rows;
         if ($bayCount > RACKLINE_STORAGE_MAX_BAYS) return $unavailable;
     }
-    $bypass = $settings['count_bypass_tray'] ?? false;
-    if (!is_scalar($bypass)) return $unavailable;
-    foreach ($groupsRaw as &$group) if (is_array($group)) $group['count_bypass_tray'] = $bypass;
-
-    unset($group);
+    // Native Disk Location extracts count_bypass_tray from EACH group.
+    // A similarly named global setting must never overwrite that group value.
+    $nodeRecords = rackline_storage_location_nodes($rawDisks);
     $currentByNode = [];
-    foreach ($rawDisks as $raw) if (is_array($raw)) {
-        $node = rackline_storage_text($raw['device'] ?? '');
-        $currentByNode[$node] = array_key_exists($node, $currentByNode) ? [] : $raw;
-    }
+    foreach ($nodeRecords as $node => $record) $currentByNode[$node] = $record['current'];
     $locationByDevice = [];
     $locationKeysByGroup = [];
     $displayTrayByGroup = [];
@@ -570,7 +774,12 @@ function rackline_storage_location_data(array &$disks, array $rawDisks, array $g
                 && rackline_storage_location_identity_matches($deviceMeta, $currentByNode[$deviceNode] ?? [])
                 ? $diskByDevice[$deviceNode]
                 : null;
+            $displayNative = $present && isset($nodeRecords[$deviceNode], $locationByDevice[$deviceNode])
+                && $locationByDevice[$deviceNode]['groupId'] === (string) $groupId && $locationByDevice[$deviceNode]['tray'] === $sourceTray
+                && rackline_storage_location_identity_matches($deviceMeta, $nodeRecords[$deviceNode]['current'])
+                ? $nodeRecords[$deviceNode]['display'] : null;
             $cells[] = [
+                'display' => $layoutCell['hidden'] ? null : rackline_storage_location_display($present ? $deviceMeta : null, $group, $settings, $displayNative),
                 'tray' => $layoutCell['tray'],
                 'sourceTray' => $sourceTray,
                 'hidden' => $layoutCell['hidden'],
@@ -583,6 +792,7 @@ function rackline_storage_location_data(array &$disks, array $rawDisks, array $g
                 'disk' => $active === null ? null : [
                     'name' => $active['name'],
                     'device' => $active['device'],
+                    'selectionToken' => $active['selectionToken'] ?? null,
                     'type' => $active['type'],
                     'mediaType' => $active['mediaType'],
                     'smart' => $active['smart'] ?? ['available' => false],
@@ -598,7 +808,16 @@ function rackline_storage_location_data(array &$disks, array $rawDisks, array $g
             ];
         }
         $name = rackline_storage_text($group['group_name'] ?? ('Shelf ' . $groupId));
+        $width = rackline_storage_count($group['tray_width'] ?? null);
+        $height = rackline_storage_count($group['tray_height'] ?? null);
+        $width = $width !== null && $width > 0 && $width <= 4096 ? $width : null;
+        $height = $height !== null && $height > 0 && $height <= 4096 ? $height : null;
+        if (($group['disk_tray_direction'] ?? 'h') === 'v') [$width, $height] = [$height, $width];
         $groups[] = [
+            'trayAlign' => in_array($group['tray_align'] ?? null, ['left','center','right','start','end'], true) ? $group['tray_align'] : null,
+            'nameAlign' => in_array($group['tray_align_txt'] ?? null, ['left','center','right','hide','vertical'], true) ? $group['tray_align_txt'] : null,
+            'position' => in_array($group['tray_pos'] ?? null, ['left','right','none'], true) ? $group['tray_pos'] : null,
+            'trayWidth' => $width, 'trayHeight' => $height,
             'id' => (string) $groupId,
             'name' => $name,
             'trayDirection' => ($group['disk_tray_direction'] ?? 'h') === 'v' ? 'v' : 'h',
@@ -607,7 +826,8 @@ function rackline_storage_location_data(array &$disks, array $rawDisks, array $g
             'cells' => $cells,
         ];
     }
-    usort($groups, static fn(array $left, array $right): int => ((int) $left['id']) <=> ((int) $right['id']));
+    // Native devices.php iterates persisted groups directly. Its is_array(...)
+    // ?? ksort(...) expression does not sort an array; preserve source order.
     return ['available' => count($groups) > 0, 'groups' => $groups];
 }
 
@@ -993,11 +1213,15 @@ function rackline_storage_snapshot(array $sources = []): array
     $displaySettings = is_array($dynamixConfig['display'] ?? null) ? $dynamixConfig['display'] : [];
     $smartSettings = rackline_storage_ini($sources['smartSettings'], true);
     $disks = rackline_storage_disk_records($rawDisks, $smartSettings, $displaySettings, $sources['smartCache']);
-    $locations = rackline_storage_location_data($disks, $rawDisks,
-        rackline_storage_json($sources['locations'] . '/groups.json'),
-        rackline_storage_json($sources['locations'] . '/locations.json'),
-        rackline_storage_json($sources['locations'] . '/devices.json'),
-        rackline_storage_json($sources['locations'] . '/settings.json'));
+    $locationFiles = []; $locationTimes = [];
+    foreach (['groups','locations','devices','settings'] as $key) {
+        $file = rackline_storage_location_file($sources['locations'] . '/' . $key . '.json');
+        $locationFiles[$key] = $file['data']; $locationTimes[$key] = $file['writtenAtMs'];
+    }
+    $locationDefaults = isset($sources['locationDefaults']) ? rackline_storage_location_defaults(rackline_storage_read($sources['locationDefaults'], 262144) ?? '') : [];
+    $locations = rackline_storage_location_data($disks, $rawDisks, $locationFiles['groups'], $locationFiles['locations'], $locationFiles['devices'], array_replace($locationDefaults, $locationFiles['settings']));
+    $locations['source'] = 'disklocation_cache';
+    $locations['cacheWrittenAtMs'] = $locationTimes;
     $poolConfigs = [];
     $poolPaths = glob($sources['pools'] . '/*.cfg') ?: [];
     if (count($poolPaths) > RACKLINE_STORAGE_MAX_POOLS) throw new RuntimeException('Pool inventory exceeds bounded collection');

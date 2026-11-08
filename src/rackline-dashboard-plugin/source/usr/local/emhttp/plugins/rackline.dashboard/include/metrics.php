@@ -69,6 +69,7 @@ function rackline_metrics_id(?string $text): ?int
 function rackline_metrics_topology(string $root, array $counters): array
 {
     $groups = [];
+    $dies = [];
     $seen = [];
     $paths = glob($root . '/sys/devices/system/cpu/cpu[0-9]*') ?: [];
     if (count($paths) > RACKLINE_METRICS_MAX_CPUS || count($counters) > RACKLINE_METRICS_MAX_CPUS + 1) return [];
@@ -81,6 +82,10 @@ function rackline_metrics_topology(string $root, array $counters): array
         // An absent package/core is not evidence that everything is socket zero.
         $key = $core !== null && $package !== null ? $package . ':' . $core : 'unknown:' . $id;
         if (!isset($groups[$key])) $groups[$key] = ['packageId' => $package, 'coreId' => $core, 'tempC' => null, 'threads' => []];
+        // Some platforms repeat a core ID across dies. The current public
+        // topology contract has no die identity: never merge those as SMT.
+        $die = rackline_metrics_id(rackline_metrics_read($path . '/topology/die_id', 32));
+        $dies[$key][$die === null ? 'unknown' : (string) $die] = true;
         $groups[$key]['threads'][] = ['cpuId' => $id];
         $seen[$id] = true;
     }
@@ -92,6 +97,14 @@ function rackline_metrics_topology(string $root, array $counters): array
         // A sysfs offline record takes precedence over a racing proc/stat sample.
         if (rackline_metrics_read($root . '/sys/devices/system/cpu/cpu' . $id . '/online', 8) === '0') continue;
         $groups['unknown:' . $id] = ['packageId' => null, 'coreId' => null, 'tempC' => null, 'threads' => [['cpuId' => $id]]];
+    }
+    foreach ($groups as $key => $group) {
+        if (count($dies[$key] ?? []) <= 1) continue;
+        unset($groups[$key]);
+        foreach ($group['threads'] as $thread) {
+            $groups['unknown:' . $thread['cpuId']] = ['packageId' => $group['packageId'],
+                'coreId' => null, 'tempC' => null, 'threads' => [$thread]];
+        }
     }
     foreach ($groups as &$group) usort($group['threads'], static fn(array $a, array $b): int => $a['cpuId'] <=> $b['cpuId']);
     unset($group);

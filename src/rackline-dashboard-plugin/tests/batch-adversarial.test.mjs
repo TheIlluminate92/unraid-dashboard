@@ -11,7 +11,7 @@ const stats=(t=100000)=>({available:true,sampledAtMs:t,monotonicSeconds:t/1000,c
 const row=(c,t)=>({...c,requestedId:c.id,status:'ok',generation:'2026-11-01T00:00:00Z',stats:stats(t)});
 function harness(containers=[container(1)]){
  const state={docker:{containers},samples:new Map(),batchCursor:0,container:containers[0].name,history:[],gpuBlocked:new Map()};
- const context={state,M,status:{},stopped:false,document:{hidden:false},Date:{now:()=>100000},endpoints:{batch:'/local/containers.php'},request:async()=>context.payload,renderContainerRows(){},renderContainerInspector(){},renderBatchStatus(){},refreshAge(){},text:(k,v)=>context.texts[k]=v,texts:{},when:String,pct:String};
+ const context={state,M,status:{},stopped:false,document:{hidden:false},Date:{now:()=>100000},endpoints:{batch:'/local/containers.php'},request:async()=>context.payload,renderContainerRows(){},renderContainerInspector(){},renderBatchStatus(){},refreshAge(){},$:id=>context.elements[id]||(context.elements[id]={hidden:false}),elements:{},text:(k,v)=>context.texts[k]=v,texts:{},when:String,pct:String};
  context.payload={schemaVersion:1,status:'ok',sampledAtMs:100000,requestedCount:containers.length,containers:containers.map(c=>row(c,100000))};
  vm.createContext(context);vm.runInContext(fn('historyGap','trend'),context);vm.runInContext('async '+fn('batchLoop','onClick'),context);vm.runInContext(fn('sampleFresh','updateRowMetrics'),context);return context;
 }
@@ -42,7 +42,7 @@ test('duplicate response rows erase requested telemetry instead of choosing one'
  h.payload.containers.push(row(c,100000));await h.batchLoop();assert.equal(h.state.samples.size,0);
 });
 test('partial batch never invents metrics for missing requested IDs',async()=>{
- const h=harness([container(1),container(2)]);h.payload.containers.pop();await h.batchLoop();assert.equal(h.state.samples.size,1);h.renderBatchStatus();assert.match(h.texts['rl-batch-status'],/1 \/ 2/);
+ const h=harness([container(1),container(2)]);h.payload.containers.pop();await h.batchLoop();assert.equal(h.state.samples.size,1);h.renderBatchStatus();assert.match(h.texts['rl-batch-status'],/unavailable or stale/);assert.equal(h.elements['rl-batch-status'].hidden,false);
 });
 test('replay cannot refresh row age; regression cannot replace accepted sample',async()=>{
  const h=harness();await h.batchLoop();const entry=h.state.samples.values().next().value;
@@ -63,7 +63,7 @@ test('GPU rows reject malformed or future timestamps, without inventing idle sta
  for(const sampledAtMs of [undefined,null,200000]){h.state.gpu={available:true,sampledAtMs,attributedNames:[],videoAttributedNames:[]};assert.equal(h.gpuActivity(c),'Unknown');}
 });
 test('GPU device summary rejects future cache timestamps like row attribution',()=>{
- const h=harness();h.state.gpu={available:true,sampledAtMs:200000,loadPercent:50,videoLoadPercent:40};h.renderBatchStatus();assert.match(h.texts['rl-gpu-summary'],/unavailable/);
+ const h=harness();h.state.gpu={available:true,sampledAtMs:200000,loadPercent:50,videoLoadPercent:40};h.renderBatchStatus();assert.equal(h.texts['rl-gpu-summary'],'');assert.equal(h.elements['rl-gpu-summary'].hidden,true);
 });
 test('GPU device percentage never becomes a per-container percentage',()=>{
  const h=harness(),c=h.state.docker.containers[0];h.state.gpu={available:true,sampledAtMs:100000,loadPercent:90,attributedNames:[c.name],videoAttributedNames:[]};assert.equal(h.gpuActivity(c),'Recent GPU*');
@@ -107,4 +107,10 @@ test('failed, missing, duplicate and unavailable selected batches break CPU hist
 test('unsupported GPU source is explicitly unavailable rather than a missing sample',()=>{
  const h=harness(),c=h.state.docker.containers[0];h.state.gpu={available:false,status:'unsupported'};assert.equal(h.gpuActivity(c),'Unavailable');
  h.state.gpu=null;assert.equal(h.gpuActivity(c),'Unknown');
+});
+
+test('successful batches and unsupported GPU do not repeat routine status paragraphs',async()=>{
+ const h=harness();await h.batchLoop();h.state.gpu={available:false,status:'unsupported'};h.renderBatchStatus();
+ assert.equal(h.texts['rl-batch-status'],'');assert.equal(h.elements['rl-batch-status'].hidden,true);assert.equal(h.elements['rl-gpu-summary'].hidden,true);
+ h.status.batch.error=true;h.renderBatchStatus();assert.match(h.texts['rl-batch-status'],/telemetry unavailable/);assert.equal(h.elements['rl-batch-status'].hidden,false);
 });
