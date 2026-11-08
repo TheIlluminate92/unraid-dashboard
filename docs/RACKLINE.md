@@ -14,7 +14,7 @@ Rackline is a standalone **host-local Unraid WebUI** workspace at `/Rackline`, o
 |---|---|
 | Installed version | **0.2.2 / 2026.11.08.04**, host-owner receipt November 8 **06:44–06:53 UTC / 00:44–00:53 CST**. All 17 runtime files and boot registration matched. |
 | Runtime source | `3a914477f0f2c5e088a32779c44c2a45dfb07029`. |
-| Source/test head before distribution | `e4142e73242d59e035d9f357bdcd5545f0d94cc1`; [Rackline 47-case synthetic Chromium checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454524022) and [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454527807) passed. |
+| Source/test head before distribution | `e4142e73242d59e035d9f357bdcd5545f0d94cc1`; [Rackline 47-case synthetic Chromium checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454524022) and [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42454527793) passed. |
 | Pinned distribution | `1295357586d61252c691bea59684205a0c0f855f`, `releases/rackline/0.2.2-2026.11.08.04/`. This is repository distribution, **not a GitHub Release/tag or main merge**. |
 | Distribution-head CI | All returned exact-head checks completed successfully: [Rackline PHP/browser](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455831602), [WAZ checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455831603), [push artifact checks](https://github.com/TheIlluminate92/unraid-dashboard/actions/runs/42455827646). The old 2225af0 responsive failure is historical and subsequently fixed/tested, not a current 0.2.2 failure. |
 
