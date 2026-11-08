@@ -82,6 +82,59 @@ def verify(page, threads, phone=False):
     return data
 
 
+def settle_layout(page):
+    page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+
+
+def verify_focus_visible(page, target):
+    """Check the interactive viewport before presentation scroll normalization.
+
+    Wide table rows may be clipped horizontally by their local scroller. Test
+    their visible segment, but require the whole focus target's height to be
+    visible and hit-test its top, middle and bottom against sticky overlays.
+    """
+    settle_layout(page)
+    state = target.evaluate(r'''e => {
+      const r=e.getBoundingClientRect();
+      let left=Math.max(0,r.left),right=Math.min(innerWidth,r.right);
+      let top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+      for(let parent=e.parentElement;parent;parent=parent.parentElement){
+        const style=getComputedStyle(parent),box=parent.getBoundingClientRect();
+        if(/^(auto|scroll|hidden|clip)$/.test(style.overflowX)){
+          left=Math.max(left,box.left+parent.clientLeft);
+          right=Math.min(right,box.left+parent.clientLeft+parent.clientWidth);
+        }
+        if(/^(auto|scroll|hidden|clip)$/.test(style.overflowY)){
+          top=Math.max(top,box.top+parent.clientTop);
+          bottom=Math.min(bottom,box.top+parent.clientTop+parent.clientHeight);
+        }
+      }
+      const width=right-left,height=bottom-top,x=(left+right)/2;
+      const points=width>0&&height>0?[top+Math.min(4,height/2),(top+bottom)/2,bottom-Math.min(4,height/2)]:[];
+      const hits=points.map(y=>{const hit=document.elementFromPoint(x,y);return {
+        x,y,inside:!!hit&&(hit===e||e.contains(hit)),hit:hit?hit.tagName+'#'+hit.id+'.'+hit.className:null
+      };});
+      return {active:e===document.activeElement,id:e.id,label:e.textContent.trim(),
+        targetHeight:r.height,visibleWidth:width,visibleHeight:height,viewportHeight:innerHeight,
+        visible:getComputedStyle(e).visibility==='visible',scrollY,hits};
+    }''')
+    assert state['active'] and state['visible'], ('focus lost or hidden',state)
+    assert state['visibleWidth']>0 and state['visibleHeight']+1>=min(state['targetHeight'],state['viewportHeight']), ('focus clipped by viewport or scroller',state)
+    assert state['hits'] and all(hit['inside'] for hit in state['hits']), ('focused control obscured',state)
+    return state
+
+
+def capture_overview(page, path):
+    """Normalize only presentation captures, after interaction assertions pass."""
+    page.evaluate("""() => {
+      document.querySelectorAll('#rackline-root .rl-scroll,#rackline-root .rl-enclosure,#rackline-root .rl-filters,#rackline-root .rl-tabs').forEach(e=>e.scrollLeft=0);
+      window.scrollTo(0,0);
+    }""")
+    settle_layout(page)
+    assert page.evaluate("() => scrollX===0&&scrollY===0&&[...document.querySelectorAll('#rackline-root .rl-scroll,#rackline-root .rl-enclosure,#rackline-root .rl-filters,#rackline-root .rl-tabs')].every(e=>e.scrollLeft===0)")
+    page.screenshot(path=str(path),full_page=True)
+
+
 with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_playwright() as p:
     fixture_dir = Path(temp)
     browser = p.chromium.launch(executable_path=args.browser, headless=True, args=['--no-sandbox'])
@@ -95,6 +148,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
             context = browser.new_context(viewport={'width':width,'height':900}, device_scale_factor=scale)
             page = context.new_page()
             errors=[]
+            focus_checks=[]
             page.on('pageerror',lambda error: errors.append(str(error)))
             # Any image load receives a synthetic icon. All other network is denied.
             page.route('**/*',lambda route: route.fulfill(content_type='image/svg+xml',body='<svg xmlns="http://www.w3.org/2000/svg"/>') if route.request.resource_type=='image' else route.abort())
@@ -114,36 +168,50 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 data=verify(page,threads,width<=700)
                 if not text_scale and width<=700 and threads==16:
                     assert data['tabTop'] < 900, ('mobile strip too tall', data['tabTop'])
-                page.screenshot(path=str(args.output / f'rackline-synthetic-{name}-drives.png'),full_page=True)
+                capture_overview(page,args.output / f'rackline-synthetic-{name}-drives.png')
                 # Focus and select a mapped bay, retaining position and identity.
                 bay=page.locator('.rl-bay-grid button[data-drive]').first
                 bay.focus();page.keyboard.press('Enter')
                 assert 'rl-selected' in bay.get_attribute('class')
                 assert bay.evaluate('e=>e===document.activeElement')
                 assert bay.evaluate("e=>getComputedStyle(e).outlineWidth") == '3px'
+                focus_checks.append(verify_focus_visible(page,bay))
                 # Arrow-key navigation, repeated selection, and browser history.
                 page.locator('#rl-tab-drives').focus();page.keyboard.press('ArrowRight')
                 assert page.locator('#rl-tab-docker').get_attribute('aria-selected')=='true'
                 assert page.locator('#rl-tab-docker').evaluate('e=>e===document.activeElement')
+                focus_checks.append(verify_focus_visible(page,page.locator('#rl-tab-docker')))
                 verify(page,threads,width<=700)
                 controls=page.locator('#rl-docker button[data-native-menu]').first
                 controls.click();assert page.locator('#qa-menu').is_visible()
                 page.locator('#qa-close').click();assert page.locator('#qa-menu').count()==0
                 owner=page.locator('tr[data-container$="owner-managed-demo"]')
                 owner.focus();page.keyboard.press('Enter')
+                focus_checks.append(verify_focus_visible(page,owner))
                 assert page.locator('#rl-container-inspector').inner_text().find('No verified Unraid template')>=0
                 assert 'Collecting CPU history' in page.locator('#rl-container-inspector').inner_text() or page.locator('#rl-container-inspector .rl-trend').count()==1
-                page.screenshot(path=str(args.output / f'rackline-synthetic-{name}-docker.png'),full_page=True)
+                if width>1000:
+                    # Put the tabs beneath the sticky strip, then request focus.
+                    # Do not normalize scrolling before checking the real result.
+                    page.evaluate("() => {const tabs=document.querySelector('.rl-tabs');window.scrollTo(0,tabs.getBoundingClientRect().top+scrollY-80);}")
+                    settle_layout(page)
+                    page.locator('#rl-tab-docker').focus()
+                    focus_checks.append(verify_focus_visible(page,page.locator('#rl-tab-docker')))
+                capture_overview(page,args.output / f'rackline-synthetic-{name}-docker.png')
                 page.locator('#rl-tab-docker').focus();page.keyboard.press('ArrowRight')
                 assert page.locator('#rl-tab-cooling').get_attribute('aria-selected')=='true'
+                focus_checks.append(verify_focus_visible(page,page.locator('#rl-tab-cooling')))
                 verify(page,threads,width<=700)
-                page.screenshot(path=str(args.output / f'rackline-synthetic-{name}-cooling.png'),full_page=True)
+                capture_overview(page,args.output / f'rackline-synthetic-{name}-cooling.png')
                 page.go_back();page.wait_for_function("document.querySelector('#rl-tab-docker').getAttribute('aria-selected')==='true'")
                 page.go_forward();page.wait_for_function("document.querySelector('#rl-tab-cooling').getAttribute('aria-selected')==='true'")
                 assert not errors, errors
-                results.append({'case':name,'width':width,'threads':threads,'text_scale':2 if text_scale else 1,'geometry':data,'passed':True})
+                results.append({'case':name,'width':width,'threads':threads,'text_scale':2 if text_scale else 1,'geometry':data,'focus_checks':focus_checks,'passed':True})
                 print('PASS',name)
             except Exception:
+                # Preserve the failing viewport before a full-page capture can
+                # make a sticky overlay look like a permanent layout gap.
+                page.screenshot(path=str(args.output / f'FAILED-viewport-{name}.png'),full_page=False)
                 page.screenshot(path=str(args.output / f'FAILED-synthetic-{name}.png'),full_page=True)
                 raise
             finally:
