@@ -276,6 +276,28 @@ def check_cooling_typography(page, text_scale=False, long_text=False):
     return data
 
 
+def check_cooling_wording(page):
+    page.evaluate("window.RacklineFixture.coolingWording=true;document.dispatchEvent(new Event('visibilitychange'))")
+    page.locator('#rl-tab-cooling').click()
+    page.wait_for_function("document.querySelector('#rl-cooling-status').textContent.includes('Command acknowledged')")
+    cards=page.locator('#rl-cooling-status').evaluate("""panel=>Object.fromEntries([...panel.querySelectorAll('article')].map(card=>[card.querySelector('h3').textContent,Object.fromEntries([...card.querySelectorAll('dl>div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]))]))""")
+    assert cards['Shelf controller']['Watchdog']=='Running'
+    assert cards['Shelf controller']['State']=='normal'
+    assert cards['Chassis / IPMI']['Message']=='Command acknowledged'
+    assert cards['Chassis / IPMI']['State']=='normal'
+    assert 'Telemetry' not in cards['Top'] and 'Telemetry' not in cards['Bottom']
+    assert 'No message' not in page.locator('#rl-cooling-status').inner_text()
+    geometry=check_cooling_typography(page,long_text=True)
+    assert 'Controller status with a deliberately long description and no truncation' in page.locator('#rl-cooling-status').inner_text()
+    assert 'Firmware cooling remains active while telemetry is cached' in page.locator('#rl-cooling-status').inner_text()
+    page.evaluate("document.querySelector('#qa-fan').click();document.dispatchEvent(new Event('visibilitychange'))")
+    page.wait_for_function("document.querySelector('#rl-cooling-status').textContent.includes('recovering')")
+    page.evaluate('window.RacklineFixture.fanStatus=404')
+    page.wait_for_function("document.querySelector('#rl-fan-age').textContent.includes('unavailable')",timeout=7500)
+    assert 'Unavailable · cached values' in page.locator('#rl-cooling-status').inner_text()
+    return {'wording':cards,'long_text_geometry':geometry,'recovery_and_transport_warnings':True}
+
+
 def check_cooling_visibility(page,mode):
     if mode=='absent':
         assert not page.locator('#rl-tab-cooling').is_visible()
@@ -599,6 +621,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
                 context.close()
         extra_cases=[('filters-'+str(w),w,'filters') for w in [390,1024,1440]]
         extra_cases += [('cooling-'+mode+'-'+str(w),w,mode) for w in [390,1024] for mode in ['absent','unknown','outage']]
+        extra_cases += [('cooling-wording-'+str(w),w,'cooling-wording') for w in [390,1024]]
         extra_cases += [('cooling-type-'+str(w),w,'cooling-type') for w in [320,390,768,1024,1440,2048]]
         extra_cases += [('cooling-type-200-'+str(w),w,'cooling-type-200') for w in [320,1024]]
         extra_cases += [('ember-status-'+str(w),w,'ember') for w in [390,1024,1440]]
@@ -612,7 +635,7 @@ with tempfile.TemporaryDirectory(prefix='rackline-responsive-') as temp, sync_pl
             try:
                 page.set_content(document(fixture_dir,16,fan=False if mode=='absent' else None if mode=='unknown' else True,filter_stress=mode=='filters',smart_test=mode.startswith('smart:')))
                 page.wait_for_function("document.querySelector('#rl-cpu').textContent !== '—'",timeout=5000)
-                details=check_cooling_typography(page,text_scale=mode.endswith('200'),long_text=True) if mode.startswith('cooling-type') else check_ember_status(page) if mode=='ember' else check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
+                details=check_cooling_wording(page) if mode=='cooling-wording' else check_cooling_typography(page,text_scale=mode.endswith('200'),long_text=True) if mode.startswith('cooling-type') else check_ember_status(page) if mode=='ember' else check_physical_locations(page) if mode=='physical' else check_smart_flow(page,mode.split(':',1)[1]) if mode.startswith('smart:') else check_filter_switches(page) if mode=='filters' else check_cooling_visibility(page,mode)
                 assert not errors,errors
                 capture_overview(page,args.output / f'rackline-synthetic-{name}.png')
                 results.append({'case':name,'width':width,'details':details,'passed':True});print('PASS',name)

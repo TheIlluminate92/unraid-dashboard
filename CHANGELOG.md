@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 candidate / 2026.11.10.01 — Cooling wording only
+
+- Shorten only the exact shelf Watchdog message “Controller is running under supervision” to “Running”, and the exact Chassis / IPMI Message “Command acknowledged; RPM telemetry is shown separately” to “Command acknowledged”. Leave State values, genuine messages and all warning/fault/unknown/stale behavior unchanged. Omit shelf Telemetry rows only when their message is absent/blank; stale transport still shows cached-value warnings.
+- Local validation: all eight new wording tests and 42 WAZ Node tests pass. The full Rackline suite reports 218 passed, one failure and two skips out of 221: the failure/skips require PHP, which is unavailable in this executor. Isolated package tests report 13 passed and one real-PHP-lint skip. JavaScript syntax, Python browser-suite syntax and 82 literal browser scripts/expressions compile. PHP/parser/HTTP/portability checks remain blocked by the missing runtime; browser and Unix-socket execution were not retried. Two additional prepared browser cases explicitly check shortened messages, unchanged states, empty Top/Bottom telemetry omission, long-message retention, recovery and stale transport warnings. Exact-head CI must complete these gates before installation.
+- Prepared from published 0.2.5 source with two reproducible builds. Publication, exact-head CI and deployment are pending; no new installed-host acceptance is claimed. Unrelated cached-identity hardening remains excluded, and SMART capture remains held.
+
 ## 0.2.5 / 2026.11.08.07 — cooling and bay-label readability
 
 - Enlarge Cooling labels, readings, headings and supporting text; wrap long readings and adapt card columns without reducing phone text or changing fan controls.

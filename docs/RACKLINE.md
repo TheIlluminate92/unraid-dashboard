@@ -1,5 +1,15 @@
 # Rackline: independent host workspace
 
+## Cooling wording candidate — November 10, 2026
+
+**0.2.6 / 2026.11.10.01 is prepared, not deployed.** The owner authorized publication and rollout after CI; publication, exact-head checks and host-owner receipts are still pending. The current installed 0.2.5 record below is unchanged. [Candidate files](../releases/rackline/0.2.6-2026.11.10.01/README.md).
+
+Shorten only the exact shelf Watchdog message “Controller is running under supervision” to “Running”, and the exact Chassis / IPMI Message “Command acknowledged; RPM telemetry is shown separately” to “Command acknowledged”. Leave State values, genuine messages and all warning/fault/unknown/stale behavior unchanged. Omit shelf Telemetry rows only when their message is absent/blank; stale transport still shows cached-value warnings.
+
+Only Cooling presentation in `assets/js/app.js` changes. Every collector/PHP file, model, stylesheet, installer, native control and cached-identity matcher remains identical to the published base before version-token substitution. No controller settings, bay labels, layout or SMART behavior changes. The separate identity hardening remains unshipped and capture remains held.
+
+Local validation: all eight new wording tests and 42 WAZ Node tests pass. The full Rackline suite reports 218 passed, one failure and two skips out of 221: the failure/skips require PHP, which is unavailable in this executor. Isolated package tests report 13 passed and one real-PHP-lint skip. JavaScript syntax, Python browser-suite syntax and 82 literal browser scripts/expressions compile. PHP/parser/HTTP/portability checks remain blocked by the missing runtime; browser and Unix-socket execution were not retried. Two additional prepared browser cases explicitly check shortened messages, unchanged states, empty Top/Bottom telemetry omission, long-message retention, recovery and stale transport warnings. Exact-head CI must complete these gates before installation. Two isolated builds match exactly, and all 17 packaged runtime members match the candidate source/build contract. Original source bytes were verified against remote commit `c77ba755f77118e9ed924a9f852d1f9701da973e`, a documentation-only continuation of published 0.2.5. Source and synthetic checks are not installed acceptance.
+
 ## 0.2.5 readability publication and acceptance — November 8, 2026
 
 The owner authorized publication and this update on both existing pilots. **Published and installed on both:** 0.2.5 / 2026.11.08.07 at source/artifact commit `7c5c69ac15e7e07f27946df15fabada56f99f022`, based on published 0.2.4 commit `b6ef4d3a1604f2c4ad4ccc81a4a1da1b7fe9f464`. Exact-source CI passed. Native host-owner receipts on November 8 confirm both installations and all 17 runtime files/boot registrations; browser acceptance limits remain explicit below. This is repository distribution only; PR #41 remains open, draft and unmerged, with no main merge, tag or GitHub Release.
