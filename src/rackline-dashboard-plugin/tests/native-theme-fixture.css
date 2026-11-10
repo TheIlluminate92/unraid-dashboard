@@ -1,0 +1,7 @@
+/* Synthetic compatibility fixture. These conflicting declarations match the
+   native default-base button rule checked on 2026-11-08, not a full Unraid theme. */
+button:where(:not(.unapi *)),button[type="button"]:where(:not(.unapi *)){
+  letter-spacing:1.8px;text-transform:uppercase;min-width:86px;
+  margin:10px 12px 10px 0;padding:8px;white-space:nowrap;
+}
+#displaybox{box-sizing:border-box;width:100%;padding:1rem 1rem 4rem}

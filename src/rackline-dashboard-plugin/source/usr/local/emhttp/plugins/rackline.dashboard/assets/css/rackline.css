@@ -1,0 +1,143 @@
+/* Scoped to the additive workspace; never changes native Unraid controls. */
+#rackline-root{--rl-bg:#0C1014;--rl-panel:#151B21;--rl-raised:#1D2630;--rl-border:#33404E;--rl-control-border:#647486;--rl-muted:#9AAABA;--rl-text:#EAF0F6;--rl-accent:#FF8A3D;--rl-on-accent:#11151A;--rl-healthy:#5DD6A2;--rl-warning:#F6C85F;--rl-fault:#FF6E7C;--rl-info:#6CB9FF;--rl-cpu-fill:#7A492D;--rl-top:0px;box-sizing:border-box;background:var(--rl-bg);color:var(--rl-text);font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px;border-radius:12px;margin:12px 0;min-width:0;max-width:100%;text-align:left;letter-spacing:normal;text-transform:none}
+#rackline-root *{box-sizing:border-box}#rackline-root [hidden]{display:none!important}#rackline-root a{color:var(--rl-info);text-decoration:none}#rackline-root a:hover{text-decoration:underline}#rackline-root h1,#rackline-root h2,#rackline-root h3,#rackline-root h4{color:var(--rl-text);margin:0;font-weight:650;letter-spacing:-.025em}#rackline-root h1{font-size:30px}#rackline-root h1 small{color:var(--rl-muted);font-size:16px;margin-left:12px;font-weight:400}#rackline-root h2{font-size:21px}#rackline-root h3{font-size:16px;margin-bottom:12px}#rackline-root h4{font-size:13px;margin-bottom:10px}#rackline-root p{margin:10px 0;color:var(--rl-muted)}#rackline-root small{font-size:11px;color:var(--rl-muted)}#rackline-root button,#rackline-root input{font:inherit;min-width:0;max-width:100%;margin:0;letter-spacing:normal;text-transform:none}#rackline-root button,#rackline-root .rl-button{border:1px solid var(--rl-control-border);background:var(--rl-raised);border-radius:7px;color:var(--rl-text);cursor:pointer;padding:9px 12px;line-height:1.3;white-space:normal}#rackline-root button:hover,#rackline-root .rl-button:hover{background:var(--rl-raised);text-decoration:none}#rackline-root button:disabled{cursor:default;opacity:.55}#rackline-root :focus-visible{outline:3px solid var(--rl-info);outline-offset:3px}#rackline-root .rl-button{display:inline-block;margin:6px 5px 6px 0}#rackline-root .rl-primary,#rackline-root .rl-primary:hover{background:var(--rl-accent);border-color:var(--rl-accent);color:var(--rl-on-accent)}
+#rackline-root .rl-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}#rackline-root .rl-eyebrow{color:var(--rl-accent);font:600 10px/1.5 system-ui;letter-spacing:.14em}#rackline-root .rl-heading nav{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px}#rackline-root .rl-notice{padding:10px 14px;border:1px solid var(--rl-border);background:var(--rl-raised);border-radius:8px;margin-bottom:14px;color:var(--rl-muted);font-size:12px}#rackline-root .rl-pulse{display:grid;grid-template-columns:minmax(250px,1.6fr) repeat(3,minmax(170px,1fr));gap:10px;position:sticky;top:var(--rl-top);z-index:5;background:var(--rl-bg);padding:6px 0}#rackline-root .rl-pulse article{padding:14px 16px;background:var(--rl-panel);border:1px solid var(--rl-border);border-radius:10px;min-width:0}#rackline-root .rl-label{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;color:var(--rl-accent);font-size:10px;font-weight:700;letter-spacing:.1em}#rackline-root .rl-label span{color:var(--rl-muted);font-weight:400;letter-spacing:0}#rackline-root .rl-reading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:9px 0}#rackline-root .rl-reading b{font-size:25px;letter-spacing:-.04em;line-height:1.1}#rackline-root .rl-reading>small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#rackline-root .rl-reading>span{color:var(--rl-info);font-size:15px}#rackline-root #rl-ram{font-size:20px}#rackline-root .rl-cores{display:grid;gap:6px}#rackline-root .rl-cpu-socket{min-width:0}#rackline-root .rl-socket-label{display:block;font-size:.8em;margin-bottom:3px;color:var(--rl-muted)}#rackline-root .rl-socket-cores{display:grid;grid-template-columns:repeat(var(--rl-core-columns,1),minmax(0,1fr));gap:4px}#rackline-root .rl-physical-core{min-width:0;border:1px solid var(--rl-border);padding:0 0 1px;border-radius:4px}#rackline-root .rl-core-label{display:block;font-size:.7em;line-height:1.2;margin-bottom:2px;color:var(--rl-muted);overflow-wrap:anywhere}#rackline-root .rl-core-threads{display:grid;grid-template-columns:repeat(var(--rl-threads,1),minmax(0,1fr));gap:3px}#rackline-root .rl-core{position:relative;background:var(--rl-raised);min-width:0;min-height:2.8em;padding:2px 0;overflow:hidden;border-radius:2px;text-align:center}#rackline-root .rl-core i{position:absolute;bottom:0;left:0;right:0;background:var(--rl-cpu-fill)}#rackline-root .rl-core span,#rackline-root .rl-core b{position:relative;z-index:1;display:block;font-size:.8em;line-height:1.5;font-weight:500;color:var(--rl-text)}#rackline-root .rl-core b{font-size:.75em}#rackline-root .rl-foot{display:block;line-height:1.5;margin-top:8px}#rackline-root .rl-meter{height:6px;background:var(--rl-border);border-radius:4px;overflow:hidden;margin:13px 0}#rackline-root .rl-meter i{display:block;background:var(--rl-info);height:100%;width:0}#rackline-root .rl-dual{display:flex;justify-content:space-between;gap:10px;padding:20px 0 14px}#rackline-root .rl-dual small,#rackline-root .rl-dual b{display:block}#rackline-root .rl-dual small{font-size:9px;letter-spacing:.08em}#rackline-root .rl-dual b{font-size:19px;letter-spacing:-.04em;color:var(--rl-info);margin-top:5px;white-space:nowrap}#rackline-root .rl-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:10px;color:var(--rl-muted);padding:8px 0 16px}#rackline-root .rl-stale{color:var(--rl-warning)!important}#rackline-root.rl-system-stale .rl-pulse article:nth-child(-n+3){border-color:var(--rl-warning)}#rackline-root .rl-alerts{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;background:var(--rl-panel);border:1px solid var(--rl-warning);border-radius:8px;color:var(--rl-warning);margin-bottom:16px}
+#rackline-root .rl-tabs{display:flex;border-bottom:1px solid var(--rl-border);gap:6px;margin-bottom:22px;overflow-x:auto}#rackline-root .rl-tabs button{border:0;background:transparent;border-radius:5px 5px 0 0;padding:12px 18px;border-bottom:3px solid transparent;white-space:nowrap;font-size:13px;color:var(--rl-muted)}#rackline-root .rl-tabs button[aria-selected=true]{color:var(--rl-accent);border-bottom-color:var(--rl-accent);background:var(--rl-raised)}#rackline-root .rl-workspace-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}#rackline-root .rl-workspace-head label{font-size:11px;color:var(--rl-muted)}#rackline-root input{margin-left:8px;background:var(--rl-panel);color:var(--rl-text);border:1px solid var(--rl-control-border);border-radius:7px;padding:9px 12px;max-width:100%;width:220px}#rackline-root input::placeholder{color:var(--rl-muted)}#rackline-root .rl-layout{display:grid;grid-template-columns:150px minmax(0,1fr) 275px;gap:18px;align-items:start}#rackline-root .rl-layout>*,#rackline-root .rl-main{min-width:0}#rackline-root .rl-filters{display:grid;gap:6px}#rackline-root .rl-filters button{text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:transparent;border-color:transparent}#rackline-root .rl-filters button[aria-pressed=true]{background:var(--rl-raised);border-color:var(--rl-accent);color:var(--rl-text)}#rackline-root .rl-filters button small{padding:1px 6px;background:var(--rl-panel);border-radius:4px}#rackline-root .rl-note{font-size:11px;color:var(--rl-muted);line-height:1.65;margin:14px 0}#rackline-root .rl-scroll{overflow:auto;border:1px solid var(--rl-border);border-radius:9px;background:var(--rl-panel)}#rackline-root table{border-collapse:collapse;width:100%;font:inherit;margin:0;text-align:left;white-space:nowrap}#rackline-root th{padding:10px 12px;color:var(--rl-muted);font-size:10px;background:var(--rl-raised);border-bottom:1px solid var(--rl-border);text-transform:uppercase;letter-spacing:.05em;font-weight:550}#rackline-root td{padding:12px;font-size:12px;border-bottom:1px solid var(--rl-border);background:transparent;color:var(--rl-text)}#rackline-root td small{display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;font-size:10px;margin-top:4px}#rackline-root td b{font-weight:600}#rackline-root td button{padding:6px 9px;font-size:11px}#rackline-root tbody tr:last-child td{border-bottom:0}#rackline-root tbody tr[data-drive],#rackline-root tbody tr[data-container]{cursor:pointer}#rackline-root tbody tr:hover td{background:var(--rl-raised)}#rackline-root tbody tr[aria-selected=true] td{background:var(--rl-raised)}#rackline-root tbody tr[aria-selected=true] td:first-child{box-shadow:inset 3px 0 var(--rl-accent)}#rackline-root .rl-empty{white-space:normal;padding:28px;color:var(--rl-muted)}#rackline-root .rl-box,#rackline-root .rl-inspector{background:var(--rl-panel);border:1px solid var(--rl-border);border-radius:9px;padding:18px}#rackline-root .rl-main>.rl-box{margin-top:18px}#rackline-root .rl-inspector{overflow-wrap:anywhere}#rackline-root .rl-inspector>p{font-size:12px}#rackline-root dl{margin:12px 0}#rackline-root dl>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--rl-border);font-size:11px}#rackline-root dt{color:var(--rl-muted);flex:0 0 42%}#rackline-root dd{margin:0;text-align:right;min-width:0}#rackline-root .rl-badge{display:inline-block;padding:3px 7px;border:1px solid var(--rl-control-border);background:var(--rl-raised);border-radius:5px;color:var(--rl-muted);font-size:10px;text-transform:capitalize}#rackline-root .rl-normal,#rackline-root .rl-running{color:var(--rl-healthy);border-color:var(--rl-healthy);background:var(--rl-panel)}#rackline-root .rl-attention,#rackline-root .rl-paused{color:var(--rl-warning);border-color:var(--rl-warning);background:var(--rl-panel)}#rackline-root .rl-fault,#rackline-root .rl-unhealthy{color:var(--rl-fault);border-color:var(--rl-fault);background:var(--rl-panel)}#rackline-root .rl-enclosure+.rl-enclosure{margin-top:18px}#rackline-root .rl-enclosure{max-width:100%;overflow:auto;padding:6px}#rackline-root .rl-bay-grid{display:grid;grid-template-columns:repeat(var(--rl-columns,6),minmax(64px,1fr));gap:5px;min-width:calc(var(--rl-columns,6)*69px - 5px)}#rackline-root .rl-bay-grid button{width:100%;min-width:0;margin:0;padding:7px 3px;min-height:48px;font-size:10px;background:#27343c;border-color:#405b6c;border-left:3px solid var(--rl-identity,#647d8e)}#rackline-root .rl-bay-grid b,#rackline-root .rl-bay-grid small{display:block;font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#rackline-root .rl-bay-grid b{font-size:12px}#rackline-root .rl-bay-grid button:focus-visible{position:relative;z-index:1;outline:3px solid #8fc7ff;outline-offset:2px}#rackline-root .rl-bay-grid .rl-selected{outline:2px solid var(--rl-accent);outline-offset:0}#rackline-root .rl-bay-grid .rl-hidden{visibility:hidden}#rackline-root .rl-app{display:flex;align-items:center;gap:10px}#rackline-root .rl-app img{width:28px;height:28px;object-fit:contain}#rackline-root .rl-app span{min-width:0}#rackline-root .rl-app b{display:block}#rackline-root .rl-process{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--rl-border);font-size:12px}#rackline-root .rl-process small{display:block}#rackline-root .rl-trend{height:68px;width:100%;background:var(--rl-panel);border-radius:5px}#rackline-root .rl-trend polyline{fill:none;stroke:var(--rl-info);stroke-width:1.5;vector-effect:non-scaling-stroke}#rackline-root .rl-cooling-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}#rackline-root .rl-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--rl-border);margin-top:26px;padding-top:14px;font-size:10px;color:var(--rl-muted)}#rackline-root .rl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(min-width:1800px){#rackline-root .rl-layout{grid-template-columns:180px minmax(0,1fr) 320px}#rackline-root .rl-pulse{grid-template-columns:minmax(370px,1.8fr) repeat(3,minmax(200px,1fr))}}
+@media(max-width:1000px){#rackline-root .rl-pulse{grid-template-columns:repeat(2,minmax(0,1fr));position:static}#rackline-root .rl-layout{grid-template-columns:145px minmax(0,1fr)}#rackline-root .rl-inspector{grid-column:2}#rackline-root .rl-heading{align-items:flex-start}#rackline-root .rl-heading nav{max-width:290px}#rackline-root .rl-reading>small{width:auto}}
+@media(max-width:700px){#rackline-root{padding:14px;border-radius:8px}#rackline-root .rl-heading,#rackline-root .rl-workspace-head{flex-direction:column;align-items:flex-start;gap:12px}#rackline-root h1{font-size:25px}#rackline-root .rl-heading nav{max-width:none;gap:8px 14px}#rackline-root .rl-pulse{gap:7px}#rackline-root .rl-pulse article{padding:11px;grid-column:span 2}#rackline-root .rl-pulse article:nth-child(n+3){grid-column:span 1}#rackline-root .rl-dual{display:block;padding:8px 0}#rackline-root .rl-dual>div+div{margin-top:8px}#rackline-root .rl-dual b{font-size:18px}#rackline-root .rl-layout{display:flex;flex-direction:column;gap:12px}#rackline-root .rl-layout>*{width:100%}#rackline-root .rl-filters{display:flex;overflow:auto;padding:3px;gap:4px}#rackline-root .rl-filters button{flex-shrink:0;white-space:nowrap}#rackline-root .rl-layout>aside>.rl-note{margin:8px 0}#rackline-root .rl-workspace-head label{width:100%;display:flex;align-items:center}#rackline-root input{width:100%;min-width:0}#rackline-root .rl-tabs{margin-bottom:16px}#rackline-root .rl-tabs button{padding:10px 11px;font-size:12px}#rackline-root .rl-inspector{padding:16px}#rackline-root td{padding:10px}#rackline-root .rl-meta{font-size:9px;gap:3px 10px}#rackline-root .rl-cooling-grid{grid-template-columns:minmax(0,1fr)}#rackline-root .rl-process{flex-wrap:wrap;gap:6px}#rackline-root .rl-box{padding:14px}}
+@media(prefers-reduced-motion:reduce){#rackline-root *,#rackline-root *:before,#rackline-root *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Ember palette is root-scoped; native pages and Disk Location bay colors stay independent. */
+#rackline-root .rl-heading h1{color:var(--rl-accent)}#rackline-root .rl-pulse article,#rackline-root .rl-box,#rackline-root .rl-inspector,#rackline-root .rl-scroll{border-radius:5px}
+
+/* Keep expanded Docker metrics readable; native controls remain reachable by local scroll. */
+#rackline-root #rl-docker td,#rackline-root #rl-docker th{padding-left:9px;padding-right:9px}#rackline-root #rl-docker .rl-app b,#rackline-root #rl-docker .rl-app small{max-width:150px;overflow:hidden;text-overflow:ellipsis}#rackline-root #rl-docker td[data-metric=network] small,#rackline-root #rl-docker td[data-metric=block] small{color:var(--rl-text);font-size:12px}
+@media(min-width:701px) and (max-width:1599px){#rackline-root #rl-docker .rl-layout{grid-template-columns:145px minmax(0,1fr)}#rackline-root #rl-docker .rl-inspector{grid-column:2}#rackline-root #rl-docker .rl-inspector-data{columns:2;column-gap:28px}#rackline-root #rl-docker .rl-inspector-data dl,#rackline-root #rl-docker .rl-trend{break-inside:avoid}}
+
+/* Native Unraid buttons carry an 86px minimum, outer margins and uppercase
+   tracking. The scoped reset above prevents those styles escaping grid tracks.
+   Keep physical columns intact: only the enclosure/table may scroll. */
+#rackline-root .rl-heading>div,#rackline-root .rl-heading nav,#rackline-root .rl-label>span{min-width:0}
+#rackline-root .rl-heading h1,#rackline-root .rl-label,#rackline-root .rl-foot,#rackline-root .rl-note{overflow-wrap:anywhere}
+#rackline-root .rl-reading>small{white-space:normal;overflow-wrap:anywhere}
+#rackline-root .rl-scroll{max-width:100%}
+#rackline-root .rl-dual>div{min-width:0}
+#rackline-root .rl-dual b{white-space:normal;overflow-wrap:anywhere}
+#rackline-root .rl-tabs{padding:6px;gap:4px}
+#rackline-root .rl-tabs button{flex:1 1 0;min-width:0;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:700px){
+  #rackline-root{padding:12px}
+  #rackline-root .rl-heading{gap:4px;margin-bottom:8px}
+  #rackline-root .rl-heading h1{line-height:1.25}
+  #rackline-root .rl-heading h1 small{display:inline-block;margin-left:8px;font-size:14px}
+  #rackline-root .rl-heading nav{gap:0 14px;font-size:12px}
+  #rackline-root .rl-heading nav a{display:inline-flex;align-items:center;min-height:44px}
+  #rackline-root .rl-notice{padding:7px 10px;margin-bottom:8px;font-size:11px}
+  #rackline-root .rl-pulse{gap:6px;padding:0;position:static}
+  #rackline-root .rl-pulse article{padding:9px 10px}
+  #rackline-root .rl-reading{gap:6px 10px;padding:5px 0}
+  #rackline-root .rl-reading>small{flex:1 1 160px}
+  #rackline-root .rl-reading b{font-size:23px}
+  #rackline-root #rl-ram{font-size:18px}
+  #rackline-root .rl-meter{margin:7px 0}
+  #rackline-root .rl-foot{margin-top:4px;font-size:10px}
+  #rackline-root .rl-dual{padding:5px 0}
+  #rackline-root .rl-dual>div+div{margin-top:5px}
+  #rackline-root .rl-dual b{font-size:16px;margin-top:2px}
+  #rackline-root .rl-meta{padding:6px 0 8px}
+  #rackline-root .rl-tabs{margin-bottom:12px}
+  #rackline-root .rl-tabs button{padding:8px 5px;min-height:44px}
+  #rackline-root .rl-filters button,#rackline-root td button,#rackline-root .rl-button{min-height:44px}
+  #rackline-root .rl-workspace-head{gap:8px;margin-bottom:12px}
+  #rackline-root .rl-box,#rackline-root .rl-inspector{padding:12px}
+  #rackline-root h3{margin-bottom:8px}
+}
+
+#rackline-root .rl-cores>span{grid-column:1/-1;overflow-wrap:anywhere}
+
+/* A small mobile density adjustment; font sizes and touch controls stay intact. */
+@media(max-width:700px){
+  #rackline-root #rl-drives td,#rackline-root #rl-docker td{padding-top:6px;padding-bottom:6px}
+  #rackline-root #rl-drives td small,#rackline-root #rl-docker td small{margin-top:2px}
+  #rackline-root #rl-drives th,#rackline-root #rl-docker th{padding-top:8px;padding-bottom:8px}
+  #rackline-root #rl-drives .rl-workspace-head,#rackline-root #rl-docker .rl-workspace-head{margin-bottom:8px}
+  #rackline-root #rl-drives .rl-layout,#rackline-root #rl-docker .rl-layout{gap:8px}
+  #rackline-root #rl-drives .rl-layout>aside>.rl-note,#rackline-root #rl-docker .rl-layout>aside>.rl-note{margin:4px 0}
+}
+
+/* Measured fit: leave room for the workspace when topology or text makes the strip tall. */
+#rackline-root.rl-pulse-static .rl-pulse{position:static}
+
+/* Native-page fallbacks are real controls; keep them touchable without extra row margins. */
+#rackline-root td .rl-button{margin:0}
+@media(max-width:700px){
+  #rackline-root .rl-footer a{display:inline-flex;align-items:center;min-height:44px;min-width:44px}
+}
+
+#rackline-root .rl-docker-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}#rackline-root .rl-docker-actions button{max-width:100%;white-space:normal}#rackline-root #rl-docker-update-target,#rackline-root #rl-docker-action-status{overflow-wrap:anywhere}
+
+#rackline-root .rl-docker-actions button,#rackline-root .rl-docker-actions a{min-height:44px;min-width:44px}#rackline-root .rl-docker-actions a{display:inline-flex;align-items:center;padding:8px}
+
+/* Filter changes preserve the current viewport without a fixed-height list. */
+#rackline-root .rl-filter-changing{overflow-anchor:none}
+#rackline-root .rl-filter-reserve{height:0;min-height:0;margin:0;padding:0;pointer-events:none;overflow-anchor:none}
+
+/* Explicit SMART reads stay local to the selected inspector. */
+#rackline-root .rl-smart-actions .rl-button{min-height:44px;min-width:44px}
+#rackline-root .rl-smart-actions [aria-disabled=true]{cursor:default;opacity:.55}
+#rackline-root .rl-smart-actions .rl-note{margin:6px 0}
+
+/* Dimensions, orientation, display color and alignment come from Disk Location.
+   Large maps scroll inside their enclosure; reserved hidden slots never reflow. */
+#rackline-root #rl-bays{display:flow-root}
+#rackline-root .rl-location-source{margin:6px 0;clear:both}
+#rackline-root .rl-enclosure[data-position=left]{float:left}
+#rackline-root .rl-enclosure[data-position=right]{float:right}
+#rackline-root .rl-enclosure[data-position=none]{clear:both}
+#rackline-root .rl-enclosure[data-position=left],#rackline-root .rl-enclosure[data-position=right]{max-width:calc(100% - 12px);margin:0 12px 12px 0}
+#rackline-root .rl-enclosure[data-name-align=center]>h4{text-align:center}
+#rackline-root .rl-enclosure[data-name-align=right]>h4{text-align:right}
+#rackline-root .rl-enclosure[data-name-align=hide]>h4{display:none}
+#rackline-root .rl-enclosure[data-name-align=vertical]{display:flex;gap:8px}
+#rackline-root .rl-enclosure[data-name-align=vertical]>h4{writing-mode:vertical-rl;margin:0;flex-shrink:0}
+#rackline-root .rl-native-layout>.rl-bay-grid{grid-template-columns:repeat(var(--rl-columns),var(--rl-tray-width));width:calc(var(--rl-columns)*(var(--rl-tray-width) + 5px) - 5px);min-width:0;flex-shrink:0}
+#rackline-root .rl-native-layout .rl-bay-grid button{height:var(--rl-tray-height);min-height:44px}
+#rackline-root .rl-bay-grid[data-tray-align=center]{margin-left:auto;margin-right:auto}
+#rackline-root .rl-bay-grid[data-tray-align=right],#rackline-root .rl-bay-grid[data-tray-align=end]{margin-left:auto;margin-right:0}
+#rackline-root .rl-bay-grid button.rl-native-color,#rackline-root .rl-bay-grid button.rl-native-color:hover{background:var(--rl-bay-color);color:var(--rl-bay-text)}
+#rackline-root .rl-bay-grid button.rl-native-color b,#rackline-root .rl-bay-grid button.rl-native-color small{color:inherit}
+#rackline-root .rl-bay-grid button:disabled{opacity:1}
+
+/* Larger/asymmetric topologies get their own first layer. Keep DOM/keyboard
+   order and the original compact strip unchanged. em-based minima respond to
+   text enlargement; min(100%, ...) also permits a single narrow column. */
+#rackline-root.rl-pulse-expanded .rl-pulse{grid-template-columns:repeat(auto-fit,minmax(min(100%,max(18em,30%)),1fr));align-items:start}
+#rackline-root.rl-pulse-expanded .rl-pulse article{grid-column:auto;overflow-wrap:anywhere}
+#rackline-root.rl-pulse-expanded .rl-pulse article:first-child{grid-column:1/-1}
+#rackline-root.rl-pulse-expanded .rl-cores{grid-template-columns:repeat(auto-fit,minmax(min(100%,36em),1fr));align-items:start;gap:10px}
+#rackline-root.rl-pulse-expanded .rl-pulse article:not(:first-child){padding-top:10px;padding-bottom:10px}
+#rackline-root.rl-pulse-expanded .rl-dual{display:flex;flex-wrap:wrap;padding:8px 0;gap:8px 16px}
+#rackline-root.rl-pulse-expanded .rl-dual>div{min-width:0;flex:1 1 7em}
+#rackline-root.rl-pulse-expanded .rl-dual>div+div{margin-top:0}
+#rackline-root.rl-pulse-expanded .rl-dual b{white-space:normal;overflow-wrap:anywhere}
+#rackline-root.rl-pulse-expanded .rl-meter{margin:8px 0}
+#rackline-root.rl-pulse-expanded .rl-reading>small{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+
+/* A cached bay label and its identity warning fit inside native 44px trays.
+   Do not change configured bay dimensions, colors, numbering or selection. */
+#rackline-root .rl-bay-grid button.rl-unverified{padding-top:2px;padding-bottom:2px}
+#rackline-root .rl-bay-grid button.rl-unverified b,#rackline-root .rl-bay-grid button.rl-unverified small{line-height:1.1}
+#rackline-root .rl-bay-grid button.rl-unverified .rl-bay-status{font-size:10px}
+
+/* Cooling cards have room for readable labels and larger measurements. Keep
+   these rules local to this workspace; narrow cards wrap instead of shrinking
+   text or forcing a page-wide scrollbar. */
+#rackline-root #rl-cooling .rl-cooling-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,20em),1fr));align-items:start}
+#rackline-root #rl-cooling .rl-box{min-width:0;overflow-wrap:anywhere}
+#rackline-root #rl-cooling h3{font-size:20px;line-height:1.35}
+#rackline-root #rl-cooling dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:baseline;gap:8px 16px;padding:11px 0;font-size:15px;line-height:1.5}
+#rackline-root #rl-cooling dt,#rackline-root #rl-cooling dd{min-width:0;overflow-wrap:anywhere;white-space:normal}
+#rackline-root #rl-cooling dd{font-size:17px;font-weight:550;font-variant-numeric:tabular-nums}
+#rackline-root #rl-cooling .rl-note,#rackline-root #rl-cooling .rl-box>p{font-size:14px;line-height:1.6}
+#rackline-root #rl-cooling .rl-button{font-size:14px;min-height:44px}

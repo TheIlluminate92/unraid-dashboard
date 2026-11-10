@@ -1,0 +1,27 @@
+<?xml version="1.0" standalone="yes"?>
+<PLUGIN name="rackline.dashboard" author="TheIlluminate92" version="@RELEASE@" min="7.2.0" icon="rackline.dashboard.svg" launch="Rackline">
+<CHANGES>
+Rackline @VERSION@ review artifact. Includes its own system, storage and workload collectors. No WAZ runtime is required.
+Separate identity; no automatic update URL until a reviewed release is published.
+Previous Rackline runtime is retained for manual rollback. No services are restarted.
+</CHANGES>
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+@INSTALLER@
+]]></INLINE>
+</FILE>
+<FILE Run="/bin/bash" Method="remove">
+<INLINE><![CDATA[
+set -euo pipefail
+exec 9>/var/lock/rackline.dashboard.lock
+flock -n 9 || { echo 'Rackline operation already in progress'; exit 1; }
+runtime=/usr/local/emhttp/plugins/rackline.dashboard
+if [ -e "$runtime" ] || [ -L "$runtime" ]; then
+    [ -d "$runtime" ] && [ ! -L "$runtime" ] || { echo 'Unsafe Rackline runtime path'; exit 1; }
+    retained=$(mktemp -d /usr/local/emhttp/plugins/.rackline.dashboard.removed.XXXXXXXX)
+    mv -- "$runtime" "$retained/runtime"
+    echo "Rackline removed from WebUI; runtime retained at $retained/runtime. Other plugins and configuration unchanged."
+fi
+]]></INLINE>
+</FILE>
+</PLUGIN>

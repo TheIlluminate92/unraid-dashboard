@@ -1,5 +1,99 @@
 # Changelog
 
+## 0.2.6 candidate / 2026.11.10.01 — Cooling wording only
+
+- Shorten only the exact shelf Watchdog message “Controller is running under supervision” to “Running”, and the exact Chassis / IPMI Message “Command acknowledged; RPM telemetry is shown separately” to “Command acknowledged”. Leave State values, genuine messages and all warning/fault/unknown/stale behavior unchanged. Omit shelf Telemetry rows only when their message is absent/blank; stale transport still shows cached-value warnings.
+- Local validation: all eight new wording tests and 42 WAZ Node tests pass. The full Rackline suite reports 218 passed, one failure and two skips out of 221: the failure/skips require PHP, which is unavailable in this executor. Isolated package tests report 13 passed and one real-PHP-lint skip. JavaScript syntax, Python browser-suite syntax and 82 literal browser scripts/expressions compile. PHP/parser/HTTP/portability checks remain blocked by the missing runtime; browser and Unix-socket execution were not retried. Two additional prepared browser cases explicitly check shortened messages, unchanged states, empty Top/Bottom telemetry omission, long-message retention, recovery and stale transport warnings. Exact-head CI must complete these gates before installation.
+- Prepared from published 0.2.5 source with two reproducible builds. Publication, exact-head CI and deployment are pending; no new installed-host acceptance is claimed. Unrelated cached-identity hardening remains excluded, and SMART capture remains held.
+
+## 0.2.5 / 2026.11.08.07 — cooling and bay-label readability
+
+- Enlarge Cooling labels, readings, headings and supporting text; wrap long readings and adapt card columns without reducing phone text or changing fan controls.
+- Prefer saved Disk Location comments as bay labels. Keep verified native names or cached-model fallback, separate visible identity status, disabled unverified actions, and existing geometry/colors. Never substitute a serial/node or guess a live identity for presentation.
+- Publish immutable source/package commit `7c5c69ac15e7e07f27946df15fabada56f99f022`. All 255 Rackline/WAZ Node tests, PHP 8.2/8.4, Unix-socket/endpoint fixtures and 88 Chromium desktop/mobile/200% cases pass; independent screenshot review finds no blocker. Both downloaded CI packages match the two reproducible local builds and frozen release hashes.
+- Install on both authorized pilots with exact 17-file runtime and boot-registration verification. Retain fresh 0.2.4 recovery and all earlier generations. Workload continuity and bounded passive checks are recorded separately from incomplete browser acceptance; no active SMART, control change, restart, rollback or cleanup was exercised. The separate pending identity fix remains unshipped. See [current acceptance](docs/RACKLINE.md#025-readability-publication-and-acceptance--november-8-2026).
+
+## Unreleased — cached disk identity hardening (2026-11-08, local only)
+
+- Remove ambiguous native-ID token/suffix inference from passive SMART and Disk Location identity checks. Validate raw types, bounded UTF-8 and control bytes before normalization; retain exact explicit/current identity proofs and fail closed otherwise.
+- Correct serial-field parsing so blank lines cannot borrow a serial from the following line and empty duplicates remain ambiguous. Add adversarial cache, endpoint and unverified-bay regressions.
+- Local relevant suites and independent focused review pass; see [current handoff](docs/RACKLINE.md#current-release-and-identity-fix-handoff--november-8-2026). No corrected package, publication or deployment. Previously inferred joins can become unverified; no wrong current mapping has been established.
+
+## 0.2.4 / 2026.11.08.06 — published and installed on authorized pilots
+
+- Publish the adaptive performance strip at `b6ef4d3a1604f2c4ad4ccc81a4a1da1b7fe9f464`; exact-head PHP 8.2/8.4, Unix-socket and all 80 synthetic Chromium cases pass, with package artifacts independently matched.
+- Install the exact frozen package on both authorized pilots. Bounded passive checks and selected authenticated dual-socket layout/native-navigation checks pass. The current handoff distinguishes incomplete browser/SMART/control acceptance and the separately prepared identity fix. No main merge, release tag, reboot or recovery cleanup.
+
+## Historical 0.2.4 candidate preparation / 2026.11.08.06
+
+- Preserve the compact strip and give larger/multiple-socket CPU topologies a full-width first layer, with shorter memory/network/I/O cards below. Discover topology and fit to width/text size without host-specific layout rules or changed keyboard order.
+- Recheck sticky fit after secondary text changes and avoid eager multi-socket array flattening. Add topology, repeated-height, large-input and prepared browser geometry regressions.
+- Local validation: 209 Rackline and 42 WAZ Node tests plus supported PHP/parser/stress/HTTP/portability and 14 isolated package checks pass. Two 0.2.4 builds reproduce identical bytes. Browser Python and 69 literal JavaScript scripts/expressions compile. The prepared 320–2048px browser matrix and Unix-socket CI remain unrun locally; no new rendered or installed-host acceptance is claimed. Preserve 0.2.3 artifacts and the installed baseline; parent publication and exact-head CI are next.
+
+## 0.2.3 candidate / 2026.11.08.05 — awaiting CI and pilot acceptance
+
+- Prepare the reviewed healthy-status cleanup, tokenizer-independent native defaults and Ember palette under new release identifiers. Preserve published 0.2.2 artifacts and unchanged physical mapping/identity semantics.
+- Add synthetic browser CI checks for repeated healthy/outage/recovery status, computed Ember contrast/focus/mobile behavior and defaults-derived native bay colors from the actual PHP parser. Exact-head CI and live acceptance remain pending.
+- Candidate local checks pass 203 Rackline and 42 WAZ Node tests plus supported PHP/HTTP/stress/isolated-package suites. Two builds reproduce identical package bytes. Previously blocked local browser/socket tests were not retried; their exact-head CI results remain required.
+
+
+## Unreleased — Rackline native colors and Ember (2026-11-08, local only)
+
+- Read bounded inert scalar/static-array native defaults without depending on the optional PHP tokenizer. Reject executable, dynamic, interpolated, ambiguous or oversized input; preserve saved-setting precedence, unknown states, geometry and assigned-drive identity. No native PHP is executed and no host-specific color is embedded.
+- Apply the approved root-scoped Ember palette with readable CPU fills, essential control boundaries and distinct semantic colors. Preserve native Disk Location bay colors and existing responsive geometry/touch targets; replace stale-card opacity with warning borders and status text.
+- Add adversarial parser and deterministic contrast regressions. Full local source/fixture validation passes where supported; two Unix-socket fixtures are blocked and browser/rendered accessibility remains unverified. The actual DOM-absence fallback passed independently. No push, release or deployment is included.
+- Correct the leading pilot status to installed 0.2.2 while retaining historical candidate records and outstanding native-action/second-host acceptance limits.
+- Independent parser review passed 4,106 additional assertions and 25 focused status/theme tests. Future authorized publication must use new version/build identifiers rather than overwrite the frozen 0.2.2 release.
+
+## Unreleased — Rackline next-batch status cleanup (2026-11-08, local only)
+
+- Remove only successful local-telemetry boilerplate and its empty space. Preserve initial/partial connection, outage and incomplete-install feedback, accessibility status semantics and polling thresholds.
+- Add repeated recovery, partial startup and stale-threshold regressions. The full 195-test Rackline Node suite, both tokenizer variants of the storage fixtures, 2,684 host-stress assertions and 366 workload checks pass locally. Browser paint/accessibility and installed-host acceptance remain unverified; no release, push or deployment is included. Disk Location color repair awaits current source evidence.
+
+## Unreleased — Rackline running-list refinements (2026-11-08, release candidate)
+
+- Remove routine update timestamps and redundant Docker explanations while preserving faults, stale/error states, real data, per-row ages and native-control restrictions.
+- Tighten mobile table/workspace spacing without shrinking text or touch targets, including native Docker fallback and Rackline footer links; group logical CPUs by reported socket and physical core with SMT siblings together and unknown topology explicit.
+- Keep folder/pool filter changes anchored in the viewport with a minimal temporary bottom reserve, input cancellation and cleanup, without fixed-height lists or page scroll locks.
+- Render dynamic Disk Location dimensions, hidden positions, orientation/alignment and native display labels/colors without changing verified assigned-drive targets. Preserve large grids and unverified/unknown states; keep cache file-write context distinct from device freshness.
+- Hide Cooling only after confirmed absent-controller detection; retain unknown/outage states, safe direct-hash fallback and keyboard navigation. Add bounded tri-state filesystem detection and offline fixtures.
+- Reveal keyboard controls obscured by Rackline's desktop sticky strip, and use measured viewport fit to keep tall strips from covering the workspace.
+- Replace native device details with an identity-validated passive cached SMART report and cache-file age, marking reports over 24 hours old. Distinguish an existing identity-unverified cache from absence without exposing untrusted health or report content. Add a separately confirmed, current-device-bound on-demand report capture and private saved-report download for qualified default ATA/SAS targets. Preserve native attribute-cache age separately; no background read, self-test or scheduler change. Production acceptance remains pending the release gates.
+- Wire the selected-drive SMART action through passive eligibility, explicit device/wake confirmation and one CSRF-protected capture submission. Preserve cancellation before dispatch and uncertainty after it, separate saved-read age from native cache mtime, and cover interrupted/repeated flows with synthetic frontend/browser fixtures.
+- Harden cached-report inventory parsing against BOM-prefixed duplicate sections, malformed UTF-8 selector collisions and binary/control truncation; add concurrent replacement/read and deterministic fuzz coverage.
+- Add explicit Docker check and selected-container update controls using existing native endpoints/tasks, with scoped confirmation, fresh identity/template preflight, cancellation guards and native fallback. Checks can contact registries/template sources; no background checks or updates are added. Unknown outcomes require native-result review before retry; installed-host acceptance remains pending.
+- Audit portable Unraid discovery; preserve unknown core identity when die IDs conflict, require PHP 8.1+ before staging, and keep installer/builder required files aligned including the cached SMART endpoint. Add offline missing-cURL, interface/topology and isolated package regressions; document capability requirements and unverified platforms.
+- Correct the browser fixture’s hidden-tray label assertion without relaxing slot order, hidden-position, size or focus checks; add atomic geometry and below-fold failure artifacts.
+- Add source, endpoint and responsive geometry regressions. Focused local checks pass; exact-candidate browser/CI and installed acceptance remain release gates. Prepare the authorized 0.2.2 / build 2026.11.08.04 candidate while preserving the earlier 0.2.1 freeze artifacts. See [validation and pending work](docs/RACKLINE.md#local-running-list-refinements--2026-11-08-unpublished).
+
+## Unreleased — Rackline mobile compatibility (2026-11-08)
+
+- Prepare Rackline 0.2.1 / build 2026.11.08.03 with scoped resets for native Unraid button sizing, margins and letter spacing, preserving bay order, hidden positions and local scrolling.
+- Balance all logical CPU tiles using available width and text size, compact the mobile performance strip, and retain visible keyboard focus and touch targets.
+- Remove the duplicate Rackline header links while retaining native Unraid navigation, the footer return link and contextual controls.
+- Shorten interface wording without losing CPU, cache, stale-data or ownership caveats; explicitly mark unsupported GPU telemetry unavailable.
+- Add native-style, text-scaling and responsive browser fixtures with CI screenshot artifacts. Local source/package checks pass; new rendered and installed-host acceptance remains pending. See [the dated validation record](docs/RACKLINE.md#mobile-compatibility-and-wording--2026-11-08).
+
+## Unreleased — Rackline standalone rebuild (2026-11-08)
+
+- Bundle Rackline-owned system, cached-storage and Docker inventory collectors; remove all WAZ install/runtime/cache/banner dependencies.
+- Keep native Unraid Docker menus/editor, folders, cached bays/SMART, and optional fan-controller handoffs without adopting unmanaged containers or starting hardware samplers.
+- Correct guest CPU accounting, preserve unknown sensor/network data, and guard boot/interface identity boundaries.
+- GPU attribution and top-process sampling are explicitly unavailable pending an independent implementation; per-container CPU/RAM/network/block metrics remain.
+- Add a second adversarial pass for large/malformed metadata, folder traversal/regex bounds, daemon timestamp freshness, native-menu input safety and repeated frontend lifecycle handling.
+- Expand isolated package fault injection to cover locking, corrupt payload/manifest, unsafe runtime paths, interrupted activation and repeated predecessor retention.
+- Add no-WAZ package and collector fixtures. This is source work only, not deployment or a rolling release; see [current validation and gaps](docs/RACKLINE.md).
+
+## Unreleased — Rackline source implementation (2026-11-07)
+
+- Add an independent `rackline.dashboard` host-local workspace and additive Dashboard launcher without replacing WAZ.
+- Include responsive Drives, Docker-folder and Cooling tabs, per-core/system readings, native Docker configuration/control handoff, cached bay/SMART views and existing fan-controller status.
+- Add a GET-only kernel I/O collector and guarded counter/identity adapters; preserve missing/stale readings and template-less ownership.
+- Accommodate installed native query double decoding, optional empty fan-status arrays, watchdog transition-time semantics and DOM-ready task initialization without changing native controllers.
+- Harden nested payloads, stale/replayed sample detection, Docker error-to-zero normalization, keyboard focus and obsolete native menu cleanup with an additional adversarial regression suite.
+- Add bounded all-container CPU/RAM/network/block accounting with immutable-ID/restart guards, per-row freshness, fair batches, truthful cached GPU attribution and independent adversarial tests.
+- Add deterministic review packaging with retained rollback, source/fixture tests and PHP CI. No deployment or rolling-release change; see [Rackline validation and pilot limits](docs/RACKLINE.md).
+
 ## Unreleased — selected-container identity correction
 
 - Match native 12-character inventory IDs with full Docker statistics IDs only when the exact container name and one unambiguous inventory identity agree.
@@ -139,3 +233,5 @@ First unified WAZ Control release.
 - Added standalone WAZ Health configuration migration and recoverable manifest retirement.
 
 The development versions before v0.7.0 were rolling internal test builds and are not published here as supported releases.
+
+- Rackline 0.2.2 candidate: preserve per-group Disk Location hidden-tray numbering and identical native Boot aliases; project current native display settings separately from verified assigned-drive actions, with cache-write times and generic geometry regressions. Installed acceptance remains a separate gate.

@@ -1,5 +1,9 @@
 # Unraid Dashboard
 
+> [Rackline operating guide and acceptance checklist](docs/RACKLINE.md): **0.2.5 / 2026.11.08.07 is published and installed on both authorized Unraid pilots.** Exact-source CI passed, including 88 Chromium scenarios, and both installed 17-file runtimes/boot registrations match. Read the guide for bounded live checks and remaining browser limits. This release changes only Cooling typography and physical-bay labels. The unrelated disk-identity fix remains unshipped and SMART capture remains held. PR #41 remains draft/unmerged; WAZ history below stays separate.
+
+> Cooling wording-only **0.2.6 / 2026.11.10.01** is prepared for publication and exact-head CI. [Candidate package](releases/rackline/0.2.6-2026.11.10.01/README.md). It is not deployed; the installed 0.2.5 acceptance record above remains current.
+
 <!-- historian-overview:start -->
 ## Project overview
 
