@@ -1,19 +1,41 @@
 # Unraid Dashboard
 
-<!-- historian-overview:start -->
-## Project overview
+<!-- reader-guide:start -->
+## Meet the project
 
-| Field | Project |
+A server-local dashboard that brings selected Unraid health, container and hardware information into the administration interface. The main branch contains the WAZ edition; separate Rackline development and installed pilots have their own records.
+
+### What it is built with
+
+PHP for server-side plugin behavior, JavaScript/CSS for the interface, shell collectors and PowerShell packaging/verification. It integrates with Unraid and other host-specific plugins.
+
+### Find your way around
+
+| Start here | What you will find |
 |---|---|
-| Purpose | Local Unraid dashboard and WebUI enhancements. |
-| Status | Maintained plugin; source, release and installed-host acceptance are separate. |
-| Owner | Repository: TheIlluminate92. Worker: Unassigned; project worker not recorded. |
-| Continue here | [Current work / guidance](CONTRIBUTING.md) · [Checks / context](docs/INSTALL.md) |
-| Related projects | [Cooling control plugin](https://github.com/TheIlluminate92/unraid-md12xx-fan-control) |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Settings and dependencies. |
+| [src/waz-dashboard-plugin/README.md](src/waz-dashboard-plugin/README.md) | Component source/build entry. |
+| [docs/RECOVERY.md](docs/RECOVERY.md) | Recovery boundaries. |
+| [docs/MAINTENANCE_AND_MIGRATION.md](docs/MAINTENANCE_AND_MIGRATION.md) | Edition/version and host migration context. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development checks and safe problem reports. |
 
-Documentation reviewed October 27, 2026. Existing evidence dates below still apply;
-this overview is not a new release, deployment or live-system verification.
-<!-- historian-overview:end -->
+### When something goes wrong
+
+Start by reading the relevant source or guide below. These are investigation
+starting points, not instructions to change a live system.
+
+| Symptom or question | First place to look |
+|---|---|
+| A tile is empty or stale | Identify its collector and dependency before assuming the host itself is failing. |
+| Layout looks wrong | Start with the component UI source and reproduce the display issue without changing host configuration. |
+| Source differs from installed plugin | Compare edition, package and installed revision; a draft Rackline branch is not main's WAZ release. |
+
+The repository owner maintains this project; a dedicated technical worker is not recorded.
+
+Reader guide reviewed November 12, 2026 against repository source and available
+owner records. Existing test, deployment and recovery evidence keeps its original
+date; this prose review did not run the application or test a restore.
+<!-- reader-guide:end -->
 
 <img src="src/waz-dashboard-plugin/source/usr/local/emhttp/plugins/waz.dashboard/images/waz.dashboard.png" width="96" height="96" alt="WAZ Dashboard icon">
 
