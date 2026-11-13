@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — licensing maintenance (2026-11-13)
+
+The plugin source payload includes LICENSE. The next normal plugin build carries it into the installed plugin directory. Existing rolling installers and immutable releases were not rebuilt by this source change. See [LICENSING.md](LICENSING.md). No runtime behavior or existing release asset changed.
+
 ## Unreleased — selected-container identity correction
 
 - Match native 12-character inventory IDs with full Docker statistics IDs only when the exact container name and one unambiguous inventory identity agree.

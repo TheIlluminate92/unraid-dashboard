@@ -103,3 +103,8 @@ No support is guaranteed. Pull requests are welcome, especially for clean auto-d
 MIT. See [LICENSE](LICENSE).
 
 See [plugin registration and update behavior](docs/PLUGIN_UPDATES.md) before migrating duplicate entries. Use only the canonical installer filename; immutable versioned installers are audit artifacts.
+
+
+## License and redistribution
+
+[MIT License](LICENSE): reuse and modification are allowed with the notice retained. Provided as is, without warranty. See [licensing and packaging scope](LICENSING.md) for third-party terms and release limitations.
